@@ -1,0 +1,14 @@
+{
+  "name": "drivewise",
+  "private": true,
+  "packageManager": "bun@1.3.10",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:web": "bun run --cwd apps/web dev",
+    "build:web": "bun run --cwd apps/web build",
+    "test:web": "bun run --cwd apps/web test",
+    "typecheck:web": "bun run --cwd apps/web typecheck"
+  }
+}
