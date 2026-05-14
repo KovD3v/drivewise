@@ -1,0 +1,26 @@
+{
+  "sources": [
+    {
+      "name": "Example marketplace listing pages",
+      "type": "firecrawl",
+      "url": "https://example.com/cars",
+      "limit": 10,
+      "document_type": "listing_snapshot",
+      "crawl_depth": 1
+    },
+    {
+      "name": "Example brand vehicle profiles",
+      "type": "firecrawl",
+      "url": "https://example.com/vehicles",
+      "limit": 5,
+      "document_type": "vehicle_profile",
+      "crawl_depth": 1
+    },
+    {
+      "name": "Local fixture documents",
+      "type": "local_fixture",
+      "path": "data/fixtures/ingestion",
+      "limit": 3
+    }
+  ]
+}

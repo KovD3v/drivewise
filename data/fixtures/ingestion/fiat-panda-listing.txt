@@ -1,0 +1,11 @@
+Title: Fiat Panda 1.0 FireFly Hybrid
+Make: Fiat
+Model: Panda
+Year: 2024
+Price EUR: 14200
+Mileage km: 6400
+Fuel type: mild_hybrid_petrol
+Condition: used
+Location region: Piemonte
+
+Fixture sintetica di listing locale. Non deriva da fonti web.
