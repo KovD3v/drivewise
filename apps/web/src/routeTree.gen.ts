@@ -15,9 +15,9 @@ import { Route as ListingsRouteImport } from './routes/listings'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as VehiclesVehicleIdRouteImport } from './routes/vehicles.$vehicleId'
-import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
-import { Route as DocumentsDocumentIdRouteImport } from './routes/documents.$documentId'
+import { Route as VehiclesVehicleIdRouteImport } from './routes/vehicles_.$vehicleId'
+import { Route as ListingsListingIdRouteImport } from './routes/listings_.$listingId'
+import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
 
 const VehiclesRoute = VehiclesRouteImport.update({
   id: '/vehicles',
@@ -50,28 +50,28 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const VehiclesVehicleIdRoute = VehiclesVehicleIdRouteImport.update({
-  id: '/$vehicleId',
-  path: '/$vehicleId',
-  getParentRoute: () => VehiclesRoute,
+  id: '/vehicles_/$vehicleId',
+  path: '/vehicles/$vehicleId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
-  id: '/$listingId',
-  path: '/$listingId',
-  getParentRoute: () => ListingsRoute,
+  id: '/listings_/$listingId',
+  path: '/listings/$listingId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
-  id: '/$documentId',
-  path: '/$documentId',
-  getParentRoute: () => DocumentsRoute,
+  id: '/documents_/$documentId',
+  path: '/documents/$documentId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
-  '/documents': typeof DocumentsRouteWithChildren
-  '/listings': typeof ListingsRouteWithChildren
+  '/documents': typeof DocumentsRoute
+  '/listings': typeof ListingsRoute
   '/search': typeof SearchRoute
-  '/vehicles': typeof VehiclesRouteWithChildren
+  '/vehicles': typeof VehiclesRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/vehicles/$vehicleId': typeof VehiclesVehicleIdRoute
@@ -79,10 +79,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
-  '/documents': typeof DocumentsRouteWithChildren
-  '/listings': typeof ListingsRouteWithChildren
+  '/documents': typeof DocumentsRoute
+  '/listings': typeof ListingsRoute
   '/search': typeof SearchRoute
-  '/vehicles': typeof VehiclesRouteWithChildren
+  '/vehicles': typeof VehiclesRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/vehicles/$vehicleId': typeof VehiclesVehicleIdRoute
@@ -91,13 +91,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
-  '/documents': typeof DocumentsRouteWithChildren
-  '/listings': typeof ListingsRouteWithChildren
+  '/documents': typeof DocumentsRoute
+  '/listings': typeof ListingsRoute
   '/search': typeof SearchRoute
-  '/vehicles': typeof VehiclesRouteWithChildren
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
-  '/listings/$listingId': typeof ListingsListingIdRoute
-  '/vehicles/$vehicleId': typeof VehiclesVehicleIdRoute
+  '/vehicles': typeof VehiclesRoute
+  '/documents_/$documentId': typeof DocumentsDocumentIdRoute
+  '/listings_/$listingId': typeof ListingsListingIdRoute
+  '/vehicles_/$vehicleId': typeof VehiclesVehicleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,18 +130,21 @@ export interface FileRouteTypes {
     | '/listings'
     | '/search'
     | '/vehicles'
-    | '/documents/$documentId'
-    | '/listings/$listingId'
-    | '/vehicles/$vehicleId'
+    | '/documents_/$documentId'
+    | '/listings_/$listingId'
+    | '/vehicles_/$vehicleId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdvisorRoute: typeof AdvisorRoute
-  DocumentsRoute: typeof DocumentsRouteWithChildren
-  ListingsRoute: typeof ListingsRouteWithChildren
+  DocumentsRoute: typeof DocumentsRoute
+  ListingsRoute: typeof ListingsRoute
   SearchRoute: typeof SearchRoute
-  VehiclesRoute: typeof VehiclesRouteWithChildren
+  VehiclesRoute: typeof VehiclesRoute
+  DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
+  ListingsListingIdRoute: typeof ListingsListingIdRoute
+  VehiclesVehicleIdRoute: typeof VehiclesVehicleIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -188,73 +191,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vehicles/$vehicleId': {
-      id: '/vehicles/$vehicleId'
-      path: '/$vehicleId'
+    '/vehicles_/$vehicleId': {
+      id: '/vehicles_/$vehicleId'
+      path: '/vehicles/$vehicleId'
       fullPath: '/vehicles/$vehicleId'
       preLoaderRoute: typeof VehiclesVehicleIdRouteImport
-      parentRoute: typeof VehiclesRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/listings/$listingId': {
-      id: '/listings/$listingId'
-      path: '/$listingId'
+    '/listings_/$listingId': {
+      id: '/listings_/$listingId'
+      path: '/listings/$listingId'
       fullPath: '/listings/$listingId'
       preLoaderRoute: typeof ListingsListingIdRouteImport
-      parentRoute: typeof ListingsRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/documents/$documentId': {
-      id: '/documents/$documentId'
-      path: '/$documentId'
+    '/documents_/$documentId': {
+      id: '/documents_/$documentId'
+      path: '/documents/$documentId'
       fullPath: '/documents/$documentId'
       preLoaderRoute: typeof DocumentsDocumentIdRouteImport
-      parentRoute: typeof DocumentsRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface DocumentsRouteChildren {
-  DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
-}
-
-const DocumentsRouteChildren: DocumentsRouteChildren = {
-  DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
-}
-
-const DocumentsRouteWithChildren = DocumentsRoute._addFileChildren(
-  DocumentsRouteChildren,
-)
-
-interface ListingsRouteChildren {
-  ListingsListingIdRoute: typeof ListingsListingIdRoute
-}
-
-const ListingsRouteChildren: ListingsRouteChildren = {
-  ListingsListingIdRoute: ListingsListingIdRoute,
-}
-
-const ListingsRouteWithChildren = ListingsRoute._addFileChildren(
-  ListingsRouteChildren,
-)
-
-interface VehiclesRouteChildren {
-  VehiclesVehicleIdRoute: typeof VehiclesVehicleIdRoute
-}
-
-const VehiclesRouteChildren: VehiclesRouteChildren = {
-  VehiclesVehicleIdRoute: VehiclesVehicleIdRoute,
-}
-
-const VehiclesRouteWithChildren = VehiclesRoute._addFileChildren(
-  VehiclesRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdvisorRoute: AdvisorRoute,
-  DocumentsRoute: DocumentsRouteWithChildren,
-  ListingsRoute: ListingsRouteWithChildren,
+  DocumentsRoute: DocumentsRoute,
+  ListingsRoute: ListingsRoute,
   SearchRoute: SearchRoute,
-  VehiclesRoute: VehiclesRouteWithChildren,
+  VehiclesRoute: VehiclesRoute,
+  DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
+  ListingsListingIdRoute: ListingsListingIdRoute,
+  VehiclesVehicleIdRoute: VehiclesVehicleIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

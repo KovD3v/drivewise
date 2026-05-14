@@ -181,7 +181,14 @@ h1 {
   background: #ffffff;
   color: #18202a;
   font: inherit;
+  font-weight: 600;
   padding: 8px 10px;
+}
+
+.form-grid input::placeholder {
+  color: #7a8799;
+  font-weight: 500;
+  opacity: 1;
 }
 
 .priority-fieldset {

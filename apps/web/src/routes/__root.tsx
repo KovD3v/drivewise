@@ -9,6 +9,9 @@ import {
 
 import appStyles from '../styles.css?url'
 
+const faviconHref =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231d4f48'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='Arial,sans-serif' font-size='32' font-weight='700' fill='white'%3ED%3C/text%3E%3C/svg%3E"
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -24,6 +27,11 @@ export const Route = createRootRoute({
       },
     ],
     links: [
+      {
+        rel: 'icon',
+        href: faviconHref,
+        type: 'image/svg+xml',
+      },
       {
         rel: 'stylesheet',
         href: appStyles,
@@ -58,8 +66,14 @@ export function NotFoundPage() {
           <Link className="secondary-link" to="/vehicles">
             Veicoli
           </Link>
+          <Link className="secondary-link" to="/listings">
+            Annunci
+          </Link>
           <Link className="secondary-link" to="/documents">
             Documenti
+          </Link>
+          <Link className="secondary-link" to="/search">
+            Search
           </Link>
           <Link className="secondary-link" to="/advisor">
             Advisor
@@ -72,7 +86,7 @@ export function NotFoundPage() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="it">
       <head>
         <HeadContent />
       </head>

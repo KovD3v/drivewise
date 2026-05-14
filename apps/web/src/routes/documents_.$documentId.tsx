@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { DocumentDetailPage } from '../views/DocumentDetail'
 
-export const Route = createFileRoute('/documents/$documentId')({
+export const Route = createFileRoute('/documents_/$documentId')({
   component: DocumentDetailRoute,
 })
 

@@ -43,8 +43,8 @@ export function DocumentSearchPage() {
   }
 
   return (
-    <main className="browse-shell search-shell">
-      <header className="browse-header search-header">
+    <main className="browse-shell">
+      <header className="browse-header">
         <Link className="text-link" to="/">
           Drivewise MVP
         </Link>
@@ -58,8 +58,8 @@ export function DocumentSearchPage() {
         </div>
       </header>
 
-      <section className="browse-layout search-layout">
-        <form className="filter-panel search-panel" onSubmit={handleSubmit}>
+      <section className="browse-layout">
+        <form className="filter-panel" onSubmit={handleSubmit}>
           <div className="form-grid">
             <label>
               Query
@@ -121,12 +121,12 @@ export function DocumentSearchPage() {
             </p>
           ) : null}
           <button className="primary-button" disabled={!canSubmit} type="submit">
-            {isLoading ? 'Searching...' : 'Search documents'}
+            {isLoading ? 'Searching…' : 'Search documents'}
           </button>
         </form>
 
-        <section className="browse-results search-results" aria-live="polite">
-          {isLoading ? <p className="status-message">Ricerca in corso...</p> : null}
+        <section className="browse-results" aria-live="polite">
+          {isLoading ? <p className="status-message">Ricerca in corso…</p> : null}
           {error ? <p className="error-message">{error}</p> : null}
           {!isLoading && !error && !response ? (
             <p className="status-message">

@@ -34,6 +34,18 @@ test('configures a root not found page with navigation links', () => {
     'href',
     '/vehicles',
   )
+  expect(screen.getByRole('link', { name: 'Annunci' })).toHaveAttribute(
+    'href',
+    '/listings',
+  )
+  expect(screen.getByRole('link', { name: 'Documenti' })).toHaveAttribute(
+    'href',
+    '/documents',
+  )
+  expect(screen.getByRole('link', { name: 'Search' })).toHaveAttribute(
+    'href',
+    '/search',
+  )
   expect(screen.getByRole('link', { name: 'Advisor' })).toHaveAttribute(
     'href',
     '/advisor',
