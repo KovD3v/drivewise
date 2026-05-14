@@ -6,17 +6,8 @@ from urllib.parse import urlsplit
 import psycopg
 
 from app.core.config import PROJECT_ROOT, load_env_file
+from app.core.database_url import contains_placeholder_database_url
 from app.db.migrations import MigrationRun, run_migrations
-
-
-PLACEHOLDER_TOKENS = (
-    "your-user",
-    "your-password",
-    "your-neon-host",
-    "your-test-host",
-    "your-database",
-    "your-test-database",
-)
 
 
 def main(env_path: Path = PROJECT_ROOT / ".env") -> int:
@@ -31,7 +22,7 @@ def main(env_path: Path = PROJECT_ROOT / ".env") -> int:
         )
         return 1
 
-    if _contains_placeholder(database_url):
+    if contains_placeholder_database_url(database_url):
         print(
             "DATABASE_URL still contains placeholders. Replace .env values with "
             "your Neon connection string before running migrations.",
@@ -54,10 +45,6 @@ def main(env_path: Path = PROJECT_ROOT / ".env") -> int:
 
     _print_report(report)
     return 0
-
-
-def _contains_placeholder(database_url: str) -> bool:
-    return any(token in database_url for token in PLACEHOLDER_TOKENS)
 
 
 def _print_migration_error(error: psycopg.Error, database_url: str) -> None:
