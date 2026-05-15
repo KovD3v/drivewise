@@ -15,6 +15,7 @@ FIAT_LISTING_ID = UUID("30000000-0000-4000-8000-000000000001")
 class FakeVehiclesRepository:
     def __init__(self) -> None:
         self.last_filters = None
+        self.last_resolve_market = None
         self.vehicles = [
             {
                 "id": FIAT_ID,
@@ -35,6 +36,54 @@ class FakeVehiclesRepository:
                 "fuel_type": "electric",
                 "market": "EU",
                 "base_price_eur": 42990.00,
+            },
+        ]
+        self.resolve_candidates = [
+            {
+                "id": FIAT_ID,
+                "make": "Fiat",
+                "model": "Panda",
+                "model_year": 2024,
+                "body_style": "city_car",
+                "fuel_type": "mild_hybrid_petrol",
+                "market": "IT",
+                "base_price_eur": 15500.00,
+                "spec_id": UUID("20000000-0000-4000-8000-000000000001"),
+                "trim": "1.0 FireFly Hybrid",
+                "drivetrain": "fwd",
+                "transmission": "6-speed manual",
+                "engine": "1.0L mild-hybrid petrol",
+                "horsepower": 70,
+                "battery_kwh": None,
+                "consumption_l_100km": 5.00,
+                "wltp_range_km": None,
+                "co2_g_km": 113,
+                "euro_emission_standard": "Euro 6e",
+                "seats": 4,
+                "cargo_volume_liters": 225.00,
+            },
+            {
+                "id": TESLA_ID,
+                "make": "Tesla",
+                "model": "Model 3",
+                "model_year": 2024,
+                "body_style": "sedan",
+                "fuel_type": "electric",
+                "market": "EU",
+                "base_price_eur": 42990.00,
+                "spec_id": UUID("20000000-0000-4000-8000-000000000005"),
+                "trim": "Rear-Wheel Drive",
+                "drivetrain": "rwd",
+                "transmission": "single-speed",
+                "engine": "single electric motor",
+                "horsepower": 283,
+                "battery_kwh": 57.50,
+                "consumption_l_100km": None,
+                "wltp_range_km": 513,
+                "co2_g_km": 0,
+                "euro_emission_standard": None,
+                "seats": 5,
+                "cargo_volume_liters": 594.00,
             },
         ]
 
@@ -73,6 +122,14 @@ class FakeVehiclesRepository:
                 }
             ],
         }
+
+    def list_resolve_candidates(self, market):
+        self.last_resolve_market = market
+        return [
+            candidate
+            for candidate in self.resolve_candidates
+            if candidate["market"] == market
+        ]
 
 
 class FakeListingsRepository:
@@ -164,6 +221,61 @@ def test_get_vehicle_returns_specs(client):
     assert payload["model"] == "Panda"
     assert payload["specs"][0]["consumption_l_100km"] == 5.00
     assert payload["specs"][0]["euro_emission_standard"] == "Euro 6e"
+
+
+def test_post_vehicle_resolve_matches_dirty_query_to_ranked_spec(
+    client,
+    fake_repositories,
+):
+    response = client.post(
+        "/vehicles/resolve",
+        json={
+            "query": "fiat panda 1.0 firefly hybrid 2024",
+            "market": "IT",
+            "model_year": 2024,
+            "fuel_type": "mild_hybrid_petrol",
+            "body_style": "city_car",
+            "limit": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["query"] == "fiat panda 1.0 firefly hybrid 2024"
+    assert payload["normalized_query"] == "fiat panda 1 0 firefly hybrid 2024"
+    assert payload["status"] == "matched"
+    assert fake_repositories["vehicles"].last_resolve_market == "IT"
+
+    match = payload["matches"][0]
+    assert match["confidence"] >= 0.82
+    assert match["match_level"] == "spec"
+    assert match["vehicle"]["id"] == str(FIAT_ID)
+    assert match["vehicle"]["make"] == "Fiat"
+    assert match["spec"]["trim"] == "1.0 FireFly Hybrid"
+    assert match["matched_fields"] == [
+        "make",
+        "model",
+        "model_year",
+        "trim",
+        "fuel_type",
+        "body_style",
+    ]
+    assert match["warnings"] == []
+
+
+def test_post_vehicle_resolve_returns_no_match_for_weak_query(client):
+    response = client.post(
+        "/vehicles/resolve",
+        json={"query": "unknown spaceship", "market": "IT"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "query": "unknown spaceship",
+        "normalized_query": "unknown spaceship",
+        "status": "no_match",
+        "matches": [],
+    }
 
 
 def test_get_listings_returns_vehicle_summary(client):

@@ -37,6 +37,19 @@ def test_vehicle_repository_uses_contains_for_text_and_exact_for_enums():
     ]
 
 
+def test_vehicle_repository_resolve_candidates_left_joins_specs_by_market():
+    conn = RecordingConnection()
+    repository = VehiclesRepository(conn)
+
+    repository.list_resolve_candidates("IT")
+
+    assert "FROM vehicles v" in conn.query
+    assert "LEFT JOIN vehicle_specs s ON s.vehicle_id = v.id" in conn.query
+    assert "WHERE v.market = %s" in conn.query
+    assert "ORDER BY v.make, v.model, v.model_year, s.trim" in conn.query
+    assert conn.params == ["IT"]
+
+
 def test_listing_repository_uses_contains_for_text_filters():
     conn = RecordingConnection()
     repository = ListingsRepository(conn)

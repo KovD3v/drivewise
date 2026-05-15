@@ -6,7 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.dependencies import get_vehicles_repository
 from app.repositories.filters import VehicleFilters
 from app.repositories.vehicles import VehiclesRepository
-from app.schemas.vehicles import VehicleDetail, VehicleSummary
+from app.schemas.vehicles import (
+    VehicleDetail,
+    VehicleResolveRequest,
+    VehicleResolveResponse,
+    VehicleSummary,
+)
+from app.services.vehicles.resolver import resolve_vehicle_query
 
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
@@ -35,6 +41,15 @@ def list_vehicles(
         offset=offset,
     )
     return repository.list_vehicles(filters)
+
+
+@router.post("/resolve", response_model=VehicleResolveResponse)
+def resolve_vehicle(
+    request: VehicleResolveRequest,
+    repository: Annotated[VehiclesRepository, Depends(get_vehicles_repository)],
+) -> VehicleResolveResponse:
+    candidates = repository.list_resolve_candidates(request.market)
+    return resolve_vehicle_query(request, candidates)
 
 
 @router.get("/{vehicle_id}", response_model=VehicleDetail)
