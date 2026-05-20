@@ -99,3 +99,38 @@ class VehiclesRepository:
         ).fetchall()
 
         return {**vehicle, "specs": list(specs)}
+
+    def list_resolve_candidates(self, market: str) -> list[dict[str, Any]]:
+        return list(
+            self.conn.execute(
+                """
+                SELECT
+                  v.id,
+                  v.make,
+                  v.model,
+                  v.model_year,
+                  v.body_style,
+                  v.fuel_type,
+                  v.market,
+                  v.base_price_eur,
+                  s.id AS spec_id,
+                  s.trim,
+                  s.drivetrain,
+                  s.transmission,
+                  s.engine,
+                  s.horsepower,
+                  s.battery_kwh,
+                  s.consumption_l_100km,
+                  s.wltp_range_km,
+                  s.co2_g_km,
+                  s.euro_emission_standard,
+                  s.seats,
+                  s.cargo_volume_liters
+                FROM vehicles v
+                LEFT JOIN vehicle_specs s ON s.vehicle_id = v.id
+                WHERE v.market = %s
+                ORDER BY v.make, v.model, v.model_year, s.trim
+                """,
+                [market],
+            ).fetchall()
+        )
