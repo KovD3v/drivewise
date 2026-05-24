@@ -50,4 +50,8 @@ test('configures a root not found page with navigation links', () => {
     'href',
     '/advisor',
   )
+  expect(screen.getByRole('link', { name: 'Analisi modello' })).toHaveAttribute(
+    'href',
+    '/model-analysis',
+  )
 })

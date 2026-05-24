@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Drivewise helps users compare and evaluate vehicles before purchase. This MVP includes local app scaffolding, seed data, read-only vehicle/listing/document APIs, document search with default text mode and explicit fake-vector dev mode, local fixture ingestion, and a deterministic advisor flow with document evidence.
+Drivewise helps users compare and evaluate vehicles before purchase. This MVP includes local app scaffolding, seed data, read-only vehicle/listing/document APIs, vehicle input resolution, document search with default text mode and explicit fake-vector dev mode, local fixture ingestion, a deterministic advisor flow with document evidence, and a deterministic model analysis flow.
 
 ## Monorepo Layout
 
@@ -15,7 +15,7 @@ docs/    architecture and project notes
 
 ## Frontend
 
-`apps/web` uses TanStack Start with React and Vite. Bun is the frontend package manager. The current UI includes the `Drivewise MVP` home route, vehicle, listing, document explorer, document detail, document search, and advisor routes:
+`apps/web` uses TanStack Start with React and Vite. Bun is the frontend package manager. The current UI includes the `Drivewise MVP` home route, vehicle, listing, document explorer, document detail, document search, advisor, and model analysis routes:
 
 ```text
 /
@@ -27,6 +27,7 @@ docs/    architecture and project notes
 /documents/{document_id}
 /search
 /advisor
+/model-analysis
 ```
 
 The frontend uses TanStack Router `Link` for internal navigation. Runtime API calls go through `apps/web/src/api/drivewise.ts`. Mock fallback is explicit and only activates when `VITE_USE_MOCK_API=true`; by default API failures are surfaced instead of hidden.
@@ -47,6 +48,7 @@ GET /documents
 GET /documents/{document_id}
 POST /search/documents
 POST /advisor/recommendations
+POST /advisor/model-analysis
 ```
 
 `/health` returns a small JSON payload for cheap local health checks. `/ready` verifies PostgreSQL with a simple query and is the endpoint to use when a process must only receive traffic after the DB is reachable.
@@ -55,7 +57,9 @@ Database-backed dependencies use a small local connection pool initialized and c
 
 Vehicle resolution is deterministic and market-scoped. It normalizes free-text descriptions, ranks canonical vehicle/spec candidates by explicit make, model, year, trim, fuel, and body-style evidence, and reports matched, ambiguous, or no-match outcomes without writing to the database.
 
-Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The advisor endpoint is deterministic, persists recommendation runs/items, and enriches response items with transient `document_evidence` from text-only document search. `document_evidence` is not stored in `recommendation_items` and does not affect advisor scoring or ranking.
+Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The advisor recommendations endpoint is deterministic, persists recommendation runs/items, and enriches response items with transient `document_evidence` from text-only document search. `document_evidence` is not stored in `recommendation_items` and does not affect advisor scoring or ranking.
+
+`POST /advisor/model-analysis` is a non-persisted flow for a model the user has already chosen. It can start from a free-text query resolved through the vehicle resolver or a canonical vehicle reference, then returns a result-contract shape with verdict, price assessment, estimated costs, red flags, checklist, confidence, assumptions, warnings, missing data, and next actions.
 
 ## Data
 
@@ -76,6 +80,6 @@ Embeddings have a dry-run planner and a fake-provider write path. `python apps/a
 - Real Firecrawl crawling
 - Real external embedding providers
 - Production hybrid/vector search
-- Non-deterministic advisor logic
+- Non-deterministic advisor/model-analysis logic
 - Authentication
 - Deployment configuration
