@@ -63,7 +63,8 @@ class ModelAnalysisRequest(BaseModel):
     current_km: int | None = Field(default=None, ge=0)
     usage_profile: list[UsageProfile] = Field(default_factory=list)
     analysis_scope: list[AnalysisScope] = Field(
-        default_factory=lambda: ["price", "maintenance", "red_flags", "tco"]
+        default_factory=lambda: ["price", "maintenance", "red_flags", "tco"],
+        min_length=1,
     )
 
     @field_validator("query")

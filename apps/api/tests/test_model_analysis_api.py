@@ -273,3 +273,58 @@ def test_post_model_analysis_flags_price_above_range(client):
     assert payload["price_assessment"] == "above_range"
     assert "asking_price_above_reference" in payload["red_flags"]
     assert "asking_price_above_market_reference" in payload["warnings"]
+
+
+def test_post_model_analysis_honors_maintenance_only_scope(client):
+    response = client.post(
+        "/advisor/model-analysis",
+        json={
+            "vehicle_id": str(FIAT_ID),
+            "market": "IT",
+            "current_km": 6400,
+            "usage_profile": ["city"],
+            "analysis_scope": ["maintenance"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "completed"
+    assert payload["price_assessment"] == "unknown"
+    assert payload["estimated_costs"]["market_reference_price_eur"] is None
+    assert payload["estimated_costs"]["estimated_annual_maintenance_eur"] > 0
+    assert payload["estimated_costs"]["estimated_monthly_energy_eur"] is None
+    assert payload["estimated_costs"]["estimated_depreciation_3y_eur"] is None
+    assert "asking_price_eur" not in payload["missing_data"]
+
+
+def test_post_model_analysis_does_not_fallback_for_unknown_spec(client):
+    response = client.post(
+        "/advisor/model-analysis",
+        json={
+            "vehicle_id": str(FIAT_ID),
+            "spec_id": "20000000-0000-4000-8000-999999999999",
+            "market": "IT",
+            "current_km": 6400,
+            "analysis_scope": ["maintenance"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["resolved_vehicle"]["id"] == str(FIAT_ID)
+    assert payload["resolved_spec"] is None
+    assert "requested_spec_not_found" in payload["warnings"]
+    assert "resolved_spec" in payload["missing_data"]
+
+
+def test_post_model_analysis_rejects_empty_scope(client):
+    response = client.post(
+        "/advisor/model-analysis",
+        json={
+            "vehicle_id": str(FIAT_ID),
+            "analysis_scope": [],
+        },
+    )
+
+    assert response.status_code == 422

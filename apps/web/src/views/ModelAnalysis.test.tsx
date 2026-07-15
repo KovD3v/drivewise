@@ -80,15 +80,16 @@ test('submits a model analysis request and renders the result contract', async (
   fireEvent.click(screen.getByRole('button', { name: 'Analizza modello' }))
 
   expect(await screen.findByText('Fiat Panda')).toBeVisible()
-  expect(screen.getByText('interesting_with_checks')).toBeVisible()
-  expect(screen.getByText('in_range')).toBeVisible()
-  expect(screen.getByText('Confidence 0.86')).toBeVisible()
-  expect(screen.getByText('verify_service_history')).toBeVisible()
+  expect(screen.getByText('Interessante, con verifiche consigliate')).toBeVisible()
+  expect(screen.getByText('In linea con il mercato')).toBeVisible()
+  expect(screen.getByText('Affidabilità 86%')).toBeVisible()
+  expect(screen.getByText('Verifica lo storico della manutenzione')).toBeVisible()
   expect(
-    screen.getByText('No live market sources are used in Model Analysis V1.'),
+    screen.getByText('L’analisi V1 non usa fonti di mercato in tempo reale.'),
   ).toBeVisible()
-  expect(screen.getByRole('button', { name: 'modify_parameters' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'open_checklist' })).toBeVisible()
+  expect(screen.getByText('Modifica parametri')).toBeVisible()
+  expect(screen.getByText('Apri checklist')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Modifica parametri' })).toBeNull()
 
   await waitFor(() => {
     expect(fetch).toHaveBeenCalledWith(

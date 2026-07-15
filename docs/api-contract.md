@@ -700,6 +700,10 @@ Flow status values follow the MVP result contract:
 Model analysis rules:
 
 - uses resolver confidence when the request starts from a query
+- requires at least one `analysis_scope` value
+- returns only estimates selected by `analysis_scope`; `tco` includes the price reference, energy/fuel cost, maintenance, and depreciation estimates
+- requires asking price only for price or red-flag analysis, and current kilometres only for maintenance or red-flag analysis
+- returns `requested_spec_not_found` instead of silently substituting another trim when an explicit `spec_id` is unknown
 - compares asking price against available listing prices, then base price fallback
 - estimates maintenance, monthly energy/fuel cost, and 3-year depreciation with deterministic MVP assumptions
 - emits rule-based red flags for above-reference asking price and high mileage for age

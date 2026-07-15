@@ -30,9 +30,22 @@ def build_model_analysis(
         "No live market sources are used in Model Analysis V1.",
         "Reference price uses available MVP listing prices, then base price fallback.",
         "Annual kilometres are estimated deterministically from usage_profile.",
+        "Fuel is estimated at EUR 1.85/L and electricity at EUR 0.30/kWh.",
+        "Maintenance is a heuristic based on body style, powertrain, age, and mileage.",
+        "Three-year depreciation is estimated at 28% of the available price.",
     ]
     warnings: list[str] = []
     missing_data: list[str] = []
+    scopes = set(request.analysis_scope)
+    include_price = bool(scopes & {"price", "tco"})
+    include_maintenance = bool(scopes & {"maintenance", "tco"})
+    include_red_flags = "red_flags" in scopes
+    include_tco = "tco" in scopes
+    required_inputs: set[str] = set()
+    if include_price or include_red_flags:
+        required_inputs.add("asking_price_eur")
+    if include_maintenance or include_red_flags:
+        required_inputs.add("current_km")
     resolution_confidence = 0.9
 
     vehicle_id = request.vehicle_id
@@ -64,22 +77,31 @@ def build_model_analysis(
     vehicle = VehicleSummary.model_validate(candidate["vehicle"])
     spec = _select_spec(candidate.get("specs", []), spec_id)
     if spec is None:
-        warnings.append("resolved_spec_missing")
+        warning = "requested_spec_not_found" if spec_id else "resolved_spec_missing"
+        warnings.append(warning)
         missing_data.append("resolved_spec")
 
     reference_price = _market_reference_price(candidate, vehicle)
-    price_assessment, price_warnings, price_flags = _assess_price(
-        asking_price=request.asking_price_eur,
-        reference_price=reference_price,
+    price_assessment, price_warnings, price_flags = (
+        _assess_price(
+            asking_price=request.asking_price_eur,
+            reference_price=reference_price,
+        )
+        if include_price or include_red_flags
+        else ("unknown", [], [])
     )
     warnings.extend(price_warnings)
-    red_flags = list(price_flags)
+    red_flags = list(price_flags) if include_red_flags else []
 
-    if request.asking_price_eur is None:
+    if "asking_price_eur" in required_inputs and request.asking_price_eur is None:
         missing_data.append("asking_price_eur")
-    if request.current_km is None:
+    if "current_km" in required_inputs and request.current_km is None:
         missing_data.append("current_km")
-    elif _is_high_mileage(vehicle.model_year, request.current_km, request.usage_profile):
+    elif (
+        include_red_flags
+        and request.current_km is not None
+        and _is_high_mileage(vehicle.model_year, request.current_km, request.usage_profile)
+    ):
         red_flags.append("high_mileage_for_age")
 
     estimated_costs = _estimate_costs(
@@ -88,9 +110,17 @@ def build_model_analysis(
         spec=spec,
         reference_price=reference_price,
         missing_data=missing_data,
+        include_price=include_price,
+        include_maintenance=include_maintenance,
+        include_tco=include_tco,
     )
     checklist = _build_checklist(vehicle, spec, red_flags)
-    verdict = _build_verdict(missing_data, price_assessment, red_flags)
+    verdict = _build_verdict(
+        missing_data,
+        required_inputs,
+        price_assessment,
+        red_flags,
+    )
     confidence = _confidence(
         resolution_confidence=resolution_confidence,
         missing_data=missing_data,
@@ -100,6 +130,7 @@ def build_model_analysis(
         confidence=confidence,
         missing_data=missing_data,
         warnings=warnings,
+        required_inputs=required_inputs,
     )
 
     return ModelAnalysisResponse(
@@ -164,7 +195,7 @@ def _select_spec(
     for spec in specs:
         if spec["id"] == spec_id:
             return VehicleSpec.model_validate(spec)
-    return VehicleSpec.model_validate(specs[0])
+    return None
 
 
 def _market_reference_price(
@@ -210,23 +241,36 @@ def _estimate_costs(
     spec: VehicleSpec | None,
     reference_price: float | None,
     missing_data: list[str],
+    include_price: bool,
+    include_maintenance: bool,
+    include_tco: bool,
 ) -> ModelAnalysisCostSummary:
     annual_km = _annual_km(request.usage_profile)
-    maintenance = _annual_maintenance(vehicle, request.current_km)
-    monthly_energy = _monthly_energy_cost(vehicle, spec, annual_km)
-    depreciation = _depreciation_3y(
-        request.asking_price_eur or reference_price or vehicle.base_price_eur
+    maintenance = (
+        _annual_maintenance(vehicle, request.current_km)
+        if include_maintenance
+        else None
+    )
+    monthly_energy = (
+        _monthly_energy_cost(vehicle, spec, annual_km) if include_tco else None
+    )
+    depreciation = (
+        _depreciation_3y(
+            request.asking_price_eur or reference_price or vehicle.base_price_eur
+        )
+        if include_tco
+        else None
     )
     notes = [f"annual_km_assumption:{annual_km}"]
 
-    if reference_price is None:
+    if include_price and reference_price is None:
         missing_data.append("market_reference_price_eur")
-    if monthly_energy is None:
+    if include_tco and monthly_energy is None:
         missing_data.append("energy_consumption")
         notes.append("energy_cost_not_estimated")
 
     return ModelAnalysisCostSummary(
-        market_reference_price_eur=reference_price,
+        market_reference_price_eur=reference_price if include_price else None,
         estimated_annual_maintenance_eur=maintenance,
         estimated_monthly_energy_eur=monthly_energy,
         estimated_depreciation_3y_eur=depreciation,
@@ -310,10 +354,11 @@ def _build_checklist(
 
 def _build_verdict(
     missing_data: list[str],
+    required_inputs: set[str],
     price_assessment: str,
     red_flags: list[str],
 ) -> str:
-    critical_missing = {"resolved_vehicle", "asking_price_eur", "current_km"}
+    critical_missing = {"resolved_vehicle", *required_inputs}
     if critical_missing & set(missing_data):
         return "not_enough_data"
     if price_assessment == "above_range" or "high_mileage_for_age" in red_flags:
@@ -338,8 +383,9 @@ def _status(
     confidence: float,
     missing_data: list[str],
     warnings: list[str],
+    required_inputs: set[str],
 ) -> str:
-    critical_missing = {"resolved_vehicle", "asking_price_eur", "current_km"}
+    critical_missing = {"resolved_vehicle", *required_inputs}
     if critical_missing & set(missing_data):
         return "needs_input"
     if "vehicle_resolution_ambiguous" in warnings or confidence < 0.7:
