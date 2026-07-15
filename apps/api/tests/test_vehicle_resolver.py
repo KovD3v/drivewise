@@ -131,6 +131,24 @@ def test_resolver_keeps_ambiguity_when_response_limit_is_one():
     assert len(response.matches) == 1
 
 
+def test_resolver_does_not_match_short_make_inside_another_token():
+    row = _panda_row(UUID("00000000-0000-4000-8000-000000000013"), "Base")
+    row["make"] = "MG"
+
+    response = resolve_vehicle_query(
+        VehicleResolveRequest(
+            query="AMG Panda 2024",
+            market="IT",
+            model_year=2024,
+            fuel_type="mild_hybrid_petrol",
+        ),
+        [row],
+    )
+
+    assert response.status == "no_match"
+    assert response.matches == []
+
+
 def _panda_row(vehicle_id: UUID, trim: str):
     return {
         "id": vehicle_id,

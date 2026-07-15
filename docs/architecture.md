@@ -40,6 +40,7 @@ GET /health
 GET /ready
 GET /vehicles
 GET /vehicles/{vehicle_id}
+POST /vehicles/resolve
 GET /listings
 GET /listings/{listing_id}
 GET /documents
@@ -51,6 +52,8 @@ POST /advisor/recommendations
 `/health` returns a small JSON payload for cheap local health checks. `/ready` verifies PostgreSQL with a simple query and is the endpoint to use when a process must only receive traffic after the DB is reachable.
 
 Database-backed dependencies use a small local connection pool initialized and closed through FastAPI lifespan. Settings are cached, CORS origins are configurable through `API_CORS_ORIGINS`, and local development defaults allow the TanStack app at `localhost:3000` and `127.0.0.1:3000`.
+
+Vehicle resolution is deterministic and market-scoped. It normalizes free-text descriptions, ranks canonical vehicle/spec candidates by explicit make, model, year, trim, fuel, and body-style evidence, and reports matched, ambiguous, or no-match outcomes without writing to the database.
 
 Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The advisor endpoint is deterministic, persists recommendation runs/items, and enriches response items with transient `document_evidence` from text-only document search. `document_evidence` is not stored in `recommendation_items` and does not affect advisor scoring or ranking.
 

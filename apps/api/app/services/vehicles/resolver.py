@@ -171,12 +171,12 @@ def _resolve_status(candidates: list[ScoredCandidate]) -> str:
 
 def _all_tokens_match(
     value: str,
-    normalized_query: str,
+    _normalized_query: str,
     query_tokens: set[str],
 ) -> bool:
     normalized_value = normalize_query_text(value)
     value_tokens = set(normalized_value.split())
-    return normalized_value in normalized_query or value_tokens <= query_tokens
+    return bool(value_tokens) and value_tokens <= query_tokens
 
 
 def _token_overlap(value: str | None, query_tokens: set[str]) -> float:

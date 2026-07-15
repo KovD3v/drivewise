@@ -120,6 +120,9 @@ Verify the API against the configured database:
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
 curl http://127.0.0.1:8000/vehicles
+curl -X POST http://127.0.0.1:8000/vehicles/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Fiat Panda 1.0 FireFly hybrid 2024","market":"IT"}'
 curl http://127.0.0.1:8000/listings
 curl http://127.0.0.1:8000/documents
 curl -X POST http://127.0.0.1:8000/search/documents \
@@ -169,6 +172,6 @@ bun run build:web
 
 ## Scope
 
-This repository currently contains the project base, backend health/readiness endpoints, read-only vehicle/listing/document APIs, document search with default `text_only` mode and explicit dev/test `vector_fake` mode, a deterministic advisor endpoint with transient document evidence, frontend pages for `/vehicles`, `/listings`, `/documents`, `/search`, and `/advisor`, the MVP database schema/seed, local fixture ingestion, a dry-run Firecrawl planning command, a dry-run embeddings planning command, and a fake-only embeddings write command for development. Real Firecrawl crawling, real embedding providers, production hybrid/vector search, authentication, and Redis are intentionally deferred.
+This repository currently contains the project base, backend health/readiness endpoints, read-only vehicle/listing/document APIs, deterministic vehicle resolution, document search with default `text_only` mode and explicit dev/test `vector_fake` mode, a deterministic advisor endpoint with transient document evidence, frontend pages for `/vehicles`, `/listings`, `/documents`, `/search`, and `/advisor`, the MVP database schema/seed, local fixture ingestion, a dry-run Firecrawl planning command, a dry-run embeddings planning command, and a fake-only embeddings write command for development. Real Firecrawl crawling, real embedding providers, production hybrid/vector search, authentication, and Redis are intentionally deferred.
 
 TanStack Start next step: the main read-only pages still fetch client-side after mount. A pragmatic follow-up is to move initial `/vehicles`, `/listings`, and `/documents` reads into route loaders while keeping filter submissions client-driven.
