@@ -1,45 +1,28 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { fetchListings, ListingFilters, ListingWithVehicle } from '../api/drivewise'
-import { errorMessage, formatCurrency, formatNumber, optionalNumber } from './viewUtils'
+import { ListingFilters, ListingWithVehicle } from '../api/drivewise'
+import { formatCurrency, formatNumber, optionalNumber } from './viewUtils'
 
 export function ListingListPage({
-  initialListings,
+  filters,
+  listings,
+  onFiltersChange,
 }: {
-  initialListings: ListingWithVehicle[]
+  filters: ListingFilters
+  listings: ListingWithVehicle[]
+  onFiltersChange: (filters: ListingFilters) => void
 }) {
-  const [make, setMake] = useState('')
-  const [model, setModel] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
-  const [maxMileage, setMaxMileage] = useState('')
-  const [locationRegion, setLocationRegion] = useState('')
-  const [filteredListings, setFilteredListings] = useState<
-    ListingWithVehicle[] | null
-  >(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const listings = filteredListings ?? initialListings
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const filters: ListingFilters = {
-      make: optionalString(make),
-      model: optionalString(model),
-      max_price_eur: optionalNumber(maxPrice),
-      max_mileage: optionalNumber(maxMileage),
-      location_region: optionalString(locationRegion),
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
-      setFilteredListings(await fetchListings(filters))
-    } catch (caughtError) {
-      setError(errorMessage(caughtError, 'Unable to load listings'))
-      setFilteredListings([])
-    } finally {
-      setIsLoading(false)
-    }
+    const form = new FormData(event.currentTarget)
+    onFiltersChange({
+      make: optionalString(form.get('make')),
+      model: optionalString(form.get('model')),
+      max_price_eur: optionalNumber(String(form.get('max_price_eur') ?? '')),
+      max_mileage: optionalNumber(String(form.get('max_mileage') ?? '')),
+      location_region: optionalString(form.get('location_region')),
+    })
   }
 
   return (
@@ -59,24 +42,22 @@ export function ListingListPage({
       </header>
 
       <section className="browse-layout">
-        <form className="filter-panel" onSubmit={handleSubmit}>
+        <form className="filter-panel" key={JSON.stringify(filters)} onSubmit={handleSubmit}>
           <div className="form-grid">
             <label>
               Make
               <input
                 name="make"
-                onChange={(event) => setMake(event.target.value)}
+                defaultValue={filters.make}
                 placeholder="Fiat"
-                value={make}
               />
             </label>
             <label>
               Model
               <input
                 name="model"
-                onChange={(event) => setModel(event.target.value)}
+                defaultValue={filters.model}
                 placeholder="Panda"
-                value={model}
               />
             </label>
             <label>
@@ -85,10 +66,9 @@ export function ListingListPage({
                 inputMode="decimal"
                 min="0"
                 name="max_price_eur"
-                onChange={(event) => setMaxPrice(event.target.value)}
+                defaultValue={filters.max_price_eur}
                 placeholder="25000"
                 type="number"
-                value={maxPrice}
               />
             </label>
             <label>
@@ -97,19 +77,17 @@ export function ListingListPage({
                 inputMode="numeric"
                 min="0"
                 name="max_mileage"
-                onChange={(event) => setMaxMileage(event.target.value)}
+                defaultValue={filters.max_mileage}
                 placeholder="30000"
                 type="number"
-                value={maxMileage}
               />
             </label>
             <label>
               Regione
               <input
                 name="location_region"
-                onChange={(event) => setLocationRegion(event.target.value)}
+                defaultValue={filters.location_region}
                 placeholder="Piemonte"
-                value={locationRegion}
               />
             </label>
           </div>
@@ -119,9 +97,7 @@ export function ListingListPage({
         </form>
 
         <section className="browse-results" aria-live="polite">
-          {isLoading ? <p className="status-message">Caricamento…</p> : null}
-          {error ? <p className="error-message">{error}</p> : null}
-          {!isLoading && !error && listings.length === 0 ? (
+          {listings.length === 0 ? (
             <p className="status-message">Nessun annuncio trovato.</p>
           ) : null}
 
@@ -165,6 +141,9 @@ function Fact({ label, value }: { label: string; value: string }) {
   )
 }
 
-function optionalString(value: string) {
-  return value.trim() === '' ? undefined : value.trim()
+function optionalString(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return value.trim() || undefined
 }

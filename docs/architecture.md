@@ -30,7 +30,7 @@ docs/    architecture and project notes
 /model-analysis
 ```
 
-The frontend uses TanStack Router `Link` for internal navigation. The `/vehicles`, `/listings`, and `/documents` routes load initial collection data through route loaders so server rendering and hydration share the same payload. Filter submissions remain client-driven and preserve inline loading/error feedback. Shared pending and error boundaries handle loader navigation failures. Runtime API calls go through `apps/web/src/api/drivewise.ts`. Mock fallback is explicit and only activates when `VITE_USE_MOCK_API=true`; by default API failures are surfaced instead of hidden.
+The frontend uses TanStack Router `Link` for internal navigation. The `/vehicles`, `/listings`, and `/documents` routes validate supported URL search parameters, derive loader dependencies from the normalized filters, and load matching collection data through route loaders. Server rendering and hydration therefore share the same filtered payload, while deep links and browser back/forward navigation preserve form and result state. Unknown or invalid search values are discarded before API calls. Shared pending and error boundaries handle loader navigation failures. Runtime API calls go through `apps/web/src/api/drivewise.ts`. Mock fallback is explicit and only activates when `VITE_USE_MOCK_API=true`; by default API failures are surfaced instead of hidden.
 
 ## Backend
 

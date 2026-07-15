@@ -1,45 +1,29 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import {
   DocumentFilters,
-  fetchDocuments,
   IngestedDocument,
 } from '../api/drivewise'
-import { errorMessage, optionalNumber } from './viewUtils'
+import { optionalNumber } from './viewUtils'
 
 export function DocumentListPage({
-  initialDocuments,
+  documents,
+  filters,
+  onFiltersChange,
 }: {
-  initialDocuments: IngestedDocument[]
+  documents: IngestedDocument[]
+  filters: DocumentFilters
+  onFiltersChange: (filters: DocumentFilters) => void
 }) {
-  const [query, setQuery] = useState('')
-  const [documentType, setDocumentType] = useState('')
-  const [limit, setLimit] = useState('')
-  const [filteredDocuments, setFilteredDocuments] = useState<
-    IngestedDocument[] | null
-  >(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const documents = filteredDocuments ?? initialDocuments
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const filters: DocumentFilters = {
-      q: optionalString(query),
-      document_type: optionalString(documentType),
-      limit: optionalNumber(limit),
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
-      setFilteredDocuments(await fetchDocuments(filters))
-    } catch (caughtError) {
-      setError(errorMessage(caughtError, 'Unable to load documents'))
-      setFilteredDocuments([])
-    } finally {
-      setIsLoading(false)
-    }
+    const form = new FormData(event.currentTarget)
+    onFiltersChange({
+      q: optionalString(form.get('q')),
+      document_type: optionalString(form.get('document_type')),
+      limit: optionalNumber(String(form.get('limit') ?? '')),
+    })
   }
 
   return (
@@ -59,24 +43,22 @@ export function DocumentListPage({
       </header>
 
       <section className="browse-layout">
-        <form className="filter-panel" onSubmit={handleSubmit}>
+        <form className="filter-panel" key={JSON.stringify(filters)} onSubmit={handleSubmit}>
           <div className="form-grid">
             <label>
               Ricerca
               <input
                 name="q"
-                onChange={(event) => setQuery(event.target.value)}
+                defaultValue={filters.q}
                 placeholder="Fiat Panda"
-                value={query}
               />
             </label>
             <label>
               Document type
               <input
                 name="document_type"
-                onChange={(event) => setDocumentType(event.target.value)}
+                defaultValue={filters.document_type}
                 placeholder="listing_snapshot"
-                value={documentType}
               />
             </label>
             <label>
@@ -86,10 +68,9 @@ export function DocumentListPage({
                 max="100"
                 min="1"
                 name="limit"
-                onChange={(event) => setLimit(event.target.value)}
+                defaultValue={filters.limit}
                 placeholder="20"
                 type="number"
-                value={limit}
               />
             </label>
           </div>
@@ -99,9 +80,7 @@ export function DocumentListPage({
         </form>
 
         <section className="browse-results" aria-live="polite">
-          {isLoading ? <p className="status-message">Caricamento…</p> : null}
-          {error ? <p className="error-message">{error}</p> : null}
-          {!isLoading && !error && documents.length === 0 ? (
+          {documents.length === 0 ? (
             <p className="status-message">Nessun documento trovato.</p>
           ) : null}
 
@@ -182,8 +161,11 @@ function Fact({ label, value }: { label: string; value: string }) {
   )
 }
 
-function optionalString(value: string) {
-  return value.trim() === '' ? undefined : value.trim()
+function optionalString(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return value.trim() || undefined
 }
 
 function metadataValue(metadata: Record<string, unknown>, key: string) {

@@ -1,45 +1,28 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { fetchVehicles, VehicleFilters, VehicleSummary } from '../api/drivewise'
-import { errorMessage, formatCurrency, optionalNumber } from './viewUtils'
+import { VehicleFilters, VehicleSummary } from '../api/drivewise'
+import { formatCurrency, optionalNumber } from './viewUtils'
 
 export function VehicleListPage({
-  initialVehicles,
+  filters,
+  onFiltersChange,
+  vehicles,
 }: {
-  initialVehicles: VehicleSummary[]
+  filters: VehicleFilters
+  onFiltersChange: (filters: VehicleFilters) => void
+  vehicles: VehicleSummary[]
 }) {
-  const [make, setMake] = useState('')
-  const [fuelType, setFuelType] = useState('')
-  const [bodyStyle, setBodyStyle] = useState('')
-  const [market, setMarket] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
-  const [filteredVehicles, setFilteredVehicles] = useState<VehicleSummary[] | null>(
-    null,
-  )
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const vehicles = filteredVehicles ?? initialVehicles
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const filters: VehicleFilters = {
-      make: optionalString(make),
-      fuel_type: optionalString(fuelType),
-      body_style: optionalString(bodyStyle),
-      market: optionalString(market),
-      max_price_eur: optionalNumber(maxPrice),
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
-      setFilteredVehicles(await fetchVehicles(filters))
-    } catch (caughtError) {
-      setError(errorMessage(caughtError, 'Unable to load vehicles'))
-      setFilteredVehicles([])
-    } finally {
-      setIsLoading(false)
-    }
+    const form = new FormData(event.currentTarget)
+    onFiltersChange({
+      make: optionalString(form.get('make')),
+      fuel_type: optionalString(form.get('fuel_type')),
+      body_style: optionalString(form.get('body_style')),
+      market: optionalString(form.get('market'))?.toUpperCase(),
+      max_price_eur: optionalNumber(String(form.get('max_price_eur') ?? '')),
+    })
   }
 
   return (
@@ -51,42 +34,38 @@ export function VehicleListPage({
       />
 
       <section className="browse-layout">
-        <form className="filter-panel" onSubmit={handleSubmit}>
+        <form className="filter-panel" key={JSON.stringify(filters)} onSubmit={handleSubmit}>
           <div className="form-grid">
             <label>
               Make
               <input
                 name="make"
-                onChange={(event) => setMake(event.target.value)}
+                defaultValue={filters.make}
                 placeholder="Fiat"
-                value={make}
               />
             </label>
             <label>
               Fuel type
               <input
                 name="fuel_type"
-                onChange={(event) => setFuelType(event.target.value)}
+                defaultValue={filters.fuel_type}
                 placeholder="mild_hybrid_petrol"
-                value={fuelType}
               />
             </label>
             <label>
               Body style
               <input
                 name="body_style"
-                onChange={(event) => setBodyStyle(event.target.value)}
+                defaultValue={filters.body_style}
                 placeholder="city_car"
-                value={bodyStyle}
               />
             </label>
             <label>
               Market
               <input
                 name="market"
-                onChange={(event) => setMarket(event.target.value)}
+                defaultValue={filters.market}
                 placeholder="IT"
-                value={market}
               />
             </label>
             <label>
@@ -95,10 +74,9 @@ export function VehicleListPage({
                 inputMode="decimal"
                 min="0"
                 name="max_price_eur"
-                onChange={(event) => setMaxPrice(event.target.value)}
+                defaultValue={filters.max_price_eur}
                 placeholder="25000"
                 type="number"
-                value={maxPrice}
               />
             </label>
           </div>
@@ -108,9 +86,7 @@ export function VehicleListPage({
         </form>
 
         <section className="browse-results" aria-live="polite">
-          {isLoading ? <p className="status-message">Caricamento…</p> : null}
-          {error ? <p className="error-message">{error}</p> : null}
-          {!isLoading && !error && vehicles.length === 0 ? (
+          {vehicles.length === 0 ? (
             <p className="status-message">Nessun veicolo trovato.</p>
           ) : null}
 
@@ -181,6 +157,9 @@ function Fact({ label, value }: { label: string; value: string }) {
   )
 }
 
-function optionalString(value: string) {
-  return value.trim() === '' ? undefined : value.trim()
+function optionalString(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return value.trim() || undefined
 }

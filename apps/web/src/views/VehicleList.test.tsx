@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, test, expect, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { test, expect, vi } from 'vitest'
 
 import { renderWithRouter } from '../test/renderWithRouter'
 import { VehicleListPage } from './VehicleList'
@@ -17,22 +17,15 @@ const vehiclesResponse = [
   },
 ]
 
-beforeEach(() => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => vehiclesResponse,
-    }),
+test('renders loader data and submits URL filter state', () => {
+  const onFiltersChange = vi.fn()
+  renderWithRouter(
+    <VehicleListPage
+      filters={{}}
+      onFiltersChange={onFiltersChange}
+      vehicles={vehiclesResponse}
+    />,
   )
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
-
-test('renders loader data before fetching filtered vehicles', async () => {
-  renderWithRouter(<VehicleListPage initialVehicles={vehiclesResponse} />)
 
   expect(screen.getByText('Fiat Panda')).toBeVisible()
   expect(screen.getByText('2024 · city_car')).toBeVisible()
@@ -42,16 +35,16 @@ test('renders loader data before fetching filtered vehicles', async () => {
     '/vehicles/00000000-0000-4000-8000-000000000001',
   )
 
-  expect(fetch).not.toHaveBeenCalled()
-
   fireEvent.change(screen.getByLabelText('Make'), {
     target: { value: 'Fiat' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Applica filtri' }))
 
-  await waitFor(() =>
-    expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:8000/vehicles?make=Fiat',
-    ),
-  )
+  expect(onFiltersChange).toHaveBeenCalledWith({
+    make: 'Fiat',
+    fuel_type: undefined,
+    body_style: undefined,
+    market: undefined,
+    max_price_eur: undefined,
+  })
 })

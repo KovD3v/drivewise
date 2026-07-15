@@ -26,8 +26,14 @@ test.each([
 
 test.each([
   ['/vehicles', 'http://127.0.0.1:8000/vehicles'],
+  ['/vehicles?make=tes', 'http://127.0.0.1:8000/vehicles?make=tes'],
   ['/listings', 'http://127.0.0.1:8000/listings'],
+  ['/listings?model=Panda', 'http://127.0.0.1:8000/listings?model=Panda'],
   ['/documents', 'http://127.0.0.1:8000/documents'],
+  [
+    '/documents?q=Fiat+Panda',
+    'http://127.0.0.1:8000/documents?q=Fiat+Panda',
+  ],
 ])('loads initial collection data for %s', async (path, apiUrl) => {
   vi.stubGlobal(
     'fetch',

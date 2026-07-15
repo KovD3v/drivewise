@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { expect, test, vi } from 'vitest'
 
 import { renderWithRouter } from '../test/renderWithRouter'
 import { DocumentListPage } from './DocumentList'
@@ -30,22 +30,15 @@ const documentsResponse = [
   },
 ]
 
-beforeEach(() => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => documentsResponse,
-    }),
+test('renders loader data and submits URL filter state', () => {
+  const onFiltersChange = vi.fn()
+  renderWithRouter(
+    <DocumentListPage
+      documents={documentsResponse}
+      filters={{}}
+      onFiltersChange={onFiltersChange}
+    />,
   )
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
-
-test('renders loader data before fetching filtered documents', async () => {
-  renderWithRouter(<DocumentListPage initialDocuments={documentsResponse} />)
 
   expect(screen.getByText('Fiat Panda local listing')).toBeVisible()
   expect(screen.getByText('listing_snapshot')).toBeVisible()
@@ -59,16 +52,14 @@ test('renders loader data before fetching filtered documents', async () => {
     '/documents/40000000-0000-4000-8000-000000000001',
   )
 
-  expect(fetch).not.toHaveBeenCalled()
-
   fireEvent.change(screen.getByLabelText('Ricerca'), {
     target: { value: 'Fiat Panda' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Applica filtri' }))
 
-  await waitFor(() =>
-    expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:8000/documents?q=Fiat+Panda',
-    ),
-  )
+  expect(onFiltersChange).toHaveBeenCalledWith({
+    q: 'Fiat Panda',
+    document_type: undefined,
+    limit: undefined,
+  })
 })
