@@ -99,6 +99,83 @@ Example response:
 ]
 ```
 
+### POST /vehicles/resolve
+
+Deterministically resolves a free-text vehicle description against canonical
+vehicle and specification records in one market. It does not create or update
+database records.
+
+Optional `model_year`, `fuel_type`, and `body_style` fields improve ranking;
+they are scoring hints rather than strict filters. `market` scopes the candidate
+set and defaults to `IT`. `limit` defaults to `5` and is capped at `10`.
+
+Example request:
+
+```json
+{
+  "query": "Fiat Panda 1.0 FireFly hybrid 2024",
+  "market": "IT",
+  "model_year": 2024,
+  "fuel_type": "mild_hybrid_petrol",
+  "body_style": "city_car",
+  "limit": 5
+}
+```
+
+Example response:
+
+```json
+{
+  "query": "Fiat Panda 1.0 FireFly hybrid 2024",
+  "normalized_query": "fiat panda 1 0 firefly hybrid 2024",
+  "status": "matched",
+  "matches": [
+    {
+      "confidence": 1.0,
+      "match_level": "spec",
+      "vehicle": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "make": "Fiat",
+        "model": "Panda",
+        "model_year": 2024,
+        "body_style": "city_car",
+        "fuel_type": "mild_hybrid_petrol",
+        "market": "IT",
+        "base_price_eur": 15500.0
+      },
+      "spec": {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "trim": "1.0 FireFly Hybrid",
+        "drivetrain": "fwd",
+        "transmission": "6-speed manual",
+        "engine": "1.0L mild-hybrid petrol",
+        "horsepower": 70,
+        "battery_kwh": null,
+        "consumption_l_100km": 5.0,
+        "wltp_range_km": null,
+        "co2_g_km": 113,
+        "euro_emission_standard": "Euro 6e",
+        "seats": 4,
+        "cargo_volume_liters": 225.0
+      },
+      "matched_fields": [
+        "make",
+        "model",
+        "model_year",
+        "trim",
+        "fuel_type",
+        "body_style"
+      ],
+      "warnings": []
+    }
+  ]
+}
+```
+
+`status` is `matched` for one sufficiently strong leading candidate,
+`ambiguous` when plausible candidates are too close, and `no_match` when no
+candidate reaches the minimum confidence. `match_level` is `vehicle` or `spec`.
+
 ### GET /vehicles/{vehicle_id}
 
 Returns one vehicle with linked specs.

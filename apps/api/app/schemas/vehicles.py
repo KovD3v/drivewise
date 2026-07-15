@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -58,7 +59,7 @@ class VehicleResolveRequest(BaseModel):
 
 class VehicleResolveMatch(BaseModel):
     confidence: float
-    match_level: str
+    match_level: Literal["vehicle", "spec"]
     vehicle: VehicleSummary
     spec: VehicleSpec | None = None
     matched_fields: list[str]
@@ -68,5 +69,5 @@ class VehicleResolveMatch(BaseModel):
 class VehicleResolveResponse(BaseModel):
     query: str
     normalized_query: str
-    status: str
+    status: Literal["matched", "ambiguous", "no_match"]
     matches: list[VehicleResolveMatch]
