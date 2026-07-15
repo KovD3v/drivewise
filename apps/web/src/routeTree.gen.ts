@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VehiclesRouteImport } from './routes/vehicles'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as ModelAnalysisRouteImport } from './routes/model-analysis'
 import { Route as ListingsRouteImport } from './routes/listings'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AdvisorRouteImport } from './routes/advisor'
@@ -27,6 +28,11 @@ const VehiclesRoute = VehiclesRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModelAnalysisRoute = ModelAnalysisRouteImport.update({
+  id: '/model-analysis',
+  path: '/model-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListingsRoute = ListingsRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/advisor': typeof AdvisorRoute
   '/documents': typeof DocumentsRoute
   '/listings': typeof ListingsRoute
+  '/model-analysis': typeof ModelAnalysisRoute
   '/search': typeof SearchRoute
   '/vehicles': typeof VehiclesRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/advisor': typeof AdvisorRoute
   '/documents': typeof DocumentsRoute
   '/listings': typeof ListingsRoute
+  '/model-analysis': typeof ModelAnalysisRoute
   '/search': typeof SearchRoute
   '/vehicles': typeof VehiclesRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/advisor': typeof AdvisorRoute
   '/documents': typeof DocumentsRoute
   '/listings': typeof ListingsRoute
+  '/model-analysis': typeof ModelAnalysisRoute
   '/search': typeof SearchRoute
   '/vehicles': typeof VehiclesRoute
   '/documents_/$documentId': typeof DocumentsDocumentIdRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/documents'
     | '/listings'
+    | '/model-analysis'
     | '/search'
     | '/vehicles'
     | '/documents/$documentId'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/documents'
     | '/listings'
+    | '/model-analysis'
     | '/search'
     | '/vehicles'
     | '/documents/$documentId'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/documents'
     | '/listings'
+    | '/model-analysis'
     | '/search'
     | '/vehicles'
     | '/documents_/$documentId'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AdvisorRoute: typeof AdvisorRoute
   DocumentsRoute: typeof DocumentsRoute
   ListingsRoute: typeof ListingsRoute
+  ModelAnalysisRoute: typeof ModelAnalysisRoute
   SearchRoute: typeof SearchRoute
   VehiclesRoute: typeof VehiclesRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/model-analysis': {
+      id: '/model-analysis'
+      path: '/model-analysis'
+      fullPath: '/model-analysis'
+      preLoaderRoute: typeof ModelAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/listings': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorRoute: AdvisorRoute,
   DocumentsRoute: DocumentsRoute,
   ListingsRoute: ListingsRoute,
+  ModelAnalysisRoute: ModelAnalysisRoute,
   SearchRoute: SearchRoute,
   VehiclesRoute: VehiclesRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,

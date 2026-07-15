@@ -44,6 +44,53 @@ export interface VehicleDetail extends VehicleSummary {
   specs: VehicleSpec[]
 }
 
+export type ModelAnalysisUsageProfile =
+  | 'city'
+  | 'mixed'
+  | 'highway'
+  | 'family'
+  | 'work'
+
+export type ModelAnalysisScope = 'price' | 'maintenance' | 'red_flags' | 'tco'
+
+export interface ModelAnalysisRequest {
+  query?: string
+  vehicle_id?: string
+  spec_id?: string
+  market?: string
+  model_year?: number
+  fuel_type?: string
+  body_style?: string
+  asking_price_eur?: number
+  current_km?: number
+  usage_profile?: ModelAnalysisUsageProfile[]
+  analysis_scope?: ModelAnalysisScope[]
+}
+
+export interface ModelAnalysisCostSummary {
+  market_reference_price_eur: number | null
+  estimated_annual_maintenance_eur: number | null
+  estimated_monthly_energy_eur: number | null
+  estimated_depreciation_3y_eur: number | null
+  notes: string[]
+}
+
+export interface ModelAnalysisResponse {
+  status: 'completed' | 'needs_input' | 'low_confidence' | 'error'
+  resolved_vehicle: VehicleSummary | null
+  resolved_spec: VehicleSpec | null
+  verdict: 'interesting_with_checks' | 'risky_at_price' | 'not_enough_data'
+  price_assessment: 'in_range' | 'above_range' | 'below_range' | 'unknown'
+  estimated_costs: ModelAnalysisCostSummary
+  red_flags: string[]
+  checklist: string[]
+  confidence: number
+  assumptions: string[]
+  warnings: string[]
+  missing_data: string[]
+  next_actions: string[]
+}
+
 export interface ListingWithVehicle {
   id: string
   vehicle_id: string
@@ -247,6 +294,17 @@ export async function searchDocuments(
     '/search/documents',
     normalizedRequest,
     () => buildMockDocumentSearchResponse(normalizedRequest),
+  )
+}
+
+export async function analyzeModel(
+  request: ModelAnalysisRequest,
+): Promise<ModelAnalysisResponse> {
+  const normalizedRequest = normalizeModelAnalysisRequest(request)
+  return postJson(
+    '/advisor/model-analysis',
+    normalizedRequest,
+    () => buildMockModelAnalysisResponse(normalizedRequest),
   )
 }
 
@@ -485,6 +543,128 @@ function normalizeDocumentSearchRequest(
     include_content: request.include_content ?? false,
     mode: request.mode ?? 'text_only',
   }
+}
+
+function normalizeModelAnalysisRequest(
+  request: ModelAnalysisRequest,
+): ModelAnalysisRequest {
+  const query = request.query?.trim().replace(/\s+/g, ' ') || undefined
+  const vehicleId = request.vehicle_id?.trim() || undefined
+  if (!query && !vehicleId) {
+    throw new Error('Model query is required')
+  }
+
+  return {
+    query,
+    vehicle_id: vehicleId,
+    spec_id: request.spec_id?.trim() || undefined,
+    market: (request.market?.trim() || 'IT').toUpperCase(),
+    model_year: request.model_year,
+    fuel_type: request.fuel_type?.trim() || undefined,
+    body_style: request.body_style?.trim() || undefined,
+    asking_price_eur: request.asking_price_eur,
+    current_km: request.current_km,
+    usage_profile: request.usage_profile ?? [],
+    analysis_scope: request.analysis_scope ?? [
+      'price',
+      'maintenance',
+      'red_flags',
+      'tco',
+    ],
+  }
+}
+
+function buildMockModelAnalysisResponse(
+  request: ModelAnalysisRequest,
+): ModelAnalysisResponse {
+  const vehicle =
+    mockVehicles.find((item) => item.id === request.vehicle_id) ??
+    mockVehicles.find((item) =>
+      normalizeMockText(`${item.make} ${item.model}`).includes(
+        normalizeMockText(request.query ?? ''),
+      ),
+    ) ??
+    mockVehicles[0]
+  const detail = mockVehicleDetails.find((item) => item.id === vehicle.id)
+  const spec = detail?.specs[0] ?? null
+  const referenceListing = mockListings.find((item) => item.vehicle_id === vehicle.id)
+  const referencePrice =
+    referenceListing?.price_eur ??
+    vehicle.base_price_eur ??
+    request.asking_price_eur ??
+    null
+  const priceAssessment = assessMockPrice(
+    request.asking_price_eur,
+    referencePrice,
+  )
+  const redFlags =
+    priceAssessment === 'above_range' ? ['asking_price_above_reference'] : []
+  const warnings =
+    priceAssessment === 'above_range'
+      ? ['asking_price_above_market_reference']
+      : []
+  const missingData = [
+    request.asking_price_eur === undefined ? 'asking_price_eur' : '',
+    request.current_km === undefined ? 'current_km' : '',
+  ].filter(Boolean)
+  const status = missingData.length > 0 ? 'needs_input' : 'completed'
+
+  return {
+    status,
+    resolved_vehicle: vehicle,
+    resolved_spec: spec,
+    verdict:
+      missingData.length > 0
+        ? 'not_enough_data'
+        : redFlags.length > 0
+          ? 'risky_at_price'
+          : 'interesting_with_checks',
+    price_assessment: priceAssessment,
+    estimated_costs: {
+      market_reference_price_eur: referencePrice,
+      estimated_annual_maintenance_eur: 560,
+      estimated_monthly_energy_eur: spec?.consumption_l_100km
+        ? roundScore((12000 * spec.consumption_l_100km * 1.85) / 1200)
+        : null,
+      estimated_depreciation_3y_eur:
+        referencePrice === null ? null : roundScore(referencePrice * 0.28),
+      notes: ['annual_km_assumption:12000'],
+    },
+    red_flags: redFlags,
+    checklist: ['verify_service_history', 'inspect_brakes_and_tires'],
+    confidence: status === 'completed' ? 0.84 : 0.52,
+    assumptions: ['No live market sources are used in Model Analysis V1.'],
+    warnings,
+    missing_data: missingData,
+    next_actions:
+      status === 'needs_input'
+        ? ['modify_parameters']
+        : ['modify_parameters', 'open_checklist', 'compare_alternatives'],
+  }
+}
+
+function assessMockPrice(
+  askingPrice: number | undefined,
+  referencePrice: number | null | undefined,
+): ModelAnalysisResponse['price_assessment'] {
+  if (
+    askingPrice === undefined ||
+    referencePrice === null ||
+    referencePrice === undefined
+  ) {
+    return 'unknown'
+  }
+  if (askingPrice > referencePrice * 1.1) {
+    return 'above_range'
+  }
+  if (askingPrice < referencePrice * 0.75) {
+    return 'below_range'
+  }
+  return 'in_range'
+}
+
+function normalizeMockText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
 function clampSearchLimit(limit: number) {

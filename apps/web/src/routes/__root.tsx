@@ -78,6 +78,9 @@ export function NotFoundPage() {
           <Link className="secondary-link" to="/advisor">
             Advisor
           </Link>
+          <Link className="secondary-link" to="/model-analysis">
+            Analisi modello
+          </Link>
         </nav>
       </section>
     </main>

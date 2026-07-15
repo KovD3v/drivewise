@@ -47,6 +47,24 @@ def test_migrate_script_rejects_placeholder_database_url(
     assert "DATABASE_URL still contains placeholders" in captured.err
 
 
+def test_migrate_script_rejects_masked_database_url(
+    monkeypatch,
+    capsys,
+    tmp_path,
+):
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://drivewise:***@db.example.test/drivewise?sslmode=require",
+    )
+    module = load_migrate_script()
+
+    exit_code = module.main(env_path=tmp_path / ".env")
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "DATABASE_URL still contains placeholders" in captured.err
+
+
 def test_migrate_script_prints_applied_and_existing_migrations(
     monkeypatch,
     capsys,

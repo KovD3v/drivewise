@@ -131,9 +131,15 @@ curl -X POST http://127.0.0.1:8000/search/documents \
 curl -X POST http://127.0.0.1:8000/search/documents \
   -H "Content-Type: application/json" \
   -d '{"query":"fiat panda","mode":"vector_fake","limit":10}'
+curl -X POST http://127.0.0.1:8000/vehicles/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"query":"fiat panda 1.0 firefly hybrid 2024","market":"IT"}'
 curl -X POST http://127.0.0.1:8000/advisor/recommendations \
   -H "Content-Type: application/json" \
   -d '{"budget_max_eur":25000,"primary_use":"city","priorities":["price"]}'
+curl -X POST http://127.0.0.1:8000/advisor/model-analysis \
+  -H "Content-Type: application/json" \
+  -d '{"query":"fiat panda 1.0 firefly hybrid 2024","market":"IT","asking_price_eur":14500,"current_km":6400,"usage_profile":["city","mixed"],"analysis_scope":["price","maintenance","red_flags","tco"]}'
 ```
 
 Run the frontend:
@@ -147,6 +153,8 @@ Open `http://localhost:3000`.
 The `/search` page exposes the same backend search modes as
 `POST /search/documents`: `text_only` by default and `vector_fake` for local
 dev/test after fake embeddings have been written with `embed_documents.py`.
+The `/model-analysis` page calls `POST /advisor/model-analysis` and shows the
+result contract fields returned by the deterministic model analysis flow.
 
 ## Checks
 
@@ -172,6 +180,6 @@ bun run build:web
 
 ## Scope
 
-This repository currently contains the project base, backend health/readiness endpoints, read-only vehicle/listing/document APIs, deterministic vehicle resolution, document search with default `text_only` mode and explicit dev/test `vector_fake` mode, a deterministic advisor endpoint with transient document evidence, frontend pages for `/vehicles`, `/listings`, `/documents`, `/search`, and `/advisor`, the MVP database schema/seed, local fixture ingestion, a dry-run Firecrawl planning command, a dry-run embeddings planning command, and a fake-only embeddings write command for development. Real Firecrawl crawling, real embedding providers, production hybrid/vector search, authentication, and Redis are intentionally deferred.
+This repository currently contains the project base, backend health/readiness endpoints, read-only vehicle/listing/document APIs, deterministic vehicle resolution, document search with default `text_only` mode and explicit dev/test `vector_fake` mode, a deterministic advisor endpoint with transient document evidence, a deterministic model analysis endpoint, frontend pages for `/vehicles`, `/listings`, `/documents`, `/search`, `/advisor`, and `/model-analysis`, the MVP database schema/seed, local fixture ingestion, a dry-run Firecrawl planning command, a dry-run embeddings planning command, and a fake-only embeddings write command for development. Real Firecrawl crawling, real embedding providers, production hybrid/vector search, authentication, and Redis are intentionally deferred.
 
 TanStack Start next step: the main read-only pages still fetch client-side after mount. A pragmatic follow-up is to move initial `/vehicles`, `/listings`, and `/documents` reads into route loaders while keeping filter submissions client-driven.

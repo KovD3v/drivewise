@@ -428,6 +428,66 @@ h1 {
   line-height: 1.5;
 }
 
+.analysis-result-card {
+  display: grid;
+  gap: 18px;
+}
+
+.analysis-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.analysis-section {
+  border-radius: 6px;
+  background: #f2f5f8;
+  padding: 14px;
+}
+
+.analysis-section h4 {
+  margin: 0 0 10px;
+  color: #253143;
+  font-size: 0.92rem;
+}
+
+.analysis-section p {
+  margin: 0;
+  color: #536174;
+  line-height: 1.5;
+}
+
+.token-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.token-list li {
+  color: #425064;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.action-token {
+  border: 1px solid #aebdca;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1d4f48;
+  font-weight: 700;
+  padding: 10px 18px;
+}
+
 .content-block,
 .metadata-pre {
   margin: 0;

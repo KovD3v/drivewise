@@ -2,7 +2,7 @@
 
 ## Scope
 
-This MVP API exposes vehicle data, listing data, ingested document data, read-only document search, and deterministic advisor recommendations from PostgreSQL/Neon through `DATABASE_URL`.
+This MVP API exposes vehicle data, vehicle input resolution, listing data, ingested document data, read-only document search, deterministic advisor recommendations, and deterministic model analysis from PostgreSQL/Neon through `DATABASE_URL`.
 
 Not included:
 
@@ -219,6 +219,79 @@ Example response:
   "detail": "Vehicle not found"
 }
 ```
+
+### POST /vehicles/resolve
+
+Resolves a dirty vehicle query into ranked canonical vehicle/spec matches. The endpoint is read-only and uses deterministic string matching over `vehicles` plus `vehicle_specs`.
+
+Request body:
+
+```json
+{
+  "query": "fiat panda 1.0 firefly hybrid 2024",
+  "market": "IT",
+  "model_year": 2024,
+  "fuel_type": "mild_hybrid_petrol",
+  "body_style": "city_car",
+  "limit": 5
+}
+```
+
+Fields:
+
+- `query`, required, trimmed, 2-160 characters
+- `market`, default `IT`; this is a hard filter
+- `model_year`, `fuel_type`, and `body_style`, optional scoring hints
+- `limit`, default `5`, maximum `10`
+
+Response:
+
+```json
+{
+  "query": "fiat panda 1.0 firefly hybrid 2024",
+  "normalized_query": "fiat panda 1 0 firefly hybrid 2024",
+  "status": "matched",
+  "matches": [
+    {
+      "confidence": 1.0,
+      "match_level": "spec",
+      "vehicle": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "make": "Fiat",
+        "model": "Panda",
+        "model_year": 2024,
+        "body_style": "city_car",
+        "fuel_type": "mild_hybrid_petrol",
+        "market": "IT",
+        "base_price_eur": 15500.0
+      },
+      "spec": {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "trim": "1.0 FireFly Hybrid",
+        "drivetrain": "fwd",
+        "transmission": "6-speed manual",
+        "engine": "1.0L mild-hybrid petrol",
+        "horsepower": 70,
+        "battery_kwh": null,
+        "consumption_l_100km": 5.0,
+        "wltp_range_km": null,
+        "co2_g_km": 113,
+        "euro_emission_standard": "Euro 6e",
+        "seats": 4,
+        "cargo_volume_liters": 225.0
+      },
+      "matched_fields": ["make", "model", "model_year", "trim"],
+      "warnings": []
+    }
+  ]
+}
+```
+
+Resolver status values:
+
+- `matched`: the first result is strong and sufficiently separated from the next result
+- `ambiguous`: at least one plausible result exists, but the top result is weak or too close to another candidate
+- `no_match`: no candidate reaches the minimum confidence threshold
 
 ## Listings
 
@@ -546,3 +619,92 @@ Document evidence rules:
 - searches by vehicle `make` and `model`;
 - returns at most 3 evidence documents per recommendation item;
 - does not affect score, rationale, ranking, or persistence.
+
+### POST /advisor/model-analysis
+
+Analyzes a model already chosen by the user. The endpoint accepts either a free-text `query` resolved through `POST /vehicles/resolve` semantics or a canonical `vehicle_id`. It is deterministic, read-only, and does not create recommendation runs.
+
+Request body:
+
+```json
+{
+  "query": "toyota yaris active hybrid 2021",
+  "market": "IT",
+  "asking_price_eur": 14500,
+  "current_km": 62000,
+  "usage_profile": ["city", "mixed"],
+  "analysis_scope": ["price", "maintenance", "red_flags", "tco"]
+}
+```
+
+Response:
+
+```json
+{
+  "status": "completed",
+  "resolved_vehicle": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "make": "Fiat",
+    "model": "Panda",
+    "model_year": 2024,
+    "body_style": "city_car",
+    "fuel_type": "mild_hybrid_petrol",
+    "market": "IT",
+    "base_price_eur": 15500.0
+  },
+  "resolved_spec": {
+    "id": "20000000-0000-4000-8000-000000000001",
+    "trim": "1.0 FireFly Hybrid",
+    "drivetrain": "fwd",
+    "transmission": "6-speed manual",
+    "engine": "1.0L mild-hybrid petrol",
+    "horsepower": 70,
+    "battery_kwh": null,
+    "consumption_l_100km": 5.0,
+    "wltp_range_km": null,
+    "co2_g_km": 113,
+    "euro_emission_standard": "Euro 6e",
+    "seats": 4,
+    "cargo_volume_liters": 225.0
+  },
+  "verdict": "interesting_with_checks",
+  "price_assessment": "in_range",
+  "estimated_costs": {
+    "market_reference_price_eur": 14200.0,
+    "estimated_annual_maintenance_eur": 576.0,
+    "estimated_monthly_energy_eur": 92.5,
+    "estimated_depreciation_3y_eur": 4060.0,
+    "notes": ["annual_km_assumption:12000"]
+  },
+  "red_flags": [],
+  "checklist": ["verify_service_history"],
+  "confidence": 0.86,
+  "assumptions": ["No live market sources are used in Model Analysis V1."],
+  "warnings": [],
+  "missing_data": [],
+  "next_actions": [
+    "modify_parameters",
+    "open_checklist",
+    "compare_alternatives"
+  ]
+}
+```
+
+Flow status values follow the MVP result contract:
+
+- `completed`: enough input was available for a deterministic result
+- `needs_input`: no vehicle was resolved or required price/km inputs are missing
+- `low_confidence`: analysis is possible but the resolver result is ambiguous or fragile
+- `error`: reserved for future flow failures
+
+Model analysis rules:
+
+- uses resolver confidence when the request starts from a query
+- requires at least one `analysis_scope` value
+- returns only estimates selected by `analysis_scope`; `tco` includes the price reference, energy/fuel cost, maintenance, and depreciation estimates
+- requires asking price only for price or red-flag analysis, and current kilometres only for maintenance or red-flag analysis
+- returns `requested_spec_not_found` instead of silently substituting another trim when an explicit `spec_id` is unknown
+- compares asking price against available listing prices, then base price fallback
+- estimates maintenance, monthly energy/fuel cost, and 3-year depreciation with deterministic MVP assumptions
+- emits rule-based red flags for above-reference asking price and high mileage for age
+- returns assumptions, warnings, missing data, and next actions for frontend display
