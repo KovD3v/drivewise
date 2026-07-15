@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, test, expect, vi } from 'vitest'
 
 import { renderWithRouter } from '../test/renderWithRouter'
@@ -43,10 +43,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('renders listing list from the API', async () => {
-  renderWithRouter(<ListingListPage />)
+test('renders loader data before fetching filtered listings', async () => {
+  renderWithRouter(<ListingListPage initialListings={listingsResponse} />)
 
-  expect(await screen.findByText('Fiat Panda 1.0 FireFly Hybrid')).toBeVisible()
+  expect(screen.getByText('Fiat Panda 1.0 FireFly Hybrid')).toBeVisible()
   expect(screen.getByText('Fiat Panda')).toBeVisible()
   expect(screen.getByText('Piemonte')).toBeVisible()
   expect(screen.getByRole('link', { name: 'Dettaglio annuncio' })).toHaveAttribute(
@@ -54,7 +54,16 @@ test('renders listing list from the API', async () => {
     '/listings/30000000-0000-4000-8000-000000000001',
   )
 
-  await waitFor(() => {
-    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/listings')
+  expect(fetch).not.toHaveBeenCalled()
+
+  fireEvent.change(screen.getByLabelText('Model'), {
+    target: { value: 'Panda' },
   })
+  fireEvent.click(screen.getByRole('button', { name: 'Applica filtri' }))
+
+  await waitFor(() =>
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8000/listings?model=Panda',
+    ),
+  )
 })

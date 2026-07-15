@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, test, expect, vi } from 'vitest'
 
 import { renderWithRouter } from '../test/renderWithRouter'
@@ -31,10 +31,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('renders vehicle list from the API', async () => {
-  renderWithRouter(<VehicleListPage />)
+test('renders loader data before fetching filtered vehicles', async () => {
+  renderWithRouter(<VehicleListPage initialVehicles={vehiclesResponse} />)
 
-  expect(await screen.findByText('Fiat Panda')).toBeVisible()
+  expect(screen.getByText('Fiat Panda')).toBeVisible()
   expect(screen.getByText('2024 · city_car')).toBeVisible()
   expect(screen.getByText('mild_hybrid_petrol')).toBeVisible()
   expect(screen.getByRole('link', { name: 'Dettaglio veicolo' })).toHaveAttribute(
@@ -42,7 +42,16 @@ test('renders vehicle list from the API', async () => {
     '/vehicles/00000000-0000-4000-8000-000000000001',
   )
 
-  await waitFor(() => {
-    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/vehicles')
+  expect(fetch).not.toHaveBeenCalled()
+
+  fireEvent.change(screen.getByLabelText('Make'), {
+    target: { value: 'Fiat' },
   })
+  fireEvent.click(screen.getByRole('button', { name: 'Applica filtri' }))
+
+  await waitFor(() =>
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8000/vehicles?make=Fiat',
+    ),
+  )
 })

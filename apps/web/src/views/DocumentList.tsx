@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import {
@@ -8,50 +8,38 @@ import {
 } from '../api/drivewise'
 import { errorMessage, optionalNumber } from './viewUtils'
 
-export function DocumentListPage() {
+export function DocumentListPage({
+  initialDocuments,
+}: {
+  initialDocuments: IngestedDocument[]
+}) {
   const [query, setQuery] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [limit, setLimit] = useState('')
-  const [filters, setFilters] = useState<DocumentFilters>({})
-  const [documents, setDocuments] = useState<IngestedDocument[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [filteredDocuments, setFilteredDocuments] = useState<
+    IngestedDocument[] | null
+  >(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const documents = filteredDocuments ?? initialDocuments
 
-  useEffect(() => {
-    let isCurrent = true
-    setIsLoading(true)
-    setError(null)
-
-    fetchDocuments(filters)
-      .then((data) => {
-        if (isCurrent) {
-          setDocuments(data)
-        }
-      })
-      .catch((caughtError) => {
-        if (isCurrent) {
-          setError(errorMessage(caughtError, 'Unable to load documents'))
-          setDocuments([])
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [filters])
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setFilters({
+    const filters: DocumentFilters = {
       q: optionalString(query),
       document_type: optionalString(documentType),
       limit: optionalNumber(limit),
-    })
+    }
+    setIsLoading(true)
+    setError(null)
+    try {
+      setFilteredDocuments(await fetchDocuments(filters))
+    } catch (caughtError) {
+      setError(errorMessage(caughtError, 'Unable to load documents'))
+      setFilteredDocuments([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

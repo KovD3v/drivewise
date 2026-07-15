@@ -1,57 +1,45 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import { fetchListings, ListingFilters, ListingWithVehicle } from '../api/drivewise'
 import { errorMessage, formatCurrency, formatNumber, optionalNumber } from './viewUtils'
 
-export function ListingListPage() {
+export function ListingListPage({
+  initialListings,
+}: {
+  initialListings: ListingWithVehicle[]
+}) {
   const [make, setMake] = useState('')
   const [model, setModel] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [maxMileage, setMaxMileage] = useState('')
   const [locationRegion, setLocationRegion] = useState('')
-  const [filters, setFilters] = useState<ListingFilters>({})
-  const [listings, setListings] = useState<ListingWithVehicle[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [filteredListings, setFilteredListings] = useState<
+    ListingWithVehicle[] | null
+  >(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const listings = filteredListings ?? initialListings
 
-  useEffect(() => {
-    let isCurrent = true
-    setIsLoading(true)
-    setError(null)
-
-    fetchListings(filters)
-      .then((data) => {
-        if (isCurrent) {
-          setListings(data)
-        }
-      })
-      .catch((caughtError) => {
-        if (isCurrent) {
-          setError(errorMessage(caughtError, 'Unable to load listings'))
-          setListings([])
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [filters])
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setFilters({
+    const filters: ListingFilters = {
       make: optionalString(make),
       model: optionalString(model),
       max_price_eur: optionalNumber(maxPrice),
       max_mileage: optionalNumber(maxMileage),
       location_region: optionalString(locationRegion),
-    })
+    }
+    setIsLoading(true)
+    setError(null)
+    try {
+      setFilteredListings(await fetchListings(filters))
+    } catch (caughtError) {
+      setError(errorMessage(caughtError, 'Unable to load listings'))
+      setFilteredListings([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

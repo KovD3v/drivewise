@@ -1,57 +1,45 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import { fetchVehicles, VehicleFilters, VehicleSummary } from '../api/drivewise'
 import { errorMessage, formatCurrency, optionalNumber } from './viewUtils'
 
-export function VehicleListPage() {
+export function VehicleListPage({
+  initialVehicles,
+}: {
+  initialVehicles: VehicleSummary[]
+}) {
   const [make, setMake] = useState('')
   const [fuelType, setFuelType] = useState('')
   const [bodyStyle, setBodyStyle] = useState('')
   const [market, setMarket] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
-  const [filters, setFilters] = useState<VehicleFilters>({})
-  const [vehicles, setVehicles] = useState<VehicleSummary[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [filteredVehicles, setFilteredVehicles] = useState<VehicleSummary[] | null>(
+    null,
+  )
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const vehicles = filteredVehicles ?? initialVehicles
 
-  useEffect(() => {
-    let isCurrent = true
-    setIsLoading(true)
-    setError(null)
-
-    fetchVehicles(filters)
-      .then((data) => {
-        if (isCurrent) {
-          setVehicles(data)
-        }
-      })
-      .catch((caughtError) => {
-        if (isCurrent) {
-          setError(errorMessage(caughtError, 'Unable to load vehicles'))
-          setVehicles([])
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [filters])
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setFilters({
+    const filters: VehicleFilters = {
       make: optionalString(make),
       fuel_type: optionalString(fuelType),
       body_style: optionalString(bodyStyle),
       market: optionalString(market),
       max_price_eur: optionalNumber(maxPrice),
-    })
+    }
+    setIsLoading(true)
+    setError(null)
+    try {
+      setFilteredVehicles(await fetchVehicles(filters))
+    } catch (caughtError) {
+      setError(errorMessage(caughtError, 'Unable to load vehicles'))
+      setFilteredVehicles([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

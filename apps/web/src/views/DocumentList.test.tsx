@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
 import { renderWithRouter } from '../test/renderWithRouter'
@@ -44,10 +44,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('renders document list from the API', async () => {
-  renderWithRouter(<DocumentListPage />)
+test('renders loader data before fetching filtered documents', async () => {
+  renderWithRouter(<DocumentListPage initialDocuments={documentsResponse} />)
 
-  expect(await screen.findByText('Fiat Panda local listing')).toBeVisible()
+  expect(screen.getByText('Fiat Panda local listing')).toBeVisible()
   expect(screen.getByText('listing_snapshot')).toBeVisible()
   expect(
     screen.getByText('data/fixtures/ingestion/fiat-panda-listing.txt'),
@@ -59,7 +59,16 @@ test('renders document list from the API', async () => {
     '/documents/40000000-0000-4000-8000-000000000001',
   )
 
-  await waitFor(() => {
-    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/documents')
+  expect(fetch).not.toHaveBeenCalled()
+
+  fireEvent.change(screen.getByLabelText('Ricerca'), {
+    target: { value: 'Fiat Panda' },
   })
+  fireEvent.click(screen.getByRole('button', { name: 'Applica filtri' }))
+
+  await waitFor(() =>
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8000/documents?q=Fiat+Panda',
+    ),
+  )
 })
