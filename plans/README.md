@@ -24,7 +24,7 @@ and update your row when done.
 |------|-------|----------|--------|------------|--------|
 | 001 | Make advisor runs retrievable and shareable by URL | P1 | M | — | TODO |
 | 002 | Add Italian ownership taxes (bollo, IPT) to cost estimates | P1 | M | — (blocking input, see below) | TODO |
-| 003 | Make rankable inventory measurable and give the advisor a real corpus | P1 | L | — | TODO |
+| 003 | Make rankable inventory measurable and give the advisor a real corpus | P1 | L | — | DONE |
 | 004 | Define a fast, measurable Italian-buyer beta contract | P1 | S | — | DONE |
 | 005 | Qualify and pilot one real Italian catalog source | P1 | M | 003 + operator approval | TODO |
 | 006 | Add a shareable 2–3 offer decision workspace | P1 | M | 001, 003 | TODO |
