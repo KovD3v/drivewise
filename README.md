@@ -2,6 +2,9 @@
 
 Drivewise is an MVP for a vehicle purchase assistant.
 
+The initial product wedge and private-beta gates are defined in
+[`docs/product-beta.md`](docs/product-beta.md).
+
 ## Stack
 
 - Frontend: TanStack Start
