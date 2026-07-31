@@ -41,10 +41,10 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Ruff
-        run: uv run --project apps/api --extra dev ruff check apps/api
+        run: uv run --frozen --project apps/api --extra dev ruff check apps/api
 
       - name: Pytest
-        run: uv run --project apps/api --extra dev pytest apps/api -q
+        run: uv run --frozen --project apps/api --extra dev pytest apps/api -q
 
   frontend:
     name: Frontend

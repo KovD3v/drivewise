@@ -13,6 +13,7 @@ MAX_RECENCY_BOOST = 0.25
 SINGLE_DOCUMENT_RECENCY_BOOST = 0.05
 SNIPPET_CHARACTERS = 180
 TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9]+")
+MAX_QUERY_TOKENS = 16
 
 
 def search_documents_text_only(
@@ -100,6 +101,8 @@ def tokenize_search_query(query: str) -> tuple[str, ...]:
             continue
         seen.add(token)
         tokens.append(token)
+        if len(tokens) == MAX_QUERY_TOKENS:
+            break
     return tuple(tokens)
 
 

@@ -9,7 +9,6 @@ dist/
 .tanstack/
 
 .venv/
-apps/api/uv.lock
 __pycache__/
 .pytest_cache/
 .ruff_cache/
@@ -17,3 +16,6 @@ __pycache__/
 
 .DS_Store
 node_modules
+
+# Reviewed real catalog snapshots stay local unless redistribution is cleared.
+data/private/catalog/

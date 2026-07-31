@@ -17,8 +17,11 @@ class VehicleFilters:
 @dataclass(frozen=True)
 class ListingFilters:
     vehicle_id: UUID | None = None
+    spec_id: UUID | None = None
     make: str | None = None
     model: str | None = None
+    condition: str | None = None
+    active_only: bool = True
     max_price_eur: float | None = None
     max_mileage: int | None = None
     location_region: str | None = None

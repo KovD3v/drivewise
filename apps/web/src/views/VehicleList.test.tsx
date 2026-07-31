@@ -7,6 +7,8 @@ import { VehicleListPage } from './VehicleList'
 const vehiclesResponse = [
   {
     id: '00000000-0000-4000-8000-000000000001',
+    canonical_key: 'fiat-panda-2024-it',
+    model_family_key: 'fiat-panda',
     make: 'Fiat',
     model: 'Panda',
     model_year: 2024,

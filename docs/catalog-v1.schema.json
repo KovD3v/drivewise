@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drivewise.local/schemas/catalog-v1.schema.json",
+  "title": "Drivewise curated catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sources", "vehicles", "variants", "listings"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "vehicles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/vehicle" }
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/variant" }
+    },
+    "listings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/listing" }
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://"
+    },
+    "provenanceClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key", "source_url", "observed_at", "supported_metrics"
+      ],
+      "properties": {
+        "source_key": { "$ref": "#/$defs/key" },
+        "source_url": { "$ref": "#/$defs/url" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "supported_metrics": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key", "name", "source_type", "market",
+        "ranking_permission", "url", "license"
+      ],
+      "properties": {
+        "source_key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1 },
+        "source_type": {
+          "enum": ["manual_seed", "public_dataset", "curated_internal"]
+        },
+        "market": { "type": "string", "minLength": 2, "maxLength": 8 },
+        "ranking_permission": {
+          "enum": [
+            "permitted", "not_permitted", "manual_validation_only"
+          ]
+        },
+        "url": { "$ref": "#/$defs/url" },
+        "license": { "type": "string", "minLength": 1 },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "vehicle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_key", "model_family_key", "make", "model", "model_year",
+        "market", "source_key", "source_url", "observed_at"
+      ],
+      "properties": {
+        "canonical_key": { "$ref": "#/$defs/key" },
+        "model_family_key": { "$ref": "#/$defs/key" },
+        "make": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "model_year": { "type": "integer", "minimum": 1980, "maximum": 2100 },
+        "market": { "type": "string", "minLength": 2, "maxLength": 8 },
+        "source_key": { "$ref": "#/$defs/key" },
+        "source_url": { "$ref": "#/$defs/url" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "provenance_claims": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenanceClaim" }
+        }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant_key", "vehicle_key", "trim", "is_default", "body_style",
+        "fuel_type", "seats", "cargo_volume_liters", "source_key",
+        "source_url", "observed_at"
+      ],
+      "properties": {
+        "variant_key": { "$ref": "#/$defs/key" },
+        "vehicle_key": { "$ref": "#/$defs/key" },
+        "trim": { "type": "string", "minLength": 1 },
+        "is_default": { "type": "boolean" },
+        "body_style": {
+          "enum": [
+            "city_car", "small_hatchback", "hatchback", "crossover",
+            "sedan", "wagon", "suv", "mpv", "van"
+          ]
+        },
+        "fuel_type": {
+          "enum": [
+            "diesel", "electric", "full_hybrid_petrol", "hybrid_petrol",
+            "mild_hybrid_petrol", "petrol", "petrol_lpg"
+          ]
+        },
+        "list_price_eur": { "type": ["number", "null"], "minimum": 0 },
+        "drivetrain": { "type": ["string", "null"] },
+        "transmission": { "type": ["string", "null"] },
+        "engine": { "type": ["string", "null"] },
+        "horsepower": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "battery_kwh": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "energy_consumption_kwh_100km": {
+          "type": ["number", "null"], "exclusiveMinimum": 0
+        },
+        "consumption_l_100km": {
+          "type": ["number", "null"], "exclusiveMinimum": 0
+        },
+        "wltp_range_km": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "co2_g_km": { "type": ["integer", "null"], "minimum": 0 },
+        "euro_emission_standard": { "type": ["string", "null"] },
+        "seats": { "type": "integer", "minimum": 1 },
+        "cargo_volume_liters": { "type": "number", "minimum": 0 },
+        "metadata": { "type": "object" },
+        "source_key": { "$ref": "#/$defs/key" },
+        "source_url": { "$ref": "#/$defs/url" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "provenance_claims": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenanceClaim" }
+        }
+      }
+    },
+    "listing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "listing_ref", "variant_key", "title", "price_eur", "condition",
+        "is_active", "source_key", "source_url", "observed_at"
+      ],
+      "properties": {
+        "listing_ref": { "type": "string", "minLength": 1 },
+        "variant_key": { "$ref": "#/$defs/key" },
+        "title": { "type": "string", "minLength": 1 },
+        "price_eur": { "type": "number", "minimum": 0 },
+        "mileage": { "type": ["integer", "null"], "minimum": 0 },
+        "condition": { "enum": ["new", "used", "certified"] },
+        "location_region": { "type": ["string", "null"] },
+        "listed_at": { "type": ["string", "null"], "format": "date" },
+        "valid_until": { "type": ["string", "null"], "format": "date-time" },
+        "is_active": { "type": "boolean" },
+        "raw_payload": { "type": "object" },
+        "source_key": { "$ref": "#/$defs/key" },
+        "source_url": { "$ref": "#/$defs/url" },
+        "observed_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

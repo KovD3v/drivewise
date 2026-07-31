@@ -1,7 +1,8 @@
+from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from app.schemas.vehicles import VehicleSpec, VehicleSummary
 
@@ -9,11 +10,38 @@ from app.schemas.vehicles import VehicleSpec, VehicleSummary
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
 AdvisorPriority = Literal[
     "price",
-    "consumption",
-    "reliability",
+    "efficiency_range",
     "space",
-    "safety",
-    "range",
+    "running_cost",
+]
+AdvisorCondition = Literal["any", "new", "used"]
+AdvisorOfferCondition = Literal["new", "used", "certified"]
+AdvisorFuelType = Literal[
+    "diesel",
+    "electric",
+    "full_hybrid_petrol",
+    "hybrid_petrol",
+    "mild_hybrid_petrol",
+    "petrol",
+    "petrol_lpg",
+]
+AdvisorBodyStyle = Literal[
+    "city_car",
+    "crossover",
+    "hatchback",
+    "mpv",
+    "sedan",
+    "small_hatchback",
+    "suv",
+    "van",
+    "wagon",
+]
+AdvisorScoreComponent = Literal[
+    "price_fit",
+    "use_case_fit",
+    "running_cost",
+    "space",
+    "efficiency_range",
 ]
 UsageProfile = Literal["city", "mixed", "highway", "family", "work"]
 AnalysisScope = Literal["price", "maintenance", "red_flags", "tco"]
@@ -33,11 +61,15 @@ NextAction = Literal[
 
 
 class AdvisorRecommendationRequest(BaseModel):
+    _annual_km_was_defaulted: bool = PrivateAttr(default=False)
+
     budget_min_eur: float | None = Field(default=None, ge=0)
     budget_max_eur: float = Field(gt=0)
     primary_use: PrimaryUse
-    preferred_fuel_type: str | None = None
-    preferred_body_style: str | None = None
+    condition: AdvisorCondition = "any"
+    annual_km: int | None = Field(default=None, gt=0)
+    preferred_fuel_type: AdvisorFuelType | None = None
+    preferred_body_style: AdvisorBodyStyle | None = None
     max_mileage: int | None = Field(default=None, ge=0)
     priorities: list[AdvisorPriority] = Field(default_factory=list)
 
@@ -48,7 +80,30 @@ class AdvisorRecommendationRequest(BaseModel):
             and self.budget_min_eur > self.budget_max_eur
         ):
             raise ValueError("budget_min_eur must be less than budget_max_eur")
+        if self.annual_km is None:
+            self._annual_km_was_defaulted = True
+            self.annual_km = {
+                "city": 10_000,
+                "new_driver": 10_000,
+                "family": 14_000,
+                "highway": 18_000,
+                "work": 18_000,
+            }[self.primary_use]
         return self
+
+    @property
+    def annual_km_was_defaulted(self) -> bool:
+        return self._annual_km_was_defaulted
+
+    @field_validator("priorities")
+    @classmethod
+    def reject_duplicate_priorities(
+        cls,
+        value: list[AdvisorPriority],
+    ) -> list[AdvisorPriority]:
+        if len(value) != len(set(value)):
+            raise ValueError("priorities must not contain duplicates")
+        return value
 
 
 class ModelAnalysisRequest(BaseModel):
@@ -113,36 +168,71 @@ class ModelAnalysisResponse(BaseModel):
     next_actions: list[NextAction]
 
 
-class AdvisorListingSummary(BaseModel):
+class AdvisorOffer(BaseModel):
     id: UUID
     vehicle_id: UUID
+    spec_id: UUID
     source_id: UUID
     listing_ref: str
     title: str
-    price_eur: float | None = None
+    price_eur: float
     mileage: int | None = None
-    condition: str
+    condition: AdvisorOfferCondition
     location_region: str | None = None
-    listed_at: str | None = None
+    source_url: str
+    listed_at: date | None = None
+    last_seen_at: datetime
+    valid_until: datetime | None = None
+    is_active: bool
 
 
-class AdvisorDocumentEvidence(BaseModel):
-    document_id: UUID
-    title: str
-    document_type: str
-    score: float
-    snippet: str
+class AdvisorSelectedSpec(VehicleSpec):
+    variant_key: str
+    body_style: AdvisorBodyStyle
+    fuel_type: AdvisorFuelType
+
+
+class AdvisorVehicleSummary(VehicleSummary):
+    canonical_key: str
+    model_family_key: str
+
+
+class AdvisorFactor(BaseModel):
+    component: AdvisorScoreComponent
+    message: str
+    metric: str | None = None
+    value: str | int | float | None = None
+    threshold: str | int | float | None = None
+    contribution: float
+
+
+class AdvisorMetricProvenance(BaseModel):
+    metric: str
+    source_name: str
+    source_url: str
+    observed_at: date | datetime
 
 
 class AdvisorRecommendationItem(BaseModel):
-    vehicle: VehicleSummary
-    best_listing: AdvisorListingSummary | None
+    vehicle: AdvisorVehicleSummary
+    selected_spec: AdvisorSelectedSpec
+    offer: AdvisorOffer
     score: float
-    rationale: str
+    component_scores: dict[AdvisorScoreComponent, float]
+    positive_factors: list[AdvisorFactor]
+    tradeoffs: list[AdvisorFactor]
     evidence: dict[str, Any]
-    document_evidence: list[AdvisorDocumentEvidence] = Field(default_factory=list)
+    provenance: list[AdvisorMetricProvenance]
+
+
+class AdvisorRecommendationGroup(BaseModel):
+    condition: Literal["new", "used"]
+    items: list[AdvisorRecommendationItem]
 
 
 class AdvisorRecommendationResponse(BaseModel):
     run_id: UUID
-    items: list[AdvisorRecommendationItem]
+    scoring_version: str
+    assumptions: list[str]
+    excluded_counts_by_reason: dict[str, int]
+    groups: list[AdvisorRecommendationGroup]

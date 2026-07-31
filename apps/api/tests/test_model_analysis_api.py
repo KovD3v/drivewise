@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_advisor_repository, get_vehicles_repository
 from app.main import app
+from app.schemas.advisor import ModelAnalysisRequest
+from app.services.advisor.model_analysis import build_model_analysis
 
 
 FIAT_ID = UUID("00000000-0000-4000-8000-000000000001")
@@ -275,6 +277,44 @@ def test_post_model_analysis_flags_price_above_range(client):
     assert "asking_price_above_market_reference" in payload["warnings"]
 
 
+def test_model_analysis_uses_only_offers_for_the_selected_variant(
+    client,
+    fake_repositories,
+):
+    _, advisor_repository = fake_repositories
+    candidate = advisor_repository.candidates[0]
+    alternate_spec_id = UUID("20000000-0000-4000-8000-000000000099")
+    alternate_spec = {
+        **candidate["specs"][0],
+        "id": alternate_spec_id,
+        "trim": "Unrelated expensive trim",
+        "list_price_eur": 32000,
+    }
+    candidate["specs"].append(alternate_spec)
+    candidate["listings"][0]["spec_id"] = FIAT_SPEC_ID
+    candidate["listings"].append(
+        {
+            **candidate["listings"][0],
+            "id": UUID("30000000-0000-4000-8000-000000000099"),
+            "spec_id": alternate_spec_id,
+            "price_eur": 32000,
+        }
+    )
+
+    response = client.post(
+        "/advisor/model-analysis",
+        json={
+            "vehicle_id": str(FIAT_ID),
+            "spec_id": str(FIAT_SPEC_ID),
+            "asking_price_eur": 14200,
+            "analysis_scope": ["price"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estimated_costs"]["market_reference_price_eur"] == 14200
+
+
 def test_post_model_analysis_honors_maintenance_only_scope(client):
     response = client.post(
         "/advisor/model-analysis",
@@ -328,3 +368,85 @@ def test_post_model_analysis_rejects_empty_scope(client):
     )
 
     assert response.status_code == 422
+
+
+def test_model_analysis_uses_exact_selected_variant_for_price_energy_and_checks():
+    electric_spec_id = UUID("20000000-0000-4000-8000-000000000099")
+    petrol_spec = {
+        **candidate_from_row(FIAT_ROW, listing_price=18_000, mileage=1_000)[
+            "specs"
+        ][0],
+        "variant_key": "it-fiat-panda-2024-tour-petrol",
+        "is_default": True,
+        "trim": "Tour",
+        "body_style": "city_car",
+        "fuel_type": "petrol",
+        "list_price_eur": 18_000,
+        "consumption_l_100km": 5.0,
+        "energy_consumption_kwh_100km": None,
+    }
+    electric_spec = {
+        **petrol_spec,
+        "id": electric_spec_id,
+        "variant_key": "it-fiat-panda-2024-tour-electric",
+        "is_default": False,
+        "body_style": "suv",
+        "fuel_type": "electric",
+        "list_price_eur": 30_000,
+        "consumption_l_100km": None,
+        "energy_consumption_kwh_100km": 20.0,
+        "wltp_range_km": 350,
+    }
+    vehicle = {
+        "id": FIAT_ID,
+        "make": "Fiat",
+        "model": "Panda",
+        "model_year": 2024,
+        "body_style": "suv",
+        "fuel_type": "petrol",
+        "market": "IT",
+        "base_price_eur": 18_000,
+    }
+    candidate = {
+        "vehicle": vehicle,
+        "specs": [electric_spec, petrol_spec],
+        "listings": [
+            {"spec_id": petrol_spec["id"], "price_eur": 18_000},
+            {"spec_id": electric_spec_id, "price_eur": 30_000},
+        ],
+    }
+
+    electric = build_model_analysis(
+        ModelAnalysisRequest(
+            vehicle_id=FIAT_ID,
+            spec_id=electric_spec_id,
+            asking_price_eur=30_000,
+            current_km=12_000,
+            usage_profile=["mixed"],
+            analysis_scope=["price", "maintenance", "red_flags", "tco"],
+        ),
+        [candidate],
+    )
+    assert electric.resolved_spec is not None
+    assert electric.resolved_spec.id == electric_spec_id
+    assert electric.estimated_costs.market_reference_price_eur == 30_000
+    assert electric.estimated_costs.estimated_monthly_energy_eur == 59.19
+    assert electric.estimated_costs.estimated_annual_maintenance_eur == 510
+    assert "check_battery_health_report" in electric.checklist
+    assert "check_hybrid_system_diagnostics" not in electric.checklist
+
+    default_variant = build_model_analysis(
+        ModelAnalysisRequest(
+            vehicle_id=FIAT_ID,
+            asking_price_eur=18_000,
+            current_km=12_000,
+            usage_profile=["mixed"],
+            analysis_scope=["price", "maintenance", "red_flags", "tco"],
+        ),
+        [candidate],
+    )
+    assert default_variant.resolved_spec is not None
+    assert default_variant.resolved_spec.id == petrol_spec["id"]
+    assert default_variant.estimated_costs.market_reference_price_eur == 18_000
+    assert default_variant.estimated_costs.estimated_monthly_energy_eur == 95.83
+    assert default_variant.estimated_costs.estimated_annual_maintenance_eur == 590

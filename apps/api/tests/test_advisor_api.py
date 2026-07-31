@@ -1,180 +1,155 @@
+from __future__ import annotations
+
+import os
+from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 import pytest
+import psycopg
 from fastapi.testclient import TestClient
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
-from app.api.dependencies import get_advisor_repository, get_documents_repository
+from app.api.dependencies import get_advisor_repository
+from app.api.routers.advisor import get_advisor_clock
 from app.main import app
+from app.db.migrations import apply_migrations
+from app.repositories.advisor import AdvisorRepository
+from app.schemas.advisor import AdvisorRecommendationRequest
+from app.services.advisor.scoring import (
+    SCORING_VERSION,
+    build_assumptions,
+    score_recommendations,
+)
 
 
+AS_OF = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
 RUN_ID = UUID("50000000-0000-4000-8000-000000000001")
-FIAT_ID = UUID("00000000-0000-4000-8000-000000000001")
-TOYOTA_ID = UUID("00000000-0000-4000-8000-000000000002")
-DOCUMENT_ID = UUID("40000000-0000-4000-8000-000000000001")
+VEHICLE_ID = UUID("00000000-0000-4000-8000-000000000001")
+SPEC_ID = UUID("20000000-0000-4000-8000-000000000001")
+SOURCE_ID = UUID("10000000-0000-4000-8000-000000000001")
+
+
+def exact_pair(
+    *,
+    condition: str,
+    listing_suffix: int,
+    mileage: int | None,
+) -> dict[str, Any]:
+    offer_id = UUID(f"30000000-0000-4000-8000-{listing_suffix:012d}")
+    return {
+        "vehicle": {
+            "id": VEHICLE_ID,
+            "canonical_key": "it-fiat-panda-2026",
+            "model_family_key": "it-fiat-panda",
+            "make": "Fiat",
+            "model": "Panda",
+            "model_year": 2026,
+            "body_style": "city_car",
+            "fuel_type": "mild_hybrid_petrol",
+            "market": "IT",
+            "base_price_eur": 18_000,
+        },
+        "spec": {
+            "id": SPEC_ID,
+            "variant_key": "it-fiat-panda-2026-city",
+            "is_default": True,
+            "trim": "City",
+            "body_style": "city_car",
+            "fuel_type": "mild_hybrid_petrol",
+            "list_price_eur": 18_000,
+            "drivetrain": "fwd",
+            "transmission": "manual",
+            "engine": "1.0 mild hybrid",
+            "horsepower": 70,
+            "battery_kwh": None,
+            "energy_consumption_kwh_100km": None,
+            "consumption_l_100km": 5.0,
+            "wltp_range_km": None,
+            "co2_g_km": 110,
+            "euro_emission_standard": "Euro 6e",
+            "seats": 4,
+            "cargo_volume_liters": 225,
+        },
+        "offer": {
+            "id": offer_id,
+            "vehicle_id": VEHICLE_ID,
+            "spec_id": SPEC_ID,
+            "source_id": SOURCE_ID,
+            "listing_ref": f"panda-{condition}-{listing_suffix}",
+            "title": f"Fiat Panda {condition}",
+            "price_eur": 17_500,
+            "mileage": mileage,
+            "condition": condition,
+            "location_region": "Piemonte",
+            "source_url": f"https://example.test/offers/{listing_suffix}",
+            "listed_at": "2026-07-10",
+            "last_seen_at": "2026-07-15T10:00:00Z",
+            "valid_until": "2026-08-15T00:00:00Z",
+            "is_active": True,
+        },
+        "reviewed": True,
+        "source": {
+            "name": "Reviewed catalog",
+            "license": "Synthetic test data",
+            "ranking_permission": "permitted",
+        },
+        "provenance": [
+            {
+                "metric": metric,
+                "source_name": "Reviewed catalog",
+                "source_url": "https://example.test/specs/panda",
+                "observed_at": "2026-07-14T00:00:00Z",
+            }
+            for metric in (
+                "body_style",
+                "fuel_type",
+                "seats",
+                "cargo_volume_liters",
+                "consumption_l_100km",
+            )
+        ],
+    }
 
 
 class FakeAdvisorRepository:
     def __init__(self) -> None:
-        self.saved_payload = None
-        self.saved_items = None
+        self.as_of_calls: list[datetime] = []
+        self.run_payload = None
+        self.run_metadata = None
+        self.saved_groups = None
         self.completed_run_id = None
 
-    def list_candidates(self):
+    def list_candidates(self, *, as_of):
+        self.as_of_calls.append(as_of)
         return [
-            {
-                "vehicle": {
-                    "id": FIAT_ID,
-                    "make": "Fiat",
-                    "model": "Panda",
-                    "model_year": 2024,
-                    "body_style": "city_car",
-                    "fuel_type": "mild_hybrid_petrol",
-                    "market": "IT",
-                    "base_price_eur": 15500.00,
-                },
-                "specs": [
-                    {
-                        "id": UUID("20000000-0000-4000-8000-000000000001"),
-                        "trim": "1.0 FireFly Hybrid",
-                        "drivetrain": "fwd",
-                        "transmission": "6-speed manual",
-                        "engine": "1.0L mild-hybrid petrol",
-                        "horsepower": 70,
-                        "battery_kwh": None,
-                        "consumption_l_100km": 5.00,
-                        "wltp_range_km": None,
-                        "co2_g_km": 113,
-                        "euro_emission_standard": "Euro 6e",
-                        "seats": 4,
-                        "cargo_volume_liters": 225.00,
-                    }
-                ],
-                "listings": [
-                    {
-                        "id": UUID("30000000-0000-4000-8000-000000000001"),
-                        "vehicle_id": FIAT_ID,
-                        "source_id": UUID("10000000-0000-4000-8000-000000000001"),
-                        "listing_ref": "seed-fiat-panda-2024-it",
-                        "title": "Fiat Panda 1.0 FireFly Hybrid",
-                        "price_eur": 14200.00,
-                        "mileage": 6400,
-                        "condition": "used",
-                        "location_region": "Piemonte",
-                        "listed_at": "2026-01-15",
-                    }
-                ],
-            }
+            exact_pair(condition="new", listing_suffix=1, mileage=None),
+            exact_pair(condition="certified", listing_suffix=2, mileage=8_000),
         ]
 
-    def create_run(self, request_payload):
-        self.saved_payload = request_payload
+    def count_excluded_candidates(self, *, as_of):
+        self.as_of_calls.append(as_of)
+        return {"stale_offer": 2}
+
+    def create_run(self, request_payload, **metadata):
+        self.run_payload = request_payload
+        self.run_metadata = metadata
         return RUN_ID
 
-    def save_items(self, run_id, items):
-        self.saved_items = (run_id, items)
+    def save_items(self, run_id, groups):
+        self.saved_groups = (run_id, groups)
 
     def mark_run_completed(self, run_id):
         self.completed_run_id = run_id
 
 
-class FakeRankingAdvisorRepository(FakeAdvisorRepository):
-    def list_candidates(self):
-        fiat_candidate = super().list_candidates()[0]
-        toyota_candidate = {
-            "vehicle": {
-                "id": TOYOTA_ID,
-                "make": "Toyota",
-                "model": "Yaris Hybrid",
-                "model_year": 2024,
-                "body_style": "small_hatchback",
-                "fuel_type": "full_hybrid_petrol",
-                "market": "EU",
-                "base_price_eur": 24500.00,
-            },
-            "specs": [
-                {
-                    "id": UUID("20000000-0000-4000-8000-000000000002"),
-                    "trim": "1.5 Hybrid Active",
-                    "drivetrain": "fwd",
-                    "transmission": "e-CVT",
-                    "engine": "1.5L full-hybrid petrol",
-                    "horsepower": 116,
-                    "battery_kwh": 0.8,
-                    "consumption_l_100km": 4.20,
-                    "wltp_range_km": None,
-                    "co2_g_km": 96,
-                    "euro_emission_standard": "Euro 6e",
-                    "seats": 5,
-                    "cargo_volume_liters": 286.00,
-                }
-            ],
-            "listings": [
-                {
-                    "id": UUID("30000000-0000-4000-8000-000000000002"),
-                    "vehicle_id": TOYOTA_ID,
-                    "source_id": UUID("10000000-0000-4000-8000-000000000001"),
-                    "listing_ref": "seed-toyota-yaris-2024-eu",
-                    "title": "Toyota Yaris Hybrid Active",
-                    "price_eur": 22800.00,
-                    "mileage": 8200,
-                    "condition": "used",
-                    "location_region": "Lombardia",
-                    "listed_at": "2026-01-16",
-                }
-            ],
-        }
-        return [toyota_candidate, fiat_candidate]
-
-
-class FakeDocumentsRepository:
-    def __init__(self) -> None:
-        self.last_searches = []
-        self.rows = [
-            {
-                "id": DOCUMENT_ID,
-                "source_id": UUID("10000000-0000-4000-8000-000000000010"),
-                "vehicle_id": FIAT_ID,
-                "listing_id": None,
-                "document_type": "vehicle_profile",
-                "title": "Fiat Panda local profile",
-                "content": "Fiat Panda compact city-car evidence from local ingestion.",
-                "metadata": {},
-                "created_at": "2026-01-15T00:00:00+00:00",
-            }
-        ]
-
-    def search_document_candidates(
-        self,
-        *,
-        query: str,
-        tokens: tuple[str, ...],
-        document_type: str | None,
-        limit: int,
-    ):
-        self.last_searches.append(
-            {
-                "query": query,
-                "tokens": tokens,
-                "document_type": document_type,
-                "limit": limit,
-            }
-        )
-        query_lower = query.lower()
-        return [
-            row
-            for row in self.rows
-            if query_lower in row["title"].lower()
-            or any(token in row["content"].lower() for token in tokens)
-        ][:limit]
-
-
 @pytest.fixture
 def fake_repository():
     repository = FakeAdvisorRepository()
-    documents_repository = FakeDocumentsRepository()
     app.dependency_overrides[get_advisor_repository] = lambda: repository
-    app.dependency_overrides[get_documents_repository] = lambda: documents_repository
-    yield repository, documents_repository
+    app.dependency_overrides[get_advisor_clock] = lambda: AS_OF
+    yield repository
     app.dependency_overrides.clear()
 
 
@@ -183,83 +158,237 @@ def client(fake_repository):
     return TestClient(app)
 
 
-def test_post_advisor_recommendations_returns_items_and_persists_run(
+def test_post_advisor_v2_returns_frontend_shape_and_persists_run_context(
     client,
     fake_repository,
 ):
-    advisor_repository, documents_repository = fake_repository
     response = client.post(
         "/advisor/recommendations",
         json={
-            "budget_max_eur": 20000,
+            "budget_max_eur": 20_000,
             "primary_use": "city",
-            "priorities": ["price", "consumption"],
+            "condition": "any",
+            "priorities": ["price", "efficiency_range"],
         },
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["run_id"] == str(RUN_ID)
-    assert payload["items"][0]["vehicle"]["make"] == "Fiat"
-    assert payload["items"][0]["best_listing"]["price_eur"] == 14200.00
-    assert payload["items"][0]["evidence"]["within_budget"] is True
-    assert payload["items"][0]["document_evidence"] == [
-        {
-            "document_id": str(DOCUMENT_ID),
-            "title": "Fiat Panda local profile",
-            "document_type": "vehicle_profile",
-            "score": 18.05,
-            "snippet": "Fiat Panda compact city-car evidence from local ingestion.",
-        }
-    ]
-
-    assert documents_repository.last_searches[0]["query"] == "Fiat Panda"
-    assert advisor_repository.saved_payload["budget_max_eur"] == 20000.0
-    assert advisor_repository.saved_items[0] == RUN_ID
-    assert all(
-        item.document_evidence == [] for item in advisor_repository.saved_items[1]
-    )
-    assert advisor_repository.completed_run_id == RUN_ID
-
-
-def test_post_advisor_document_evidence_does_not_change_ranking():
-    advisor_repository = FakeRankingAdvisorRepository()
-    documents_repository = FakeDocumentsRepository()
-    documents_repository.rows.append(
-        {
-            "id": UUID("40000000-0000-4000-8000-000000000002"),
-            "source_id": UUID("10000000-0000-4000-8000-000000000010"),
-            "vehicle_id": TOYOTA_ID,
-            "listing_id": None,
-            "document_type": "vehicle_profile",
-            "title": "Toyota Yaris Hybrid Toyota Yaris Hybrid Toyota Yaris Hybrid",
-            "content": "Toyota Yaris Hybrid " * 10,
-            "metadata": {},
-            "created_at": "2026-01-16T00:00:00+00:00",
-        }
-    )
-    app.dependency_overrides[get_advisor_repository] = lambda: advisor_repository
-    app.dependency_overrides[get_documents_repository] = lambda: documents_repository
-
-    try:
-        response = TestClient(app).post(
-            "/advisor/recommendations",
-            json={
-                "budget_max_eur": 20000,
-                "primary_use": "city",
-                "priorities": ["price", "consumption"],
-            },
+    assert payload["scoring_version"] == SCORING_VERSION
+    expected_assumptions = build_assumptions(
+        AdvisorRecommendationRequest(
+            budget_max_eur=20_000,
+            primary_use="city",
+            condition="any",
+            priorities=["price", "efficiency_range"],
         )
-    finally:
-        app.dependency_overrides.clear()
+    )
+    assert payload["assumptions"] == expected_assumptions
+    assert payload["excluded_counts_by_reason"] == {"stale_offer": 2}
+    assert [group["condition"] for group in payload["groups"]] == ["new", "used"]
+    assert payload["groups"][0]["items"][0]["offer"]["condition"] == "new"
+    assert (
+        payload["groups"][1]["items"][0]["offer"]["condition"] == "certified"
+    )
+    first_item = payload["groups"][0]["items"][0]
+    assert first_item["selected_spec"]["id"] == str(SPEC_ID)
+    assert set(first_item["component_scores"]) == {
+        "price_fit",
+        "use_case_fit",
+        "running_cost",
+        "space",
+        "efficiency_range",
+    }
+    assert "document_evidence" not in first_item
+    assert "best_listing" not in first_item
+    assert "rationale" not in first_item
 
-    payload = response.json()
-
-    assert response.status_code == 200
-    assert [item["vehicle"]["make"] for item in payload["items"]] == [
-        "Fiat",
-        "Toyota",
+    assert fake_repository.as_of_calls == [AS_OF, AS_OF]
+    assert fake_repository.run_payload["annual_km"] == 10_000
+    assert fake_repository.run_payload["scoring_version"] == SCORING_VERSION
+    assert fake_repository.run_payload["evaluated_at"] == AS_OF.isoformat()
+    assert fake_repository.run_payload["annual_km_defaulted"] is True
+    assert fake_repository.run_metadata == {
+        "scoring_version": SCORING_VERSION,
+        "assumptions": expected_assumptions,
+        "exclusion_counts": {"stale_offer": 2},
+    }
+    assert fake_repository.saved_groups[0] == RUN_ID
+    assert [group.condition for group in fake_repository.saved_groups[1]] == [
+        "new",
+        "used",
     ]
-    assert payload["items"][0]["score"] == advisor_repository.saved_items[1][0].score
-    assert payload["items"][1]["score"] == advisor_repository.saved_items[1][1].score
-    assert payload["items"][1]["document_evidence"][0]["title"].startswith("Toyota")
+    assert fake_repository.completed_run_id == RUN_ID
+
+
+def test_post_advisor_rejects_retired_priorities(client):
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["safety"],
+        },
+    )
+    assert response.status_code == 422
+
+
+class RecordingResult:
+    def __init__(self, rows=None) -> None:
+        self.rows = rows or []
+
+    def fetchall(self):
+        return self.rows
+
+
+class RecordingConnection:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, tuple[Any, ...] | None]] = []
+
+    def execute(self, sql, params=None):
+        self.calls.append((sql, params))
+        return RecordingResult()
+
+
+def test_model_analysis_repository_uses_broad_exact_spec_query():
+    conn = RecordingConnection()
+    repository = AdvisorRepository(conn)
+
+    assert repository.list_model_analysis_candidates() == []
+    sql, params = conn.calls[0]
+    assert params is None
+    assert "LEFT JOIN vehicle_specs" in sql
+    assert "l.spec_id = s.id" in sql
+    assert "l.last_seen_at >=" not in sql
+    assert "import_run.status = 'completed'" not in sql
+
+
+def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():
+    scoring = score_recommendations(
+        AdvisorRecommendationRequest(
+            budget_max_eur=20_000,
+            primary_use="city",
+            condition="any",
+        ),
+        [
+            exact_pair(condition="new", listing_suffix=1, mileage=None),
+            exact_pair(condition="used", listing_suffix=2, mileage=8_000),
+        ],
+        as_of=AS_OF,
+        initial_excluded_counts={"stale_offer": 2},
+    )
+    conn = RecordingConnection()
+    repository = AdvisorRepository(conn)
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=20_000,
+        primary_use="city",
+        condition="any",
+    )
+    assumptions = build_assumptions(request)
+
+    run_id = repository.create_run(
+        {"budget_max_eur": 20_000},
+        scoring_version=SCORING_VERSION,
+        assumptions=assumptions,
+        exclusion_counts=scoring.excluded_counts_by_reason,
+    )
+    repository.save_items(run_id, scoring.groups)
+
+    run_sql, run_params = conn.calls[0]
+    assert "scoring_version" in run_sql
+    assert "assumptions" in run_sql
+    assert "exclusion_counts" in run_sql
+    assert run_params[2] == SCORING_VERSION
+    assert isinstance(run_params[3], Jsonb)
+    assert isinstance(run_params[4], Jsonb)
+
+    item_calls = conn.calls[1:]
+    assert len(item_calls) == 2
+    assert all("listing_id" in sql and "spec_id" in sql for sql, _ in item_calls)
+    assert all("condition_group" in sql and "score_breakdown" in sql for sql, _ in item_calls)
+    assert [params[5] for _, params in item_calls] == ["new", "used"]
+    assert [params[6] for _, params in item_calls] == [1, 1]
+    assert [params[3] for _, params in item_calls] == [
+        UUID("30000000-0000-4000-8000-000000000001"),
+        UUID("30000000-0000-4000-8000-000000000002"),
+    ]
+    assert all(params[4] == SPEC_ID for _, params in item_calls)
+    assert all(params[9] == SCORING_VERSION for _, params in item_calls)
+    assert all(isinstance(params[10], Jsonb) for _, params in item_calls)
+
+
+@pytest.mark.skipif(
+    not os.getenv("TEST_DATABASE_URL"),
+    reason="TEST_DATABASE_URL is not configured",
+)
+def test_repository_v2_persistence_round_trips_in_postgres():
+    database_url = os.environ["TEST_DATABASE_URL"]
+    apply_migrations(database_url)
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=20_000,
+        primary_use="city",
+        condition="used",
+        priorities=["price"],
+    )
+    assumptions = build_assumptions(request)
+    scoring = score_recommendations(
+        request,
+        [exact_pair(condition="used", listing_suffix=1, mileage=8_000)],
+        as_of=AS_OF,
+        initial_excluded_counts={"stale_offer": 2},
+    )
+
+    with psycopg.connect(database_url, row_factory=dict_row) as conn:
+        repository = AdvisorRepository(conn)
+        run_id = repository.create_run(
+            request.model_dump(mode="json"),
+            scoring_version=SCORING_VERSION,
+            assumptions=assumptions,
+            exclusion_counts=scoring.excluded_counts_by_reason,
+        )
+        try:
+            repository.save_items(run_id, scoring.groups)
+            repository.mark_run_completed(run_id)
+            row = conn.execute(
+                """
+                SELECT
+                  run.request_payload,
+                  run.scoring_version AS run_scoring_version,
+                  run.assumptions,
+                  run.exclusion_counts,
+                  item.vehicle_id,
+                  item.listing_id,
+                  item.spec_id,
+                  item.condition_group,
+                  item.rank,
+                  item.scoring_version AS item_scoring_version,
+                  item.score_breakdown
+                FROM recommendation_runs AS run
+                JOIN recommendation_items AS item ON item.run_id = run.id
+                WHERE run.id = %s
+                """,
+                (run_id,),
+            ).fetchone()
+
+            assert row["request_payload"]["budget_max_eur"] == 20_000
+            assert row["run_scoring_version"] == SCORING_VERSION
+            assert row["assumptions"] == assumptions
+            assert row["exclusion_counts"] == {"stale_offer": 2}
+            assert row["vehicle_id"] == VEHICLE_ID
+            assert row["listing_id"] == UUID(
+                "30000000-0000-4000-8000-000000000001"
+            )
+            assert row["spec_id"] == SPEC_ID
+            assert row["condition_group"] == "used"
+            assert row["rank"] == 1
+            assert row["item_scoring_version"] == SCORING_VERSION
+            assert set(row["score_breakdown"]["component_scores"]) == {
+                "price_fit",
+                "use_case_fit",
+                "running_cost",
+                "space",
+                "efficiency_range",
+            }
+        finally:
+            conn.execute("DELETE FROM recommendation_runs WHERE id = %s", (run_id,))

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Drivewise helps users compare and evaluate vehicles before purchase. This MVP includes local app scaffolding, seed data, read-only vehicle/listing/document APIs, vehicle input resolution, document search with default text mode and explicit fake-vector dev mode, local fixture ingestion, a deterministic advisor flow with document evidence, and a deterministic model analysis flow.
+Drivewise helps users compare and evaluate vehicles before purchase. This MVP includes local app scaffolding, seed data, read-only vehicle/listing/document APIs, vehicle input resolution, document search with default text mode and explicit fake-vector dev mode, local fixture ingestion, deterministic Advisor v2 recommendations over reviewed exact-variant catalog offers with metric-level provenance, and a deterministic model analysis flow.
 
 ## Monorepo Layout
 
@@ -32,6 +32,11 @@ docs/    architecture and project notes
 
 The frontend uses TanStack Router `Link` for internal navigation. The `/vehicles`, `/listings`, and `/documents` routes validate supported URL search parameters, derive loader dependencies from the normalized filters, and load matching collection data through route loaders. Server rendering and hydration therefore share the same filtered payload, while deep links and browser back/forward navigation preserve form and result state. Unknown or invalid search values are discarded before API calls. Shared pending and error boundaries handle loader navigation failures. Runtime API calls go through `apps/web/src/api/drivewise.ts`. Mock fallback is explicit and only activates when `VITE_USE_MOCK_API=true`; by default API failures are surfaced instead of hidden.
 
+The vehicle, listing, and document detail routes also load their records through
+route loaders. Direct detail URLs therefore render from the same loader payload
+on the server and client, and reuse the shared pending and retryable error UI.
+Missing detail records map API `404` responses to the router's not-found page.
+
 ## Backend
 
 `apps/api` uses FastAPI. Implemented runtime endpoint groups are:
@@ -57,7 +62,7 @@ Database-backed dependencies use a small local connection pool initialized and c
 
 Vehicle resolution is deterministic and market-scoped. It normalizes free-text descriptions, ranks canonical vehicle/spec candidates by explicit make, model, year, trim, fuel, and body-style evidence, and reports matched, ambiguous, or no-match outcomes without writing to the database.
 
-Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The advisor recommendations endpoint is deterministic, persists recommendation runs/items, and enriches response items with transient `document_evidence` from text-only document search. `document_evidence` is not stored in `recommendation_items` and does not affect advisor scoring or ranking.
+Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The Advisor v2 recommendations endpoint is independent of document search: it filters reviewed, fresh, exact Italian offer/spec pairs, produces transparent component scores and provenance, groups new and used results, and persists the versioned run and item breakdowns.
 
 `POST /advisor/model-analysis` is a non-persisted flow for a model the user has already chosen. It can start from a free-text query resolved through the vehicle resolver or a canonical vehicle reference, then returns a result-contract shape with verdict, price assessment, estimated costs, red flags, checklist, confidence, assumptions, warnings, missing data, and next actions.
 

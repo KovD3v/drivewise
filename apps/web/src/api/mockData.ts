@@ -8,6 +8,8 @@ import type {
 export const mockVehicles: VehicleSummary[] = [
   {
     id: '00000000-0000-4000-8000-000000000001',
+    canonical_key: 'fiat-panda-2024-it',
+    model_family_key: 'fiat-panda',
     make: 'Fiat',
     model: 'Panda',
     model_year: 2024,
@@ -18,6 +20,8 @@ export const mockVehicles: VehicleSummary[] = [
   },
   {
     id: '00000000-0000-4000-8000-000000000002',
+    canonical_key: 'toyota-yaris-hybrid-2024-it',
+    model_family_key: 'toyota-yaris',
     make: 'Toyota',
     model: 'Yaris Hybrid',
     model_year: 2024,
@@ -28,6 +32,8 @@ export const mockVehicles: VehicleSummary[] = [
   },
   {
     id: '00000000-0000-4000-8000-000000000003',
+    canonical_key: 'volkswagen-golf-2024-eu',
+    model_family_key: 'volkswagen-golf',
     make: 'Volkswagen',
     model: 'Golf',
     model_year: 2024,
@@ -38,6 +44,8 @@ export const mockVehicles: VehicleSummary[] = [
   },
   {
     id: '00000000-0000-4000-8000-000000000004',
+    canonical_key: 'dacia-sandero-2024-it',
+    model_family_key: 'dacia-sandero',
     make: 'Dacia',
     model: 'Sandero',
     model_year: 2024,
@@ -48,6 +56,8 @@ export const mockVehicles: VehicleSummary[] = [
   },
   {
     id: '00000000-0000-4000-8000-000000000005',
+    canonical_key: 'tesla-model-3-2024-eu',
+    model_family_key: 'tesla-model-3',
     make: 'Tesla',
     model: 'Model 3',
     model_year: 2024,

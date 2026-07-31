@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,8 +16,11 @@ router = APIRouter(prefix="/listings", tags=["listings"])
 def list_listings(
     repository: Annotated[ListingsRepository, Depends(get_listings_repository)],
     vehicle_id: UUID | None = Query(default=None),
+    spec_id: UUID | None = Query(default=None),
     make: str | None = Query(default=None),
     model: str | None = Query(default=None),
+    condition: Literal["new", "used", "certified"] | None = Query(default=None),
+    active_only: bool = Query(default=True),
     max_price_eur: float | None = Query(default=None, ge=0),
     max_mileage: int | None = Query(default=None, ge=0),
     location_region: str | None = Query(default=None),
@@ -26,8 +29,11 @@ def list_listings(
 ) -> list[dict]:
     filters = ListingFilters(
         vehicle_id=vehicle_id,
+        spec_id=spec_id,
         make=make,
         model=model,
+        condition=condition,
+        active_only=active_only,
         max_price_eur=max_price_eur,
         max_mileage=max_mileage,
         location_region=location_region,

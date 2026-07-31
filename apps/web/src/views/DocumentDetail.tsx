@@ -1,47 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { fetchDocument, IngestedDocument } from '../api/drivewise'
-import { errorMessage } from './viewUtils'
+import type { IngestedDocument } from '../api/drivewise'
 
-export function DocumentDetailPage({ documentId }: { documentId: string }) {
-  const [document, setDocument] = useState<IngestedDocument | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let isCurrent = true
-    setIsLoading(true)
-    setError(null)
-
-    fetchDocument(documentId)
-      .then((data) => {
-        if (isCurrent) {
-          setDocument(data)
-        }
-      })
-      .catch((caughtError) => {
-        if (isCurrent) {
-          setError(errorMessage(caughtError, 'Unable to load document'))
-          setDocument(null)
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [documentId])
-
-  const safeMetadata = useMemo(
-    () => stripEmbeddingKeys(document?.metadata ?? {}),
-    [document],
-  )
-
+export function DocumentDetailPage({
+  document,
+}: {
+  document: IngestedDocument
+}) {
+  const safeMetadata = stripEmbeddingKeys(document.metadata)
   return (
     <main className="browse-shell">
       <header className="browse-header">
@@ -50,42 +16,33 @@ export function DocumentDetailPage({ documentId }: { documentId: string }) {
         </Link>
         <div>
           <p className="eyebrow">Document detail</p>
-          <h1>{document ? document.title : 'Dettaglio documento'}</h1>
-          {document ? (
-            <p className="summary">
-              {document.document_type} · {formatDateTime(document.created_at)}
-            </p>
-          ) : null}
+          <h1>{document.title}</h1>
+          <p className="summary">
+            {document.document_type} · {formatDateTime(document.created_at)}
+          </p>
         </div>
       </header>
 
-      <section className="detail-panel" aria-live="polite">
-        {isLoading ? <p className="status-message">Caricamento…</p> : null}
-        {error ? <p className="error-message">{error}</p> : null}
+      <section className="detail-panel">
+        <dl className="facts-grid detail-facts">
+          <Fact label="Document type" value={document.document_type} />
+          <Fact label="Source id" value={document.source_id} />
+          <Fact label="Vehicle id" value={document.vehicle_id ?? '-'} />
+          <Fact label="Listing id" value={document.listing_id ?? '-'} />
+          <Fact label="Created at" value={formatDateTime(document.created_at)} />
+        </dl>
 
-        {document ? (
-          <>
-            <dl className="facts-grid detail-facts">
-              <Fact label="Document type" value={document.document_type} />
-              <Fact label="Source id" value={document.source_id} />
-              <Fact label="Vehicle id" value={document.vehicle_id ?? '-'} />
-              <Fact label="Listing id" value={document.listing_id ?? '-'} />
-              <Fact label="Created at" value={formatDateTime(document.created_at)} />
-            </dl>
+        <section className="detail-section">
+          <h2>Content</h2>
+          <pre className="content-block">{document.content}</pre>
+        </section>
 
-            <section className="detail-section">
-              <h2>Content</h2>
-              <pre className="content-block">{document.content}</pre>
-            </section>
-
-            <section className="detail-section">
-              <h2>Metadata</h2>
-              <pre className="metadata-pre">
-                {JSON.stringify(safeMetadata, null, 2)}
-              </pre>
-            </section>
-          </>
-        ) : null}
+        <section className="detail-section">
+          <h2>Metadata</h2>
+          <pre className="metadata-pre">
+            {JSON.stringify(safeMetadata, null, 2)}
+          </pre>
+        </section>
       </section>
     </main>
   )

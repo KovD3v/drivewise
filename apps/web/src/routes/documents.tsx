@@ -3,14 +3,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import { fetchDocuments } from '../api/drivewise'
 import { DocumentListPage } from '../views/DocumentList'
 import { validateDocumentSearch } from './-collectionSearch'
-import { CollectionRouteError, CollectionRoutePending } from './-collectionStates'
+import { DataRouteError, DataRoutePending } from './-dataStates'
 
 export const Route = createFileRoute('/documents')({
   validateSearch: validateDocumentSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => fetchDocuments(deps),
-  pendingComponent: CollectionRoutePending,
-  errorComponent: CollectionRouteError,
+  pendingComponent: DataRoutePending,
+  errorComponent: DataRouteError,
   component: DocumentsRoute,
 })
 

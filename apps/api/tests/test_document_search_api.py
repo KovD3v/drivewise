@@ -164,6 +164,16 @@ def test_post_search_documents_validates_query_and_limit(client):
     assert too_large_limit.status_code == 422
 
 
+def test_post_search_documents_rejects_more_than_sixteen_unique_tokens(client):
+    response = client.post(
+        "/search/documents",
+        json={"query": " ".join(f"token{index}" for index in range(17))},
+    )
+
+    assert response.status_code == 422
+    assert "at most 16 unique tokens" in response.text
+
+
 def test_post_search_documents_explicit_text_only_keeps_text_path(
     client,
     fake_repository,

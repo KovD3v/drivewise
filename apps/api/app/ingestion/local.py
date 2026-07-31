@@ -102,24 +102,40 @@ def upsert_source(
     conn,
     *,
     name: str,
+    source_key: str | None = None,
+    market: str = "IT",
     source_type: SourceType = "curated_internal",
     url: str | None = None,
     license: str | None = "Synthetic local fixture",
     notes: str | None = "Local fixture ingestion. No external services called.",
 ) -> UUID:
     source_id = uuid4()
+    stable_source_key = source_key or _stable_key(name)
     row = conn.execute(
         """
-        INSERT INTO sources (id, name, source_type, url, license, notes)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        ON CONFLICT (name) DO UPDATE SET
+        INSERT INTO sources (
+          id, source_key, name, source_type, market, url, license, notes
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (source_key) DO UPDATE SET
+          name = EXCLUDED.name,
           source_type = EXCLUDED.source_type,
+          market = EXCLUDED.market,
           url = EXCLUDED.url,
           license = EXCLUDED.license,
           notes = EXCLUDED.notes
         RETURNING id
         """,
-        (source_id, name, source_type, url, license, notes),
+        (
+            source_id,
+            stable_source_key,
+            name,
+            source_type,
+            market,
+            url,
+            license,
+            notes,
+        ),
     ).fetchone()
     return _row_value(row, "id")
 
@@ -343,6 +359,10 @@ def _document_type_from_value(value: Any, fallback: DocumentType) -> DocumentTyp
 
 def _local_path(file_path: Path) -> str:
     return file_path.as_posix()
+
+
+def _stable_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
 
 
 FIELD_ALIASES = {

@@ -1,11 +1,27 @@
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
 
+class VehicleProvenance(BaseModel):
+    source_id: UUID
+    source_key: str
+    source_name: str
+    source_url: str
+    source_license: str | None = None
+    observed_at: datetime
+    record_observed_at: datetime
+    content_hash: str
+    is_current: bool
+    supported_metrics: list[str] = Field(default_factory=list)
+
+
 class VehicleSummary(BaseModel):
     id: UUID
+    canonical_key: str | None = None
+    model_family_key: str | None = None
     make: str
     model: str
     model_year: int
@@ -17,22 +33,30 @@ class VehicleSummary(BaseModel):
 
 class VehicleSpec(BaseModel):
     id: UUID
+    variant_key: str | None = None
+    is_default: bool = False
     trim: str
+    body_style: str | None = None
+    fuel_type: str | None = None
+    list_price_eur: float | None = None
     drivetrain: str | None = None
     transmission: str | None = None
     engine: str | None = None
     horsepower: int | None = None
     battery_kwh: float | None = None
+    energy_consumption_kwh_100km: float | None = None
     consumption_l_100km: float | None = None
     wltp_range_km: int | None = None
     co2_g_km: int | None = None
     euro_emission_standard: str | None = None
     seats: int | None = None
     cargo_volume_liters: float | None = None
+    provenance: list[VehicleProvenance] = Field(default_factory=list)
 
 
 class VehicleDetail(VehicleSummary):
     specs: list[VehicleSpec]
+    provenance: list[VehicleProvenance] = Field(default_factory=list)
 
 
 class VehicleResolveRequest(BaseModel):

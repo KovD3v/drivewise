@@ -69,7 +69,10 @@ def resolve_vehicle_query(
             candidate.vehicle.make,
             candidate.vehicle.model,
             candidate.vehicle.model_year,
+            not bool(candidate.spec and candidate.spec.is_default),
             candidate.spec.trim if candidate.spec else "",
+            (candidate.spec.variant_key or "") if candidate.spec else "",
+            str(candidate.spec.id) if candidate.spec else "",
         )
     )
 
@@ -134,11 +137,17 @@ def _score_candidate(
             score += 0.26 * trim_score
             matched_fields.append("trim")
 
-    if request.fuel_type and request.fuel_type == row["fuel_type"]:
+    candidate_fuel_type = (
+        spec.fuel_type if spec is not None and spec.fuel_type else row["fuel_type"]
+    )
+    if request.fuel_type and request.fuel_type == candidate_fuel_type:
         score += 0.08
         matched_fields.append("fuel_type")
 
-    if request.body_style and request.body_style == row["body_style"]:
+    candidate_body_style = (
+        spec.body_style if spec is not None and spec.body_style else row["body_style"]
+    )
+    if request.body_style and request.body_style == candidate_body_style:
         score += 0.04
         matched_fields.append("body_style")
 
@@ -234,12 +243,20 @@ def _row_to_spec(row: dict[str, Any]) -> VehicleSpec | None:
     return VehicleSpec.model_validate(
         {
             "id": row["spec_id"],
+            "variant_key": row.get("variant_key"),
+            "is_default": row.get("is_default", False),
             "trim": row["trim"],
+            "body_style": row.get("spec_body_style", row.get("body_style")),
+            "fuel_type": row.get("spec_fuel_type", row.get("fuel_type")),
+            "list_price_eur": row.get("list_price_eur"),
             "drivetrain": row["drivetrain"],
             "transmission": row["transmission"],
             "engine": row["engine"],
             "horsepower": row["horsepower"],
             "battery_kwh": row["battery_kwh"],
+            "energy_consumption_kwh_100km": row.get(
+                "energy_consumption_kwh_100km"
+            ),
             "consumption_l_100km": row["consumption_l_100km"],
             "wltp_range_km": row["wltp_range_km"],
             "co2_g_km": row["co2_g_km"],

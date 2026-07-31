@@ -26,6 +26,10 @@ def test_vehicle_repository_uses_contains_for_text_and_exact_for_enums():
     assert "fuel_type = %s" in conn.query
     assert "body_style = %s" in conn.query
     assert "market = %s" in conn.query
+    assert "EXISTS (SELECT 1 FROM vehicle_specs candidate" in conn.query
+    assert "candidate.fuel_type = %s" in conn.query
+    assert "candidate.body_style = %s" in conn.query
+    assert "default_spec.is_default" in conn.query
     assert conn.params == [
         "%yat%",
         "%aris%",
@@ -67,7 +71,35 @@ def test_listing_repository_uses_contains_for_text_filters():
     assert "v.make ILIKE %s" in conn.query
     assert "v.model ILIKE %s" in conn.query
     assert "l.location_region ILIKE %s" in conn.query
+    assert "spec.id = l.spec_id AND spec.vehicle_id = l.vehicle_id" in conn.query
     assert conn.params == ["%volks%", "%gol%", "%net%", 25, 10]
+
+
+def test_listing_repository_filters_exact_spec_condition_and_active_rows():
+    conn = RecordingConnection()
+    repository = ListingsRepository(conn)
+    spec_id = "20000000-0000-4000-8000-000000000001"
+
+    repository.list_listings(
+        ListingFilters(spec_id=spec_id, condition="used", active_only=True)
+    )
+
+    assert "l.spec_id = %s" in conn.query
+    assert "l.condition = %s" in conn.query
+    assert "l.is_active" in conn.query
+    assert conn.params[:2] == [spec_id, "used"]
+
+
+def test_listing_detail_requires_spec_and_vehicle_to_match():
+    conn = RecordingConnection()
+    repository = ListingsRepository(conn)
+
+    result = repository.get_listing(
+        "30000000-0000-4000-8000-000000000001"
+    )
+
+    assert result is None
+    assert "spec.id = l.spec_id AND spec.vehicle_id = l.vehicle_id" in conn.query
 
 
 def test_document_search_repository_uses_text_filters_without_vector_operators():
@@ -150,6 +182,9 @@ class RecordingConnection:
 
     def fetchall(self):
         return []
+
+    def fetchone(self):
+        return None
 
     def __iter__(self):
         return iter([])

@@ -15,6 +15,8 @@ function getApiBaseUrl() {
 
 export interface VehicleSummary {
   id: string
+  canonical_key: string
+  model_family_key: string
   make: string
   model: string
   model_year: number
@@ -197,42 +199,117 @@ export type AdvisorPrimaryUse =
 
 export type AdvisorPriority =
   | 'price'
-  | 'consumption'
-  | 'reliability'
+  | 'efficiency_range'
   | 'space'
-  | 'safety'
-  | 'range'
+  | 'running_cost'
+
+export type AdvisorCondition = 'any' | 'new' | 'used'
+
+export type AdvisorFuelType =
+  | 'diesel'
+  | 'electric'
+  | 'full_hybrid_petrol'
+  | 'hybrid_petrol'
+  | 'mild_hybrid_petrol'
+  | 'petrol'
+  | 'petrol_lpg'
+
+export type AdvisorBodyStyle =
+  | 'city_car'
+  | 'crossover'
+  | 'hatchback'
+  | 'mpv'
+  | 'sedan'
+  | 'small_hatchback'
+  | 'suv'
+  | 'van'
+  | 'wagon'
 
 export interface AdvisorRequest {
   budget_min_eur?: number
   budget_max_eur: number
   primary_use: AdvisorPrimaryUse
-  preferred_fuel_type?: string
-  preferred_body_style?: string
+  condition?: AdvisorCondition
+  annual_km?: number
+  preferred_fuel_type?: AdvisorFuelType
+  preferred_body_style?: AdvisorBodyStyle
   max_mileage?: number
   priorities?: AdvisorPriority[]
 }
 
-export interface AdvisorDocumentEvidence {
-  document_id: string
-  title: string
-  document_type: string
-  score: number
-  snippet: string
+export type AdvisorScoreComponent =
+  | 'price_fit'
+  | 'use_case_fit'
+  | 'running_cost'
+  | 'space'
+  | 'efficiency_range'
+
+export interface AdvisorSelectedSpec extends VehicleSpec {
+  variant_key: string
+  is_default: boolean
+  body_style: string
+  fuel_type: string
+  list_price_eur: number | null
+  energy_consumption_kwh_100km: number | null
 }
 
-interface AdvisorRecommendationItem {
+export interface AdvisorOffer {
+  id: string
+  vehicle_id: string
+  spec_id: string
+  source_id: string
+  listing_ref: string
+  title: string
+  price_eur: number
+  mileage: number | null
+  condition: 'new' | 'used' | 'certified'
+  location_region: string | null
+  source_url: string | null
+  listed_at: string | null
+  last_seen_at?: string
+  valid_until: string | null
+  is_active: boolean
+}
+
+export interface AdvisorFactor {
+  component: AdvisorScoreComponent
+  message: string
+  metric?: string
+  value?: string | number
+  threshold?: string | number
+  contribution: number
+}
+
+export interface AdvisorMetricProvenance {
+  metric: string
+  source_name: string
+  source_url: string | null
+  observed_at: string | null
+}
+
+export interface AdvisorRecommendationItem {
   vehicle: VehicleSummary
-  best_listing: Omit<ListingWithVehicle, 'vehicle'> | null
+  selected_spec: AdvisorSelectedSpec
+  offer: AdvisorOffer
   score: number
-  rationale: string
+  component_scores: Record<AdvisorScoreComponent, number>
+  positive_factors: AdvisorFactor[]
+  tradeoffs: AdvisorFactor[]
   evidence: Record<string, unknown>
-  document_evidence: AdvisorDocumentEvidence[]
+  provenance: AdvisorMetricProvenance[]
+}
+
+export interface AdvisorRecommendationGroup {
+  condition: Exclude<AdvisorCondition, 'any'>
+  items: AdvisorRecommendationItem[]
 }
 
 export interface AdvisorRecommendationResponse {
   run_id: string
-  items: AdvisorRecommendationItem[]
+  scoring_version: string
+  assumptions: string[]
+  excluded_counts_by_reason: Record<string, number>
+  groups: AdvisorRecommendationGroup[]
 }
 
 export async function fetchVehicles(
@@ -246,7 +323,7 @@ export async function fetchVehicle(vehicleId: string): Promise<VehicleDetail> {
   return fetchJson(`/vehicles/${vehicleId}`, () => {
     const vehicle = mockVehicleDetails.find((item) => item.id === vehicleId)
     if (!vehicle) {
-      throw new Error('Vehicle not found')
+      throw new ApiResponseError('Vehicle not found', 404)
     }
     return vehicle
   })
@@ -263,7 +340,7 @@ export async function fetchListing(listingId: string): Promise<ListingWithVehicl
   return fetchJson(`/listings/${listingId}`, () => {
     const listing = mockListings.find((item) => item.id === listingId)
     if (!listing) {
-      throw new Error('Listing not found')
+      throw new ApiResponseError('Listing not found', 404)
     }
     return listing
   })
@@ -280,7 +357,7 @@ export async function fetchDocument(documentId: string): Promise<IngestedDocumen
   return fetchJson(`/documents/${documentId}`, () => {
     const document = mockDocumentDetails.find((item) => item.id === documentId)
     if (!document) {
-      throw new Error('Document not found')
+      throw new ApiResponseError('Document not found', 404)
     }
     return document
   })
@@ -328,23 +405,25 @@ export async function fetchAdvisorRecommendations(
 }
 
 async function fetchJson<T>(path: string, mockFallback: () => T): Promise<T> {
+  let response: Response
   try {
-    const response = await fetch(`${getApiBaseUrl()}${path}`)
-
-    if (!response.ok) {
-      const detail = await readErrorDetail(response)
-      throw new ApiResponseError(
-        detail || `API request failed with status ${response.status}`,
-      )
-    }
-
-    return response.json()
+    response = await fetch(`${getApiBaseUrl()}${path}`)
   } catch (error) {
-    if (!(error instanceof ApiResponseError) && canUseMockFallback()) {
+    if (canUseMockFallback()) {
       return mockFallback()
     }
     throw error
   }
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response)
+    throw new ApiResponseError(
+      detail || `API request failed with status ${response.status}`,
+      response.status,
+    )
+  }
+
+  return response.json()
 }
 
 async function postJson<T>(
@@ -352,29 +431,31 @@ async function postJson<T>(
   body: object,
   mockFallback: () => T,
 ): Promise<T> {
+  let response: Response
   try {
-    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
       body: JSON.stringify(body),
       headers: {
         'Content-Type': 'application/json',
       },
       method: 'POST',
     })
-
-    if (!response.ok) {
-      const detail = await readErrorDetail(response)
-      throw new ApiResponseError(
-        detail || `API request failed with status ${response.status}`,
-      )
-    }
-
-    return response.json()
   } catch (error) {
-    if (!(error instanceof ApiResponseError) && canUseMockFallback()) {
+    if (canUseMockFallback()) {
       return mockFallback()
     }
     throw error
   }
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response)
+    throw new ApiResponseError(
+      detail || `API request failed with status ${response.status}`,
+      response.status,
+    )
+  }
+
+  return response.json()
 }
 
 function buildPath(
@@ -534,6 +615,12 @@ function normalizeDocumentSearchRequest(
   const query = request.query.trim().replace(/\s+/g, ' ')
   if (!query) {
     throw new Error('Search query is required')
+  }
+  if (query.length > 160) {
+    throw new Error('Search query must be 160 characters or fewer')
+  }
+  if (tokenizeSearchQuery(query).length > 16) {
+    throw new Error('Search query must contain 16 terms or fewer')
   }
 
   return {
@@ -863,7 +950,19 @@ function roundScore(score: number) {
   return Number(score.toFixed(4))
 }
 
-class ApiResponseError extends Error {}
+class ApiResponseError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ApiResponseError'
+  }
+}
+
+export function isApiNotFoundError(error: unknown) {
+  return error instanceof ApiResponseError && error.status === 404
+}
 
 async function readErrorDetail(response: Response) {
   try {

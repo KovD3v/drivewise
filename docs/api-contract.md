@@ -492,16 +492,14 @@ Response:
 
 ### POST /advisor/recommendations
 
-Creates a deterministic recommendation run and returns up to 5 ranked items.
+Creates a deterministic Advisor v2 run from reviewed, imported Italian catalog
+offers. It does not call an LLM, search documents, generate embeddings, or
+ingest external data.
 
-The endpoint persists:
-
-- the request body in `recommendation_runs.request_payload`
-- generated item ranks, scores, and rationales in `recommendation_items`
-
-Each response item also includes transient `document_evidence` built from text-only document search using the recommended vehicle make/model. This evidence is not persisted in `recommendation_items` and does not change advisor scores or ranking.
-
-It does not call an LLM, generate embeddings, run vector search, or ingest external data.
+The endpoint persists the normalized request, scoring version, energy
+assumptions, exclusion counts, and completion status on the run. Each selected
+item persists its exact listing/spec pair, new/used group, group rank, score,
+version, and complete score breakdown.
 
 Request body:
 
@@ -510,10 +508,12 @@ Request body:
   "budget_min_eur": 10000,
   "budget_max_eur": 22000,
   "primary_use": "city",
+  "condition": "any",
+  "annual_km": 10000,
   "preferred_fuel_type": "mild_hybrid_petrol",
   "preferred_body_style": "city_car",
   "max_mileage": 30000,
-  "priorities": ["price", "consumption"]
+  "priorities": ["price", "efficiency_range"]
 }
 ```
 
@@ -530,70 +530,58 @@ Allowed `primary_use` values:
 - `work`
 - `new_driver`
 
+`condition` is `any` by default and accepts `any`, `new`, or `used`.
+`certified` offers are returned in the `used` group. When `annual_km` is
+omitted, it defaults to 10,000 for city/new-driver, 14,000 for family, and
+18,000 for highway/work.
+
 Allowed `priorities` values:
 
 - `price`
-- `consumption`
-- `reliability`
+- `efficiency_range`
 - `space`
-- `safety`
-- `range`
+- `running_cost`
 
 Example response:
 
 ```json
 {
   "run_id": "50000000-0000-4000-8000-000000000001",
-  "items": [
+  "scoring_version": "advisor-v2.0",
+  "assumptions": [
+    "Annual distance: 10000 km (default for primary_use=city); used only for the annual energy-cost estimate.",
+    "The running_cost component covers energy only; maintenance, tax, insurance, depreciation, and financing are excluded.",
+    "it-energy-2026-07-16-v1: MIMIT fuel-price means...",
+    "it-energy-2026-07-16-v1: ARERA electricity reference..."
+  ],
+  "excluded_counts_by_reason": {"stale_offer": 2},
+  "groups": [
     {
-      "vehicle": {
-        "id": "00000000-0000-4000-8000-000000000001",
-        "make": "Fiat",
-        "model": "Panda",
-        "model_year": 2024,
-        "body_style": "city_car",
-        "fuel_type": "mild_hybrid_petrol",
-        "market": "IT",
-        "base_price_eur": 15500.0
-      },
-      "best_listing": {
-        "id": "30000000-0000-4000-8000-000000000001",
-        "vehicle_id": "00000000-0000-4000-8000-000000000001",
-        "source_id": "10000000-0000-4000-8000-000000000001",
-        "listing_ref": "seed-fiat-panda-2024-it",
-        "title": "Fiat Panda 1.0 FireFly Hybrid",
-        "price_eur": 14200.0,
-        "mileage": 6400,
-        "condition": "used",
-        "location_region": "Piemonte",
-        "listed_at": "2026-01-15"
-      },
-      "score": 104.25,
-      "rationale": "Price fits the requested budget. City-car body style fits urban use. Low consumption supports city use. Price priority rewards lower cost. Consumption priority used WLTP l/100km.",
-      "evidence": {
-        "price_eur": 14200.0,
-        "base_price_eur": 15500.0,
-        "budget_min_eur": 10000.0,
-        "budget_max_eur": 22000.0,
-        "within_budget": true,
-        "mileage": 6400,
-        "max_mileage": 30000,
-        "consumption_l_100km": 5.0,
-        "wltp_range_km": null,
-        "co2_g_km": 113,
-        "seats": 4,
-        "cargo_volume_liters": 225.0,
-        "body_style": "city_car",
-        "fuel_type": "mild_hybrid_petrol",
-        "missing_fields": []
-      },
-      "document_evidence": [
+      "condition": "new",
+      "items": [
         {
-          "document_id": "40000000-0000-4000-8000-000000000001",
-          "title": "Synthetic profile: Fiat Panda",
-          "document_type": "seed_note",
-          "score": 12.05,
-          "snippet": "Synthetic profile: Fiat Panda"
+          "vehicle": {"id": "...", "model_family_key": "it-fiat-panda"},
+          "selected_spec": {"id": "...", "variant_key": "..."},
+          "offer": {"id": "...", "spec_id": "...", "price_eur": 17500},
+          "score": 86.42,
+          "component_scores": {
+            "price_fit": 89,
+            "use_case_fit": 100,
+            "running_cost": 54.17,
+            "space": 62.5,
+            "efficiency_range": 75
+          },
+          "positive_factors": [],
+          "tradeoffs": [],
+          "evidence": {"annual_km": 10000},
+          "provenance": [
+            {
+              "metric": "consumption_l_100km",
+              "source_name": "Reviewed catalog source",
+              "source_url": "https://example.test/specs/panda",
+              "observed_at": "2026-07-15T00:00:00Z"
+            }
+          ]
         }
       ]
     }
@@ -601,24 +589,30 @@ Example response:
 }
 ```
 
-MVP scoring rules:
+Eligibility is strict. Offers must be Italian, active, unexpired, observed in
+the last 30 days, attached to a completed reviewed import and an exact spec,
+and backed by spec provenance. Price, model-family identity, body, fuel, seats,
+cargo, and powertrain consumption evidence are required. Used/certified offers
+also require mileage. PHEVs are excluded, as are highway EVs below 250 km WLTP.
+`budget_min_eur`, the 110% maximum-budget tolerance, and used `max_mileage` are
+hard constraints; fuel and body preferences are soft.
 
-- penalizes prices outside the requested budget, but keeps candidates in the result set
-- rewards lower prices within budget
-- rewards low `consumption_l_100km` when `consumption` is prioritized
-- rewards `cargo_volume_liters` and `seats` for `family`
-- rewards city cars, compact hatchbacks, and low consumption for `city` and `new_driver`
-- rewards `wltp_range_km` or low consumption for `highway`
-- rewards matching `preferred_fuel_type` and `preferred_body_style`
-- penalizes missing data without automatically excluding a vehicle
-- returns at most 5 items sorted by score descending
+Base component weights are price 30, use case 25, running cost 20, space 15,
+and efficiency/range 10. Each selected priority multiplies its component weight
+by 1.5, then all weights are normalized to 100. Component formulas are fixed:
 
-Document evidence rules:
+- price is 100 through 75% of budget, falls linearly to 70 at budget, then to 0 at 110%;
+- use case is 60% body/use matrix, 20% fuel preference, and 20% body preference;
+- running cost is linear from 100 at EUR 5/100 km to 0 at EUR 15/100 km;
+- space is 40% seat sufficiency and 60% use-specific cargo band;
+- liquid efficiency is linear from 100 at 4 L/100 km to 0 at 8;
+- EV efficiency/range averages the 14-24 kWh/100 km and 150-500 km curves.
 
-- uses `POST /search/documents` text-only semantics internally;
-- searches by vehicle `make` and `model`;
-- returns at most 3 evidence documents per recommendation item;
-- does not affect score, rationale, ranking, or persistence.
+Positive factors require a component score of at least 80; tradeoffs require a
+score below 70. Any soft budget overrun is always reported with exact euros and
+percentage. Offers are ranked before keeping the best offer per
+`model_family_key`; at most five are returned per group. Stable ties use score,
+price, make, model, then listing ID.
 
 ### POST /advisor/model-analysis
 

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_connection
-from app.main import app
+from app.main import app, settings
 
 
 def test_health_returns_ok_status():
@@ -13,22 +13,21 @@ def test_health_returns_ok_status():
     assert response.json() == {"status": "ok", "service": "drivewise-api"}
 
 
-def test_preflight_allows_configured_local_frontend_origin():
+def test_preflight_allows_every_configured_frontend_origin():
     client = TestClient(app)
 
-    response = client.options(
-        "/advisor/recommendations",
-        headers={
-            "Origin": "http://127.0.0.1:3000",
-            "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "content-type",
-        },
-    )
+    for origin in settings.api_cors_origins:
+        response = client.options(
+            "/advisor/recommendations",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
 
-    assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == (
-        "http://127.0.0.1:3000"
-    )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == origin
 
 
 def test_health_response_includes_cors_header_for_allowed_origin():

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 from statistics import mean
 from typing import Any
@@ -13,24 +14,35 @@ from app.schemas.vehicles import (
     VehicleSpec,
     VehicleSummary,
 )
+from app.services.advisor.energy_prices import (
+    DEFAULT_FUEL_PRICE_EUR_PER_LITER,
+    ELECTRICITY_PRICE_EUR_PER_KWH,
+    flat_rate_assumption_sentence,
+)
 
 
-ANALYSIS_YEAR = 2026
-FUEL_PRICE_EUR_PER_LITER = 1.85
-ENERGY_PRICE_EUR_PER_KWH = 0.30
-DEFAULT_EV_KWH_100KM = 16.0
+def _resolve_analysis_year(as_of: datetime | None) -> int:
+    """Derive the analysis year from the current date (or an injected anchor).
+
+    Kept injectable so tests stay deterministic: pass `as_of` explicitly to
+    pin the year instead of relying on the real clock.
+    """
+    return (as_of or datetime.now(timezone.utc)).year
 
 
 def build_model_analysis(
     request: ModelAnalysisRequest,
     candidates: list[dict[str, Any]],
     resolve_response: VehicleResolveResponse | None = None,
+    *,
+    as_of: datetime | None = None,
 ) -> ModelAnalysisResponse:
+    analysis_year = _resolve_analysis_year(as_of)
     assumptions = [
         "No live market sources are used in Model Analysis V1.",
         "Reference price uses available MVP listing prices, then base price fallback.",
         "Annual kilometres are estimated deterministically from usage_profile.",
-        "Fuel is estimated at EUR 1.85/L and electricity at EUR 0.30/kWh.",
+        flat_rate_assumption_sentence(),
         "Maintenance is a heuristic based on body style, powertrain, age, and mileage.",
         "Three-year depreciation is estimated at 28% of the available price.",
     ]
@@ -81,7 +93,7 @@ def build_model_analysis(
         warnings.append(warning)
         missing_data.append("resolved_spec")
 
-    reference_price = _market_reference_price(candidate, vehicle)
+    reference_price = _market_reference_price(candidate, vehicle, spec)
     price_assessment, price_warnings, price_flags = (
         _assess_price(
             asking_price=request.asking_price_eur,
@@ -100,7 +112,12 @@ def build_model_analysis(
     elif (
         include_red_flags
         and request.current_km is not None
-        and _is_high_mileage(vehicle.model_year, request.current_km, request.usage_profile)
+        and _is_high_mileage(
+            vehicle.model_year,
+            request.current_km,
+            request.usage_profile,
+            analysis_year,
+        )
     ):
         red_flags.append("high_mileage_for_age")
 
@@ -113,6 +130,7 @@ def build_model_analysis(
         include_price=include_price,
         include_maintenance=include_maintenance,
         include_tco=include_tco,
+        analysis_year=analysis_year,
     )
     checklist = _build_checklist(vehicle, spec, red_flags)
     verdict = _build_verdict(
@@ -191,7 +209,15 @@ def _select_spec(
     if not specs:
         return None
     if spec_id is None:
-        return VehicleSpec.model_validate(specs[0])
+        selected = min(
+            specs,
+            key=lambda item: (
+                not bool(item.get("is_default")),
+                item.get("variant_key") or "",
+                str(item["id"]),
+            ),
+        )
+        return VehicleSpec.model_validate(selected)
     for spec in specs:
         if spec["id"] == spec_id:
             return VehicleSpec.model_validate(spec)
@@ -201,14 +227,32 @@ def _select_spec(
 def _market_reference_price(
     candidate: dict[str, Any],
     vehicle: VehicleSummary,
+    spec: VehicleSpec | None,
 ) -> float | None:
+    listings = candidate.get("listings", [])
+    exact_spec_listings = (
+        [
+            listing
+            for listing in listings
+            if listing.get("spec_id") == spec.id
+        ]
+        if spec is not None
+        else []
+    )
+    priced_listings = exact_spec_listings
+    if not priced_listings and not any(
+        listing.get("spec_id") is not None for listing in listings
+    ):
+        priced_listings = listings
     listing_prices = [
         _as_float(listing.get("price_eur"))
-        for listing in candidate.get("listings", [])
+        for listing in priced_listings
         if listing.get("price_eur") is not None
     ]
     if listing_prices:
         return round(mean(listing_prices), 2)
+    if spec is not None and spec.list_price_eur is not None:
+        return spec.list_price_eur
     return _as_float(vehicle.base_price_eur)
 
 
@@ -244,10 +288,11 @@ def _estimate_costs(
     include_price: bool,
     include_maintenance: bool,
     include_tco: bool,
+    analysis_year: int,
 ) -> ModelAnalysisCostSummary:
     annual_km = _annual_km(request.usage_profile)
     maintenance = (
-        _annual_maintenance(vehicle, request.current_km)
+        _annual_maintenance(vehicle, spec, request.current_km, analysis_year)
         if include_maintenance
         else None
     )
@@ -291,11 +336,18 @@ def _annual_km(usage_profile: list[str]) -> int:
     return max(profile_values.get(profile, 12000) for profile in usage_profile)
 
 
-def _annual_maintenance(vehicle: VehicleSummary, current_km: int | None) -> float:
-    age = max(1, ANALYSIS_YEAR - vehicle.model_year)
+def _annual_maintenance(
+    vehicle: VehicleSummary,
+    spec: VehicleSpec | None,
+    current_km: int | None,
+    analysis_year: int,
+) -> float:
+    age = max(1, analysis_year - vehicle.model_year)
     km_factor = (current_km or 0) / 1000 * 2.5
-    base_cost = 420 if vehicle.body_style == "city_car" else 520
-    if vehicle.fuel_type == "electric":
+    body_style = spec.body_style if spec and spec.body_style else vehicle.body_style
+    fuel_type = spec.fuel_type if spec and spec.fuel_type else vehicle.fuel_type
+    base_cost = 420 if body_style == "city_car" else 520
+    if fuel_type == "electric":
         base_cost = 340
     return round(base_cost + age * 70 + km_factor, 2)
 
@@ -305,12 +357,15 @@ def _monthly_energy_cost(
     spec: VehicleSpec | None,
     annual_km: int,
 ) -> float | None:
+    fuel_type = spec.fuel_type if spec and spec.fuel_type else vehicle.fuel_type
+    if fuel_type == "electric":
+        if spec is None or spec.energy_consumption_kwh_100km is None:
+            return None
+        kwh = annual_km * spec.energy_consumption_kwh_100km / 100
+        return round((kwh * ELECTRICITY_PRICE_EUR_PER_KWH) / 12, 2)
     if spec and spec.consumption_l_100km is not None:
         liters = annual_km * spec.consumption_l_100km / 100
-        return round((liters * FUEL_PRICE_EUR_PER_LITER) / 12, 2)
-    if vehicle.fuel_type == "electric":
-        kwh = annual_km * DEFAULT_EV_KWH_100KM / 100
-        return round((kwh * ENERGY_PRICE_EUR_PER_KWH) / 12, 2)
+        return round((liters * DEFAULT_FUEL_PRICE_EUR_PER_LITER) / 12, 2)
     return None
 
 
@@ -325,8 +380,9 @@ def _is_high_mileage(
     model_year: int,
     current_km: int,
     usage_profile: list[str],
+    analysis_year: int,
 ) -> bool:
-    vehicle_age = max(1, ANALYSIS_YEAR - model_year)
+    vehicle_age = max(1, analysis_year - model_year)
     expected_km = _annual_km(usage_profile) * vehicle_age
     return current_km > expected_km * 1.35
 
@@ -341,9 +397,14 @@ def _build_checklist(
         "inspect_brakes_and_tires",
         "confirm_no_warning_lights",
     ]
-    if vehicle.fuel_type == "electric":
+    fuel_type = spec.fuel_type if spec and spec.fuel_type else vehicle.fuel_type
+    if fuel_type == "electric":
         checklist.append("check_battery_health_report")
-    if vehicle.fuel_type in {"hybrid_petrol", "mild_hybrid_petrol"}:
+    if fuel_type in {
+        "full_hybrid_petrol",
+        "hybrid_petrol",
+        "mild_hybrid_petrol",
+    }:
         checklist.append("check_hybrid_system_diagnostics")
     if spec and spec.transmission:
         checklist.append("test_transmission_shift_quality")

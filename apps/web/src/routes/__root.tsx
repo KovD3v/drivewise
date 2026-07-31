@@ -32,10 +32,14 @@ export const Route = createRootRoute({
         href: faviconHref,
         type: 'image/svg+xml',
       },
-      {
-        rel: 'stylesheet',
-        href: appStyles,
-      },
+      ...(appStyles
+        ? [
+            {
+              rel: 'stylesheet',
+              href: appStyles,
+            },
+          ]
+        : []),
     ],
   }),
   component: RootComponent,

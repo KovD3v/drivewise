@@ -3,8 +3,10 @@ import { afterEach, expect, test, vi } from 'vitest'
 import {
   analyzeModel,
   fetchDocuments,
+  fetchVehicle,
   fetchListings,
   fetchVehicles,
+  isApiNotFoundError,
   searchDocuments,
 } from './drivewise'
 
@@ -33,6 +35,50 @@ test('uses mock data when VITE_USE_MOCK_API is enabled', async () => {
   )
 })
 
+test('does not hide HTTP failures behind mock fallback', async () => {
+  vi.stubEnv('VITE_USE_MOCK_API', 'true')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ detail: 'Catalog unavailable' }),
+    }),
+  )
+
+  await expect(fetchVehicles()).rejects.toThrow('Catalog unavailable')
+})
+
+test('does not hide malformed GET responses behind mock fallback', async () => {
+  vi.stubEnv('VITE_USE_MOCK_API', 'true')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError('Unexpected token')
+      },
+    }),
+  )
+
+  await expect(fetchVehicles()).rejects.toThrow('Unexpected token')
+})
+
+test('identifies missing API records as not found errors', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ detail: 'Vehicle not found' }),
+    }),
+  )
+
+  const error = await fetchVehicle('missing').catch((caughtError) => caughtError)
+
+  expect(isApiNotFoundError(error)).toBe(true)
+})
+
 test('uses mock document search only when VITE_USE_MOCK_API is enabled', async () => {
   vi.stubEnv('VITE_USE_MOCK_API', 'true')
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
@@ -50,6 +96,47 @@ test('uses mock document search only when VITE_USE_MOCK_API is enabled', async (
       ]),
     }),
   )
+})
+
+test('does not hide HTTP or malformed POST responses behind mock fallback', async () => {
+  vi.stubEnv('VITE_USE_MOCK_API', 'true')
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => ({ detail: 'Invalid query' }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError('Malformed search response')
+      },
+    })
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(searchDocuments({ query: 'fiat panda' })).rejects.toThrow(
+    'Invalid query',
+  )
+  await expect(searchDocuments({ query: 'fiat panda' })).rejects.toThrow(
+    'Malformed search response',
+  )
+})
+
+test('validates document search length and normalized token limits before fetch', async () => {
+  const fetchMock = vi.fn()
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(searchDocuments({ query: 'x'.repeat(161) })).rejects.toThrow(
+    '160 characters or fewer',
+  )
+  await expect(
+    searchDocuments({
+      query:
+        'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen',
+    }),
+  ).rejects.toThrow('16 terms or fewer')
+  expect(fetchMock).not.toHaveBeenCalled()
 })
 
 test('mock search normalizes query and mirrors backend text-only scoring', async () => {

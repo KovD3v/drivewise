@@ -119,6 +119,40 @@ class FakeVehiclesRepository:
                     "euro_emission_standard": "Euro 6e",
                     "seats": 4,
                     "cargo_volume_liters": 225.00,
+                    "provenance": [
+                        {
+                            "source_id": UUID(
+                                "10000000-0000-4000-8000-000000000001"
+                            ),
+                            "source_key": "drivewise-synthetic-eu-seed",
+                            "source_name": "Drivewise Synthetic EU Seed",
+                            "source_url": "https://example.test/specs/fiat-panda",
+                            "source_license": "Synthetic test data",
+                            "observed_at": "2026-07-16T09:00:00+02:00",
+                            "record_observed_at": "2026-07-16T09:00:00+02:00",
+                            "content_hash": "spec-content-hash",
+                            "is_current": True,
+                            "supported_metrics": [
+                                "body_style",
+                                "fuel_type",
+                                "consumption_l_100km",
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "provenance": [
+                {
+                    "source_id": UUID("10000000-0000-4000-8000-000000000001"),
+                    "source_key": "drivewise-synthetic-eu-seed",
+                    "source_name": "Drivewise Synthetic EU Seed",
+                    "source_url": "https://example.test/vehicles/fiat-panda",
+                    "source_license": "Synthetic test data",
+                    "observed_at": "2026-07-16T09:00:00+02:00",
+                    "record_observed_at": "2026-07-16T09:00:00+02:00",
+                    "content_hash": "vehicle-content-hash",
+                    "is_current": True,
+                    "supported_metrics": ["make", "model", "model_year"],
                 }
             ],
         }
@@ -221,6 +255,16 @@ def test_get_vehicle_returns_specs(client):
     assert payload["model"] == "Panda"
     assert payload["specs"][0]["consumption_l_100km"] == 5.00
     assert payload["specs"][0]["euro_emission_standard"] == "Euro 6e"
+    assert payload["provenance"][0]["supported_metrics"] == [
+        "make",
+        "model",
+        "model_year",
+    ]
+    assert payload["specs"][0]["provenance"][0]["supported_metrics"] == [
+        "body_style",
+        "fuel_type",
+        "consumption_l_100km",
+    ]
 
 
 def test_post_vehicle_resolve_matches_dirty_query_to_ranked_spec(

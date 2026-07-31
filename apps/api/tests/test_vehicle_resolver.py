@@ -149,6 +149,87 @@ def test_resolver_does_not_match_short_make_inside_another_token():
     assert response.matches == []
 
 
+def test_resolver_uses_exact_variant_preferences_and_stable_default_tie_break():
+    vehicle_id = UUID("00000000-0000-4000-8000-000000000099")
+    petrol_spec_id = UUID("20000000-0000-4000-8000-000000000098")
+    electric_spec_id = UUID("20000000-0000-4000-8000-000000000099")
+    base_row = {
+        "id": vehicle_id,
+        "canonical_key": "it-acme-metro-2026",
+        "model_family_key": "it-acme-metro",
+        "make": "Acme",
+        "model": "Metro",
+        "model_year": 2026,
+        "body_style": "hatchback",
+        "fuel_type": "petrol",
+        "market": "IT",
+        "base_price_eur": 20_000,
+        "trim": "Tour",
+        "drivetrain": "fwd",
+        "transmission": "automatic",
+        "engine": "test",
+        "horsepower": 100,
+        "battery_kwh": None,
+        "energy_consumption_kwh_100km": None,
+        "consumption_l_100km": 5.0,
+        "wltp_range_km": None,
+        "co2_g_km": 110,
+        "euro_emission_standard": "Euro 6e",
+        "seats": 5,
+        "cargo_volume_liters": 350,
+    }
+    petrol_row = {
+        **base_row,
+        "spec_id": petrol_spec_id,
+        "variant_key": "it-acme-metro-2026-tour-petrol",
+        "is_default": True,
+        "spec_body_style": "hatchback",
+        "spec_fuel_type": "petrol",
+    }
+    electric_row = {
+        **base_row,
+        "spec_id": electric_spec_id,
+        "variant_key": "it-acme-metro-2026-tour-electric",
+        "is_default": False,
+        "spec_body_style": "suv",
+        "spec_fuel_type": "electric",
+        "battery_kwh": 60,
+        "energy_consumption_kwh_100km": 18.0,
+        "consumption_l_100km": None,
+        "wltp_range_km": 400,
+        "co2_g_km": 0,
+        "euro_emission_standard": None,
+    }
+
+    preferred = resolve_vehicle_query(
+        VehicleResolveRequest(
+            query="Metro Tour",
+            market="IT",
+            fuel_type="electric",
+            body_style="suv",
+        ),
+        [petrol_row, electric_row],
+    )
+    assert preferred.status == "matched"
+    assert preferred.matches[0].spec is not None
+    assert preferred.matches[0].spec.id == electric_spec_id
+    assert preferred.matches[0].matched_fields == [
+        "model",
+        "trim",
+        "fuel_type",
+        "body_style",
+    ]
+
+    for rows in ([petrol_row, electric_row], [electric_row, petrol_row]):
+        tied = resolve_vehicle_query(
+            VehicleResolveRequest(query="Metro Tour", market="IT"),
+            rows,
+        )
+        assert tied.status == "ambiguous"
+        assert tied.matches[0].spec is not None
+        assert tied.matches[0].spec.id == petrol_spec_id
+
+
 def _panda_row(vehicle_id: UUID, trim: str):
     return {
         "id": vehicle_id,

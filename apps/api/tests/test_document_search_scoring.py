@@ -4,12 +4,20 @@ from uuid import UUID
 from app.services.search.documents import (
     search_documents_text_only,
     search_documents_vector_fake,
+    tokenize_search_query,
 )
 
 
 FIRST_DOCUMENT_ID = UUID("40000000-0000-4000-8000-000000000001")
 SECOND_DOCUMENT_ID = UUID("40000000-0000-4000-8000-000000000002")
 THIRD_DOCUMENT_ID = UUID("40000000-0000-4000-8000-000000000003")
+
+
+def test_tokenizer_defensively_caps_unique_tokens_at_sixteen():
+    tokens = tokenize_search_query(" ".join(f"token{index}" for index in range(20)))
+
+    assert len(tokens) == 16
+    assert tokens[-1] == "token15"
 
 
 def test_title_match_scores_higher_than_content_match():
