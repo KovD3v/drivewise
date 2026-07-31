@@ -6,6 +6,10 @@ document-ingestion pipeline and never call a crawler or external service.
 The v1 shape is defined in `docs/catalog-v1.schema.json`. A synthetic fixture is
 available at `data/fixtures/catalog/catalog-v1.synthetic.json`.
 
+Before changing a source to `ranking_permission: "permitted"`, complete the
+human licence, access, metric-trust, and freshness review in
+[`docs/source-review.md`](source-review.md).
+
 Validate a snapshot without a database connection:
 
 ```bash
@@ -13,6 +17,16 @@ uv run --project apps/api python apps/api/scripts/import_catalog.py \
   --path data/fixtures/catalog/catalog-v1.synthetic.json \
   --check
 ```
+
+Report how many imported listings are currently rankable, why others are
+excluded, and which body-style or fuel-type coverage gaps remain:
+
+```bash
+uv run --project apps/api python apps/api/scripts/catalog_status.py
+```
+
+Use `--as-of <ISO8601>` to reproduce readiness at a specific observation time.
+The status command opens a read-only database transaction and has no write mode.
 
 Apply a validated snapshot transactionally:
 

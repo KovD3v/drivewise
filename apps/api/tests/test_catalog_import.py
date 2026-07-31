@@ -40,8 +40,8 @@ def test_catalog_fixture_validates_cross_references_and_same_trim_variants():
 
     summary = validate_catalog(payload)
 
-    assert summary.vehicles == 1
-    assert summary.variants == 2
+    assert summary.vehicles == len(payload.vehicles)
+    assert summary.variants == len(payload.variants)
     assert payload.variants[0].trim == payload.variants[1].trim
     assert payload.variants[0].variant_key != payload.variants[1].variant_key
     assert len(compute_catalog_hash(payload)) == 64
@@ -110,7 +110,8 @@ def test_catalog_check_mode_needs_no_database_url(monkeypatch, capsys, tmp_path)
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "Catalog is valid." in captured.out
-    assert "Variants: 2" in captured.out
+    expected_variants = len(load_catalog(FIXTURE_PATH).variants)
+    assert f"Variants: {expected_variants}" in captured.out
 
 
 def test_catalog_cli_requires_exactly_one_mode():

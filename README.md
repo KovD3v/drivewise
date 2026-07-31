@@ -168,6 +168,16 @@ ruff check apps/api
 
 `/health` is a cheap process check. `/ready` verifies the configured database with `SELECT 1` and returns `503` when the database URL is missing, still placeholder-like, or unreachable.
 
+To inspect the configured catalog without changing it, run:
+
+```bash
+uv run --project apps/api python apps/api/scripts/catalog_status.py
+```
+
+The report shows rankable listings, exclusion reasons, price coverage, and
+body-style or fuel-type blind spots. Pass `--as-of <ISO8601>` to reproduce a
+historical readiness check.
+
 To run the optional database integration test, set `TEST_DATABASE_URL` to a disposable PostgreSQL database that supports pgvector, then run `pytest apps/api`. CI provides this with a local `pgvector/pgvector:pg16` service; no Neon database is required for CI.
 
 Frontend:
