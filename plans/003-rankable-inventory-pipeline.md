@@ -176,6 +176,7 @@ write to a real database. Everything in this plan is verifiable without one.
 - `data/fixtures/catalog/catalog-v1.synthetic.json` (grow)
 - `apps/api/tests/test_catalog_coverage.py` (create)
 - `apps/api/tests/test_catalog_status_script.py` (create)
+- `apps/api/tests/test_catalog_import.py` (update fixture-size assertions only)
 - `docs/source-review.md` (create)
 - `docs/catalog-import.md`, `README.md` (document the new script)
 - `plans/README.md` (status row only)
@@ -293,6 +294,22 @@ listings: [{listing_ref: "synthetic-metro-petrol-new", condition: "new", price_e
 
 ### Step 3: Lock the coverage in with a test
 
+First update the two fixture-size assertions in
+`apps/api/tests/test_catalog_import.py` that encode the original one-vehicle
+fixture:
+
+- In `test_catalog_fixture_validates_cross_references_and_same_trim_variants`,
+  replace the hard-coded `summary.vehicles == 1` and `summary.variants == 2`
+  assertions with comparisons to `len(payload.vehicles)` and
+  `len(payload.variants)`. Keep the same-trim/different-variant assertions.
+- In `test_catalog_check_mode_needs_no_database_url`, derive the expected
+  `Variants: N` output from `len(load_catalog(FIXTURE_PATH).variants)` rather
+  than hard-coding `Variants: 2`.
+
+Do not weaken any importer validation behavior or change any other test. These
+are characterization assertions for a fixture whose size Step 2 deliberately
+changes.
+
 Create `apps/api/tests/test_catalog_coverage.py`. It must **not** need a
 database: load the fixture JSON, transform it into the candidate-dict shape that
 `score_recommendations` consumes, and assert on the scored result. Read
@@ -369,7 +386,7 @@ credentials, tokens, or private URLs.
 | Family dedupe | `test_catalog_coverage.py` | ≤1 item per `model_family_key` per group |
 | Script help / bad DB URL | `test_catalog_status_script.py` (new) | exit codes and messages |
 | Report formatting | `test_catalog_status_script.py` | stubbed repo → expected lines |
-| Fixture still imports | `test_catalog_import.py` (existing) | passes unchanged |
+| Fixture still imports | `test_catalog_import.py` (existing) | summary and CLI counts follow the expanded fixture; validation behavior stays unchanged |
 
 Structural patterns: `test_advisor_scoring.py` for candidate dicts,
 `test_plan_embeddings_script.py` for script tests, `test_catalog_import.py` for
@@ -382,6 +399,9 @@ ALL must hold:
 - [ ] `uv run --frozen --project apps/api --extra dev pytest apps/api -q` → all pass, ≥8 new tests
 - [ ] `uv run --frozen --project apps/api --extra dev ruff check apps/api` → `All checks passed!`
 - [ ] `import_catalog.py --check` passes on the grown fixture
+- [ ] `test_catalog_import.py` contains no hard-coded
+      `summary.vehicles == 1`, `summary.variants == 2`, or `"Variants: 2"`
+      fixture-size assertions
 - [ ] `catalog_status.py --help` exits 0
 - [ ] `grep -nE "INSERT|UPDATE|DELETE" apps/api/scripts/catalog_status.py` → no matches
 - [ ] `git diff apps/api/app/services/advisor/scoring.py` → **empty**
