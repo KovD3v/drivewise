@@ -36,11 +36,11 @@ The beta should let a buyer:
 
 All of these prerequisites must be satisfied:
 
-- Plan 003 is `DONE`: the synthetic coverage tests and read-only
-  `catalog_status.py` exist and pass.
-- Plan 005 has an operator-approved source decision and a completed disposable
-  database pilot report.
-- Plan 001 is `DONE`: a user can reopen a recommendation run by URL.
+- Synthetic catalog coverage tests and the read-only `catalog_status.py` checks
+  exist and pass.
+- Written authorization exists for the selected marketplace source, and a
+  completed disposable database pilot report is available.
+- A user can reopen a recommendation run by URL.
 - The selected beta dataset produces at least two eligible offers for each
   scenario used in a session.
 - A reviewer has checked exact variant pairing, source permission, freshness,
