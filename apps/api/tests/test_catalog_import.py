@@ -391,23 +391,65 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
     ) as conn:
         _cleanup_catalog_test_rows(conn)
         try:
-            payload = load_catalog(FIXTURE_PATH)
+            payload = load_catalog(FIXTURE_PATH).model_copy(deep=True)
+            payload.vehicles = payload.vehicles[:1]
+            payload.variants = payload.variants[:2]
+            payload.listings = payload.listings[:2]
             first = import_catalog(conn, payload, file_name="pytest-catalog-base.json")
+            profile = conn.execute(
+                """
+                SELECT
+                  spec.engine_code,
+                  (
+                    SELECT count(*)
+                    FROM vehicle_maintenance_items item
+                    WHERE item.spec_id = spec.id
+                  ) AS maintenance_count,
+                  (
+                    SELECT count(*)
+                    FROM vehicle_safety_ratings rating
+                    WHERE rating.spec_id = spec.id
+                  ) AS safety_rating_count,
+                  (
+                    SELECT count(*)
+                    FROM vehicle_features feature
+                    WHERE feature.spec_id = spec.id
+                  ) AS feature_count,
+                  (
+                    SELECT count(*)
+                    FROM vehicle_media_assets asset
+                    WHERE asset.spec_id = spec.id
+                  ) AS media_count
+                FROM vehicle_specs spec
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
+                """
+            ).fetchone()
             listing_before = conn.execute(
                 """
                 SELECT id, price_eur, is_active
                 FROM listings
-                WHERE listing_ref = 'synthetic-metro-petrol-new'
+                WHERE listing_ref = 'synthetic-acme-metro-petrol-new'
                 """
             ).fetchone()
             same = import_catalog(conn, payload, file_name="pytest-catalog-base.json")
 
             assert first.status == "completed"
             assert first.counts.inserted == 5
+            assert profile == {
+                "engine_code": "SYN-T10",
+                "maintenance_count": 2,
+                "safety_rating_count": 1,
+                "feature_count": 4,
+                "media_count": 3,
+            }
             assert same.status == "unchanged"
             assert same.run_id == first.run_id
             assert conn.execute(
-                "SELECT count(*) AS count FROM vehicles WHERE make = 'Acme'"
+                """
+                SELECT count(*) AS count
+                FROM vehicles
+                WHERE canonical_key = 'it-acme-metro-2026'
+                """
             ).fetchone() == {"count": 1}
             assert conn.execute(
                 """
@@ -442,6 +484,59 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
             assert "consumption_l_100km" in petrol_provenance["supported_metrics"]
             assert "battery_kwh" not in petrol_provenance["supported_metrics"]
 
+            omitted_maintenance = payload.model_copy(deep=True)
+            omitted_maintenance.variants[0].list_price_eur = 16850
+            omitted_maintenance.variants[0].maintenance_schedule = []
+            omitted_maintenance.variants[0].__pydantic_fields_set__.discard(
+                "maintenance_schedule"
+            )
+            import_catalog(
+                conn,
+                omitted_maintenance,
+                file_name="pytest-catalog-omitted-maintenance.json",
+            )
+            assert conn.execute(
+                """
+                SELECT count(*) AS count
+                FROM vehicle_maintenance_items item
+                JOIN vehicle_specs spec ON spec.id = item.spec_id
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
+                """
+            ).fetchone() == {"count": 2}
+
+            cleared_maintenance = omitted_maintenance.model_copy(deep=True)
+            cleared_maintenance.variants[0].list_price_eur = 16875
+            cleared_maintenance.variants[0].__pydantic_fields_set__.add(
+                "maintenance_schedule"
+            )
+            import_catalog(
+                conn,
+                cleared_maintenance,
+                file_name="pytest-catalog-cleared-maintenance.json",
+            )
+            assert conn.execute(
+                """
+                SELECT count(*) AS count
+                FROM vehicle_maintenance_items item
+                JOIN vehicle_specs spec ON spec.id = item.spec_id
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
+                """
+            ).fetchone() == {"count": 0}
+            same_cleared = import_catalog(
+                conn,
+                cleared_maintenance,
+                file_name="pytest-catalog-cleared-maintenance.json",
+            )
+            assert same_cleared.status == "unchanged"
+            assert conn.execute(
+                """
+                SELECT count(*) AS count
+                FROM vehicle_maintenance_items item
+                JOIN vehicle_specs spec ON spec.id = item.spec_id
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
+                """
+            ).fetchone() == {"count": 0}
+
             changed = payload.model_copy(deep=True)
             changed.listings[0].price_eur = 16950
             updated = import_catalog(
@@ -453,7 +548,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 """
                 SELECT id, price_eur, is_active
                 FROM listings
-                WHERE listing_ref = 'synthetic-metro-petrol-new'
+                WHERE listing_ref = 'synthetic-acme-metro-petrol-new'
                 """
             ).fetchone()
 
@@ -473,7 +568,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 """
                 SELECT is_active
                 FROM listings
-                WHERE listing_ref = 'synthetic-metro-electric-used'
+                WHERE listing_ref = 'synthetic-acme-metro-electric-new'
                 """
             ).fetchone()
             assert still_active == {"is_active": True}
@@ -489,7 +584,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 """
                 SELECT is_active
                 FROM listings
-                WHERE listing_ref = 'synthetic-metro-electric-used'
+                WHERE listing_ref = 'synthetic-acme-metro-electric-new'
                 """
             ).fetchone()
             assert result.counts.deactivated == 1
@@ -532,6 +627,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
             assert "NumericValueOutOfRange" in failed_run["error_message"]
 
             mixed_sources = payload.model_copy(deep=True)
+            mixed_sources.variants[0].list_price_eur = 17500
             mixed_sources.sources.append(
                 mixed_sources.sources[0].model_copy(
                     update={
@@ -585,7 +681,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 FROM vehicle_spec_provenance provenance
                 JOIN sources source ON source.id = provenance.source_id
                 JOIN vehicle_specs spec ON spec.id = provenance.spec_id
-                WHERE spec.variant_key = 'it-acme-metro-2026-city-petrol'
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
                 ORDER BY source.source_key
                 """
             ).fetchall()
@@ -628,7 +724,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 FROM vehicle_spec_provenance provenance
                 JOIN sources source ON source.id = provenance.source_id
                 JOIN vehicle_specs spec ON spec.id = provenance.spec_id
-                WHERE spec.variant_key = 'it-acme-metro-2026-city-petrol'
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
                 ORDER BY source.source_key
                 """
             ).fetchall()
@@ -659,14 +755,14 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 """
                 SELECT price_eur, is_active
                 FROM listings
-                WHERE listing_ref = 'synthetic-metro-petrol-new'
+                WHERE listing_ref = 'synthetic-acme-metro-petrol-new'
                   AND source_id = (
                     SELECT id FROM sources
                     WHERE source_key = 'drivewise-synthetic-catalog'
                   )
                 """
             ).fetchone()
-            assert float(unchanged_listing["price_eur"]) == 17500
+            assert float(unchanged_listing["price_eur"]) == 9500
             assert unchanged_listing["is_active"] is True
 
             stale_vehicle = source_b_current.model_copy(deep=True)
@@ -697,7 +793,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
                 SELECT vehicle.model, spec.list_price_eur
                 FROM vehicle_specs spec
                 JOIN vehicles vehicle ON vehicle.id = spec.vehicle_id
-                WHERE spec.variant_key = 'it-acme-metro-2026-city-petrol'
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
                 """
             ).fetchone()
             assert current_values["model"] == "Metro"
@@ -733,4 +829,29 @@ def _cleanup_catalog_test_rows(conn) -> None:
         """
     )
     for source in sources:
-        conn.execute("DELETE FROM sources WHERE id = %s", (source["id"],))
+        conn.execute(
+            """
+            DELETE FROM sources source
+            WHERE source.id = %s
+              AND NOT EXISTS (
+                SELECT 1 FROM vehicle_provenance WHERE source_id = source.id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM vehicle_spec_provenance WHERE source_id = source.id
+              )
+              AND NOT EXISTS (SELECT 1 FROM listings WHERE source_id = source.id)
+              AND NOT EXISTS (
+                SELECT 1 FROM vehicle_maintenance_items WHERE source_id = source.id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM vehicle_safety_ratings WHERE source_id = source.id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM vehicle_features WHERE source_id = source.id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM vehicle_media_assets WHERE source_id = source.id
+              )
+            """,
+            (source["id"],),
+        )

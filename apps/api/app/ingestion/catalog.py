@@ -26,6 +26,10 @@ VEHICLE_NAMESPACE = UUID("e98062b5-c1e1-43bc-95d3-d5fb5ef042bc")
 VARIANT_NAMESPACE = UUID("71b24cbd-74bb-4642-8a10-529085772138")
 LISTING_NAMESPACE = UUID("a057c2aa-7b3f-4d87-91cb-b3e68318d9bf")
 PROVENANCE_NAMESPACE = UUID("90eae936-2713-4238-b508-3189252f640e")
+MAINTENANCE_ITEM_NAMESPACE = UUID("b4cbf797-413c-4ee5-b152-1e483fa73572")
+SAFETY_RATING_NAMESPACE = UUID("ac53e762-849a-49fa-9ef1-3dc003379119")
+FEATURE_NAMESPACE = UUID("422e3e4d-2895-49a5-9b3a-fc2e93c31e21")
+MEDIA_ASSET_NAMESPACE = UUID("d18a36ee-6e46-4379-90d1-93cbb1ed30b9")
 CatalogFuelType = Literal[
     "diesel",
     "electric",
@@ -857,11 +861,21 @@ def _upsert_variants(
               fuel_type, list_price_eur, drivetrain, transmission, engine,
               horsepower, battery_kwh, energy_consumption_kwh_100km,
               consumption_l_100km, wltp_range_km, co2_g_km,
-              euro_emission_standard, seats, cargo_volume_liters, metadata
+              euro_emission_standard, seats, cargo_volume_liters,
+              generation_name, restyling_label, category, doors, length_mm,
+              width_mm, height_mm, wheelbase_mm, curb_weight_kg,
+              gross_weight_kg, payload_kg, engine_code, displacement_cc,
+              cylinders, power_kw, torque_nm, battery_usable_kwh,
+              transmission_type, gear_count, differential_type,
+              acceleration_0_100_s, top_speed_kmh, braking_100_0_m,
+              homologation_cycle, metadata
             )
             VALUES (
-              %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-              %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
             ON CONFLICT (variant_key) DO UPDATE SET
               vehicle_id = EXCLUDED.vehicle_id,
@@ -882,6 +896,30 @@ def _upsert_variants(
               euro_emission_standard = EXCLUDED.euro_emission_standard,
               seats = EXCLUDED.seats,
               cargo_volume_liters = EXCLUDED.cargo_volume_liters,
+              generation_name = EXCLUDED.generation_name,
+              restyling_label = EXCLUDED.restyling_label,
+              category = EXCLUDED.category,
+              doors = EXCLUDED.doors,
+              length_mm = EXCLUDED.length_mm,
+              width_mm = EXCLUDED.width_mm,
+              height_mm = EXCLUDED.height_mm,
+              wheelbase_mm = EXCLUDED.wheelbase_mm,
+              curb_weight_kg = EXCLUDED.curb_weight_kg,
+              gross_weight_kg = EXCLUDED.gross_weight_kg,
+              payload_kg = EXCLUDED.payload_kg,
+              engine_code = EXCLUDED.engine_code,
+              displacement_cc = EXCLUDED.displacement_cc,
+              cylinders = EXCLUDED.cylinders,
+              power_kw = EXCLUDED.power_kw,
+              torque_nm = EXCLUDED.torque_nm,
+              battery_usable_kwh = EXCLUDED.battery_usable_kwh,
+              transmission_type = EXCLUDED.transmission_type,
+              gear_count = EXCLUDED.gear_count,
+              differential_type = EXCLUDED.differential_type,
+              acceleration_0_100_s = EXCLUDED.acceleration_0_100_s,
+              top_speed_kmh = EXCLUDED.top_speed_kmh,
+              braking_100_0_m = EXCLUDED.braking_100_0_m,
+              homologation_cycle = EXCLUDED.homologation_cycle,
               metadata = EXCLUDED.metadata,
               updated_at = now()
             RETURNING id
@@ -907,11 +945,36 @@ def _upsert_variants(
                 variant.euro_emission_standard,
                 variant.seats,
                 variant.cargo_volume_liters,
+                variant.generation_name,
+                variant.restyling_label,
+                variant.category,
+                variant.doors,
+                variant.length_mm,
+                variant.width_mm,
+                variant.height_mm,
+                variant.wheelbase_mm,
+                variant.curb_weight_kg,
+                variant.gross_weight_kg,
+                variant.payload_kg,
+                variant.engine_code,
+                variant.displacement_cc,
+                variant.cylinders,
+                variant.power_kw,
+                variant.torque_nm,
+                variant.battery_usable_kwh,
+                variant.transmission_type,
+                variant.gear_count,
+                variant.differential_type,
+                variant.acceleration_0_100_s,
+                variant.top_speed_kmh,
+                variant.braking_100_0_m,
+                variant.homologation_cycle,
                 Jsonb(variant.metadata),
             ),
         ).fetchone()
         variant_id = _row_value(row, "id")
         variant_ids[variant.variant_key] = variant_id
+        _sync_variant_profile_children(conn, variant, variant_id, source_ids)
         _replace_provenance_set(
             conn,
             table="vehicle_spec_provenance",
@@ -924,6 +987,231 @@ def _upsert_variants(
             source_ids=source_ids,
         )
     return variant_ids
+
+
+def _sync_variant_profile_children(
+    conn,
+    variant: VariantRecord,
+    spec_id: UUID,
+    source_ids: dict[str, UUID],
+) -> None:
+    configurations = (
+        (
+            "maintenance_schedule",
+            "vehicle_maintenance_items",
+            variant.maintenance_schedule,
+            lambda record: record.operation_code,
+            _upsert_maintenance_item,
+        ),
+        (
+            "safety_ratings",
+            "vehicle_safety_ratings",
+            variant.safety_ratings,
+            lambda record: f"{record.assessment_system}:{record.assessment_year}",
+            _upsert_safety_rating,
+        ),
+        (
+            "features",
+            "vehicle_features",
+            variant.features,
+            lambda record: record.feature_key,
+            _upsert_feature,
+        ),
+        (
+            "media",
+            "vehicle_media_assets",
+            variant.media,
+            lambda record: record.asset_key,
+            _upsert_media_asset,
+        ),
+    )
+    for field_name, table, records, _key_function, upsert in configurations:
+        if field_name not in variant.model_fields_set:
+            continue
+        retained_ids = [
+            upsert(conn, spec_id, record, source_ids[record.source_key])
+            for record in records
+        ]
+        if retained_ids:
+            conn.execute(
+                f"DELETE FROM {table} WHERE spec_id = %s AND id <> ALL(%s)",
+                (spec_id, retained_ids),
+            )
+        else:
+            conn.execute(f"DELETE FROM {table} WHERE spec_id = %s", (spec_id,))
+
+
+def _upsert_maintenance_item(
+    conn,
+    spec_id: UUID,
+    record: MaintenanceRecord,
+    source_id: UUID,
+) -> UUID:
+    item_id = uuid5(
+        MAINTENANCE_ITEM_NAMESPACE,
+        f"{spec_id}:{record.operation_code}",
+    )
+    conn.execute(
+        """
+        INSERT INTO vehicle_maintenance_items (
+          id, spec_id, operation_code, title, interval_km, interval_months,
+          notes, source_id, source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, operation_code) DO UPDATE SET
+          title = EXCLUDED.title,
+          interval_km = EXCLUDED.interval_km,
+          interval_months = EXCLUDED.interval_months,
+          notes = EXCLUDED.notes,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            item_id,
+            spec_id,
+            record.operation_code,
+            record.title,
+            record.interval_km,
+            record.interval_months,
+            record.notes,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return item_id
+
+
+def _upsert_safety_rating(
+    conn,
+    spec_id: UUID,
+    record: SafetyRatingRecord,
+    source_id: UUID,
+) -> UUID:
+    rating_id = uuid5(
+        SAFETY_RATING_NAMESPACE,
+        f"{spec_id}:{record.assessment_system}:{record.assessment_year}",
+    )
+    conn.execute(
+        """
+        INSERT INTO vehicle_safety_ratings (
+          id, spec_id, assessment_system, assessment_year, overall_stars,
+          adult_occupant_percent, child_occupant_percent,
+          vulnerable_road_users_percent, safety_assist_percent, source_id,
+          source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, assessment_system, assessment_year) DO UPDATE SET
+          overall_stars = EXCLUDED.overall_stars,
+          adult_occupant_percent = EXCLUDED.adult_occupant_percent,
+          child_occupant_percent = EXCLUDED.child_occupant_percent,
+          vulnerable_road_users_percent = EXCLUDED.vulnerable_road_users_percent,
+          safety_assist_percent = EXCLUDED.safety_assist_percent,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            rating_id,
+            spec_id,
+            record.assessment_system,
+            record.assessment_year,
+            record.overall_stars,
+            record.adult_occupant_percent,
+            record.child_occupant_percent,
+            record.vulnerable_road_users_percent,
+            record.safety_assist_percent,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return rating_id
+
+
+def _upsert_feature(
+    conn,
+    spec_id: UUID,
+    record: FeatureRecord,
+    source_id: UUID,
+) -> UUID:
+    feature_id = uuid5(FEATURE_NAMESPACE, f"{spec_id}:{record.feature_key}")
+    conn.execute(
+        """
+        INSERT INTO vehicle_features (
+          id, spec_id, feature_key, category, name, availability, notes,
+          source_id, source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, feature_key) DO UPDATE SET
+          category = EXCLUDED.category,
+          name = EXCLUDED.name,
+          availability = EXCLUDED.availability,
+          notes = EXCLUDED.notes,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            feature_id,
+            spec_id,
+            record.feature_key,
+            record.category,
+            record.name,
+            record.availability,
+            record.notes,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return feature_id
+
+
+def _upsert_media_asset(
+    conn,
+    spec_id: UUID,
+    record: MediaRecord,
+    source_id: UUID,
+) -> UUID:
+    asset_id = uuid5(MEDIA_ASSET_NAMESPACE, f"{spec_id}:{record.asset_key}")
+    conn.execute(
+        """
+        INSERT INTO vehicle_media_assets (
+          id, spec_id, asset_key, asset_type, title, url, mime_type, locale,
+          source_id, source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, asset_key) DO UPDATE SET
+          asset_type = EXCLUDED.asset_type,
+          title = EXCLUDED.title,
+          url = EXCLUDED.url,
+          mime_type = EXCLUDED.mime_type,
+          locale = EXCLUDED.locale,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            asset_id,
+            spec_id,
+            record.asset_key,
+            record.asset_type,
+            record.title,
+            record.url,
+            record.mime_type,
+            record.locale,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return asset_id
 
 
 def _sync_vehicle_mirrors(
