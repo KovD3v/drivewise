@@ -43,6 +43,24 @@ an identical dataset is a no-op; changed records keep their database IDs. Missin
 listings are never deactivated implicitly, so a snapshot must explicitly set
 `is_active` to `false`.
 
+Variants can additionally carry the optional detail-only profile scalar fields
+and these four optional child collections: `maintenance_schedule`,
+`safety_ratings`, `features`, and `media`. Child rows are source-backed: every
+maintenance operation, safety assessment, feature, and media asset declares a
+known `source_key`, HTTPS `source_url`, and `observed_at`. Maintenance requires
+at least one positive interval; feature categories are `adas`, `safety`,
+`technology`, or `comfort`; media types are `photo`, `brochure`, or `manual`.
+
+Collection presence is semantically significant. If one of the four
+collections is omitted from a variant, the importer leaves the existing rows
+for that collection untouched. If it is present as `[]`, the importer deletes
+all existing rows for that collection and spec. If it is present with records,
+those stable child keys are upserted and any omitted existing child keys are
+deleted. The catalog dataset hash and each variant content hash include a
+presence map for all four collections, in addition to canonical JSON content;
+therefore an omitted collection and an explicitly empty collection cannot be
+treated as the same no-op import.
+
 Variant `fuel_type` and `body_style` values are restricted to the same checked-in
 enums used by the Advisor and web form. Every source must explicitly declare a
 `ranking_permission`: only `permitted` sources can contribute offers or metrics
