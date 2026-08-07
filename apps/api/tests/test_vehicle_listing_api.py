@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_listings_repository, get_vehicles_repository
 from app.main import app
-from app.schemas.vehicles import VehicleSpec
+from app.schemas.vehicles import VehicleSpecDetail
 
 
 FIAT_ID = UUID("00000000-0000-4000-8000-000000000001")
@@ -449,8 +449,8 @@ def test_get_vehicle_returns_complete_knowledge_profile(client):
     assert spec["consumption_l_100km"] == 5.0
 
 
-def test_vehicle_spec_defaults_legacy_flat_records_to_empty_profile():
-    spec = VehicleSpec.model_validate(
+def test_vehicle_spec_detail_defaults_legacy_flat_records_to_empty_profile():
+    spec = VehicleSpecDetail.model_validate(
         {
             "id": UUID("20000000-0000-4000-8000-000000000099"),
             "trim": "Legacy flat specification",
@@ -545,6 +545,18 @@ def test_post_vehicle_resolve_matches_dirty_query_to_ranked_spec(
     assert match["vehicle"]["id"] == str(FIAT_ID)
     assert match["vehicle"]["make"] == "Fiat"
     assert match["spec"]["trim"] == "1.0 FireFly Hybrid"
+    assert not {
+        "identity",
+        "dimensions",
+        "powertrain",
+        "transmission_details",
+        "performance",
+        "official_efficiency",
+        "maintenance_schedule",
+        "safety",
+        "technology_comfort",
+        "media",
+    }.intersection(match["spec"])
     assert match["matched_fields"] == [
         "make",
         "model",
