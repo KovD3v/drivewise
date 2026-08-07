@@ -485,7 +485,6 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
             assert "battery_kwh" not in petrol_provenance["supported_metrics"]
 
             omitted_maintenance = payload.model_copy(deep=True)
-            omitted_maintenance.variants[0].list_price_eur = 16850
             omitted_maintenance.variants[0].maintenance_schedule = []
             omitted_maintenance.variants[0].__pydantic_fields_set__.discard(
                 "maintenance_schedule"
@@ -505,7 +504,6 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
             ).fetchone() == {"count": 2}
 
             cleared_maintenance = omitted_maintenance.model_copy(deep=True)
-            cleared_maintenance.variants[0].list_price_eur = 16875
             cleared_maintenance.variants[0].__pydantic_fields_set__.add(
                 "maintenance_schedule"
             )

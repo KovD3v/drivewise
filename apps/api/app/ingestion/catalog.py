@@ -108,6 +108,12 @@ VARIANT_PROVENANCE_FIELDS = (
     "braking_100_0_m",
     "homologation_cycle",
 )
+PROFILE_COLLECTION_FIELDS = (
+    "maintenance_schedule",
+    "safety_ratings",
+    "features",
+    "media",
+)
 
 
 class CatalogValidationError(ValueError):
@@ -549,7 +555,15 @@ def validate_catalog(payload: CatalogPayload) -> CatalogSummary:
 
 
 def compute_catalog_hash(payload: CatalogPayload) -> str:
-    return _content_hash(payload.model_dump(mode="json"))
+    return _content_hash(
+        {
+            "payload": payload.model_dump(mode="json"),
+            "variant_profile_collection_presence": {
+                variant.variant_key: _profile_collection_presence(variant)
+                for variant in payload.variants
+            },
+        }
+    )
 
 
 def import_catalog(
@@ -822,7 +836,12 @@ def _upsert_variants(
 
     variant_ids: dict[str, UUID] = {}
     for variant in variants:
-        content_hash = _content_hash(variant.model_dump(mode="json"))
+        content_hash = _content_hash(
+            {
+                "variant": variant.model_dump(mode="json"),
+                "profile_collection_presence": _profile_collection_presence(variant),
+            }
+        )
         existing = conn.execute(
             """
             SELECT
@@ -1521,6 +1540,13 @@ def _content_hash(value: Any) -> str:
         default=_json_default,
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _profile_collection_presence(variant: VariantRecord) -> dict[str, bool]:
+    return {
+        field_name: field_name in variant.model_fields_set
+        for field_name in PROFILE_COLLECTION_FIELDS
+    }
 
 
 def _json_default(value: Any) -> str:
