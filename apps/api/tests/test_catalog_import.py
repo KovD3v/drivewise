@@ -85,6 +85,96 @@ def test_catalog_json_schema_accepts_enriched_fixture():
     ).validate(instance)
 
 
+def _assert_rejected_by_catalog_validators(raw_payload, tmp_path):
+    from jsonschema import Draft202012Validator
+    from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
+
+    path = tmp_path / "invalid-catalog-contract.json"
+    path.write_text(json.dumps(raw_payload))
+    with pytest.raises(CatalogValidationError):
+        load_catalog(path)
+
+    schema = json.loads((ROOT / "docs/catalog-v1.schema.json").read_text())
+    with pytest.raises(JsonSchemaValidationError):
+        Draft202012Validator(schema).validate(raw_payload)
+
+
+def test_catalog_strict_policy_rejects_noncanonical_keys_in_both_validators(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["sources"][0]["source_key"] = " Drivewise-Synthetic-Catalog "
+
+    _assert_rejected_by_catalog_validators(raw_payload, tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("collection", "index", "field", "invalid_value"),
+    [
+        ("variants", 0, "doors", "5"),
+        ("variants", 0, "power_kw", "74"),
+        ("listings", 0, "is_active", "true"),
+    ],
+)
+def test_catalog_strict_policy_rejects_coerced_json_scalars_in_both_validators(
+    collection,
+    index,
+    field,
+    invalid_value,
+    tmp_path,
+):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload[collection][index][field] = invalid_value
+
+    _assert_rejected_by_catalog_validators(raw_payload, tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("doors", 11),
+        ("length_mm", 20_001),
+        ("width_mm", 5_001),
+        ("height_mm", 5_001),
+        ("wheelbase_mm", 12_001),
+        ("curb_weight_kg", 50_001),
+        ("gross_weight_kg", 50_001),
+        ("payload_kg", 50_001),
+        ("displacement_cc", 20_001),
+        ("cylinders", 25),
+        ("power_kw", 5_000.01),
+        ("torque_nm", 50_001),
+        ("battery_usable_kwh", 2_000.01),
+        ("gear_count", 31),
+        ("acceleration_0_100_s", 120.01),
+        ("top_speed_kmh", 601),
+        ("braking_100_0_m", 200.01),
+    ],
+)
+def test_catalog_profile_bounds_reject_overflow_in_both_validators(
+    field,
+    invalid_value,
+    tmp_path,
+):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0][field] = invalid_value
+
+    _assert_rejected_by_catalog_validators(raw_payload, tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [("interval_km", 2_000_001), ("interval_months", 1_201)],
+)
+def test_catalog_maintenance_bounds_reject_overflow_in_both_validators(
+    field,
+    invalid_value,
+    tmp_path,
+):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0]["maintenance_schedule"][0][field] = invalid_value
+
+    _assert_rejected_by_catalog_validators(raw_payload, tmp_path)
+
+
 def test_catalog_distinguishes_omitted_and_explicitly_empty_profile_collections():
     payload = load_catalog(FIXTURE_PATH)
     enriched = payload.variants[0]
@@ -372,6 +462,70 @@ def test_catalog_cli_reports_write_validation_error_without_traceback(
         "Catalog import rejected: listing stale-offer is older than stored data\n"
     )
     assert "Traceback" not in captured.err
+
+
+@pytest.mark.skipif(
+    not os.getenv("TEST_DATABASE_URL"),
+    reason="TEST_DATABASE_URL is not configured",
+)
+def test_catalog_historical_profile_replay_restores_materialized_collection():
+    import psycopg
+
+    database_url = os.environ["TEST_DATABASE_URL"]
+    apply_migrations(database_url)
+
+    with psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+        autocommit=True,
+    ) as conn:
+        _cleanup_catalog_test_rows(conn)
+        try:
+            profile = load_catalog(FIXTURE_PATH).model_copy(deep=True)
+            profile.vehicles = profile.vehicles[:1]
+            profile.variants = profile.variants[:2]
+            profile.listings = profile.listings[:2]
+            first = import_catalog(
+                conn,
+                profile,
+                file_name="pytest-catalog-profile-a.json",
+            )
+
+            cleared = profile.model_copy(deep=True)
+            cleared.variants[0].maintenance_schedule = []
+            cleared.variants[0].__pydantic_fields_set__.add("maintenance_schedule")
+            import_catalog(
+                conn,
+                cleared,
+                file_name="pytest-catalog-profile-cleared.json",
+            )
+
+            replayed = import_catalog(
+                conn,
+                profile,
+                file_name="pytest-catalog-profile-a-replayed.json",
+            )
+            identical_current = import_catalog(
+                conn,
+                profile,
+                file_name="pytest-catalog-profile-a-current.json",
+            )
+
+            maintenance_count = conn.execute(
+                """
+                SELECT count(*) AS count
+                FROM vehicle_maintenance_items item
+                JOIN vehicle_specs spec ON spec.id = item.spec_id
+                WHERE spec.variant_key = 'it-acme-metro-2026-petrol'
+                """
+            ).fetchone()
+            assert replayed.status == "completed"
+            assert replayed.run_id == first.run_id
+            assert maintenance_count == {"count": 2}
+            assert identical_current.status == "unchanged"
+            assert identical_current.run_id == first.run_id
+        finally:
+            _cleanup_catalog_test_rows(conn)
 
 
 @pytest.mark.skipif(

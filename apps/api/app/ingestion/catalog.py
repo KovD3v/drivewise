@@ -233,8 +233,8 @@ class ChildSourceRecord(StrictModel):
 class MaintenanceRecord(ChildSourceRecord):
     operation_code: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=240)
-    interval_km: int | None = Field(default=None, gt=0)
-    interval_months: int | None = Field(default=None, gt=0)
+    interval_km: int | None = Field(default=None, strict=True, gt=0, le=2_000_000)
+    interval_months: int | None = Field(default=None, strict=True, gt=0, le=1_200)
     notes: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
@@ -246,12 +246,20 @@ class MaintenanceRecord(ChildSourceRecord):
 
 class SafetyRatingRecord(ChildSourceRecord):
     assessment_system: str = Field(min_length=1, max_length=80)
-    assessment_year: int = Field(ge=1990, le=2100)
-    overall_stars: int | None = Field(default=None, ge=0, le=5)
-    adult_occupant_percent: int | None = Field(default=None, ge=0, le=100)
-    child_occupant_percent: int | None = Field(default=None, ge=0, le=100)
-    vulnerable_road_users_percent: int | None = Field(default=None, ge=0, le=100)
-    safety_assist_percent: int | None = Field(default=None, ge=0, le=100)
+    assessment_year: int = Field(strict=True, ge=1990, le=2100)
+    overall_stars: int | None = Field(default=None, strict=True, ge=0, le=5)
+    adult_occupant_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+    child_occupant_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+    vulnerable_road_users_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+    safety_assist_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
 
 
 class FeatureRecord(ChildSourceRecord):
@@ -284,7 +292,7 @@ class VehicleRecord(ProvenancedRecord):
     model_family_key: str = Field(min_length=1, max_length=160)
     make: str = Field(min_length=1, max_length=100)
     model: str = Field(min_length=1, max_length=120)
-    model_year: int = Field(ge=1980, le=2100)
+    model_year: int = Field(strict=True, ge=1980, le=2100)
     market: str = Field(default="IT", min_length=2, max_length=8)
     provenance_claims: list[ProvenanceClaim] = Field(default_factory=list)
 
@@ -303,45 +311,55 @@ class VariantRecord(ProvenancedRecord):
     variant_key: str = Field(min_length=1, max_length=240)
     vehicle_key: str = Field(min_length=1, max_length=200)
     trim: str = Field(min_length=1, max_length=200)
-    is_default: bool = False
+    is_default: bool = Field(default=False, strict=True)
     body_style: CatalogBodyStyle
     fuel_type: CatalogFuelType
-    list_price_eur: float | None = Field(default=None, ge=0)
+    list_price_eur: float | None = Field(default=None, strict=True, ge=0)
     drivetrain: str | None = Field(default=None, max_length=80)
     transmission: str | None = Field(default=None, max_length=120)
     engine: str | None = Field(default=None, max_length=200)
-    horsepower: int | None = Field(default=None, gt=0)
-    battery_kwh: float | None = Field(default=None, gt=0)
-    energy_consumption_kwh_100km: float | None = Field(default=None, gt=0)
-    consumption_l_100km: float | None = Field(default=None, gt=0)
-    wltp_range_km: int | None = Field(default=None, gt=0)
-    co2_g_km: int | None = Field(default=None, ge=0)
+    horsepower: int | None = Field(default=None, strict=True, gt=0)
+    battery_kwh: float | None = Field(default=None, strict=True, gt=0)
+    energy_consumption_kwh_100km: float | None = Field(
+        default=None, strict=True, gt=0
+    )
+    consumption_l_100km: float | None = Field(default=None, strict=True, gt=0)
+    wltp_range_km: int | None = Field(default=None, strict=True, gt=0)
+    co2_g_km: int | None = Field(default=None, strict=True, ge=0)
     euro_emission_standard: str | None = Field(default=None, max_length=80)
-    seats: int = Field(gt=0, le=20)
-    cargo_volume_liters: float = Field(ge=0)
+    seats: int = Field(strict=True, gt=0, le=20)
+    cargo_volume_liters: float = Field(strict=True, ge=0)
     generation_name: str | None = Field(default=None, max_length=120)
     restyling_label: str | None = Field(default=None, max_length=120)
     category: str | None = Field(default=None, max_length=80)
-    doors: int | None = Field(default=None, gt=0)
-    length_mm: int | None = Field(default=None, gt=0)
-    width_mm: int | None = Field(default=None, gt=0)
-    height_mm: int | None = Field(default=None, gt=0)
-    wheelbase_mm: int | None = Field(default=None, gt=0)
-    curb_weight_kg: int | None = Field(default=None, gt=0)
-    gross_weight_kg: int | None = Field(default=None, gt=0)
-    payload_kg: int | None = Field(default=None, gt=0)
+    doors: int | None = Field(default=None, strict=True, gt=0, le=10)
+    length_mm: int | None = Field(default=None, strict=True, gt=0, le=20_000)
+    width_mm: int | None = Field(default=None, strict=True, gt=0, le=5_000)
+    height_mm: int | None = Field(default=None, strict=True, gt=0, le=5_000)
+    wheelbase_mm: int | None = Field(default=None, strict=True, gt=0, le=12_000)
+    curb_weight_kg: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    gross_weight_kg: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    payload_kg: int | None = Field(default=None, strict=True, gt=0, le=50_000)
     engine_code: str | None = Field(default=None, max_length=120)
-    displacement_cc: int | None = Field(default=None, gt=0)
-    cylinders: int | None = Field(default=None, gt=0)
-    power_kw: float | None = Field(default=None, gt=0)
-    torque_nm: int | None = Field(default=None, gt=0)
-    battery_usable_kwh: float | None = Field(default=None, gt=0)
+    displacement_cc: int | None = Field(
+        default=None, strict=True, gt=0, le=20_000
+    )
+    cylinders: int | None = Field(default=None, strict=True, gt=0, le=24)
+    power_kw: float | None = Field(default=None, strict=True, gt=0, le=5_000)
+    torque_nm: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    battery_usable_kwh: float | None = Field(
+        default=None, strict=True, gt=0, le=2_000
+    )
     transmission_type: str | None = Field(default=None, max_length=80)
-    gear_count: int | None = Field(default=None, gt=0)
+    gear_count: int | None = Field(default=None, strict=True, gt=0, le=30)
     differential_type: str | None = Field(default=None, max_length=80)
-    acceleration_0_100_s: float | None = Field(default=None, gt=0)
-    top_speed_kmh: int | None = Field(default=None, gt=0)
-    braking_100_0_m: float | None = Field(default=None, gt=0)
+    acceleration_0_100_s: float | None = Field(
+        default=None, strict=True, gt=0, le=120
+    )
+    top_speed_kmh: int | None = Field(default=None, strict=True, gt=0, le=600)
+    braking_100_0_m: float | None = Field(
+        default=None, strict=True, gt=0, le=200
+    )
     homologation_cycle: str | None = Field(default=None, max_length=80)
     maintenance_schedule: list[MaintenanceRecord] = Field(default_factory=list)
     safety_ratings: list[SafetyRatingRecord] = Field(default_factory=list)
@@ -360,13 +378,13 @@ class ListingRecord(ProvenancedRecord):
     listing_ref: str = Field(min_length=1, max_length=240)
     variant_key: str = Field(min_length=1, max_length=240)
     title: str = Field(min_length=1, max_length=300)
-    price_eur: float = Field(ge=0)
-    mileage: int | None = Field(default=None, ge=0)
+    price_eur: float = Field(strict=True, ge=0)
+    mileage: int | None = Field(default=None, strict=True, ge=0)
     condition: Literal["new", "used", "certified"]
     location_region: str | None = Field(default=None, max_length=120)
     listed_at: date | None = None
     valid_until: datetime | None = None
-    is_active: bool = True
+    is_active: bool = Field(default=True, strict=True)
     raw_payload: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("variant_key")
@@ -574,19 +592,21 @@ def import_catalog(
 ) -> CatalogImportResult:
     summary = validate_catalog(payload)
     dataset_hash = compute_catalog_hash(payload)
-    existing_run = conn.execute(
+    current_run = conn.execute(
         """
-        SELECT id
+        SELECT id, dataset_hash
         FROM import_runs
-        WHERE dataset_hash = %s AND status = 'completed'
-        ORDER BY completed_at DESC
+        WHERE status = 'completed'
+        ORDER BY completed_at DESC, started_at DESC, id DESC
         LIMIT 1
         """,
-        (dataset_hash,),
     ).fetchone()
-    if existing_run is not None:
+    if (
+        current_run is not None
+        and _row_value(current_run, "dataset_hash") == dataset_hash
+    ):
         return CatalogImportResult(
-            run_id=_row_value(existing_run, "id"),
+            run_id=_row_value(current_run, "id"),
             dataset_hash=dataset_hash,
             status="unchanged",
             counts=ImportCounts(
@@ -1556,12 +1576,11 @@ def _json_default(value: Any) -> str:
 
 
 def _validate_key(value: str, field_name: str) -> str:
-    normalized = value.strip().lower()
-    if not KEY_PATTERN.fullmatch(normalized):
+    if not KEY_PATTERN.fullmatch(value):
         raise ValueError(
             f"{field_name} must contain only lowercase letters, digits, '.', '_', or '-'"
         )
-    return normalized
+    return value
 
 
 def _validate_url(value: str) -> str:

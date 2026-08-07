@@ -39,9 +39,17 @@ uv run --project apps/api python apps/api/scripts/import_catalog.py \
 `--check` and `--write` are mutually exclusive. A write validates all records and
 cross-references before opening a transaction. Stable keys identify sources,
 model-year-market vehicles, variants, and source listing references. Re-importing
-an identical dataset is a no-op; changed records keep their database IDs. Missing
-listings are never deactivated implicitly, so a snapshot must explicitly set
-`is_active` to `false`.
+the identical current dataset is a no-op; changed records keep their database
+IDs. If the same hash is replayed after a different completed snapshot, the
+importer reconciles it again instead of assuming that historical hash still
+describes the materialized rows. Missing listings are never deactivated
+implicitly, so a snapshot must explicitly set `is_active` to `false`.
+
+Curated JSON uses canonical types and keys. Keys must already match the lowercase
+`[a-z0-9][a-z0-9._-]*` form; the loader does not trim or lowercase them. Number,
+integer, and boolean fields must use JSON scalars of the matching type rather
+than numeric or boolean strings. ISO date and timezone-aware date-time strings
+remain the required representation for temporal fields.
 
 Variants can additionally carry the optional detail-only profile scalar fields
 and these four optional child collections: `maintenance_schedule`,
@@ -50,6 +58,12 @@ maintenance operation, safety assessment, feature, and media asset declares a
 known `source_key`, HTTPS `source_url`, and `observed_at`. Maintenance requires
 at least one positive interval; feature categories are `adas`, `safety`,
 `technology`, or `comfort`; media types are `photo`, `brochure`, or `manual`.
+The checked-in schema and Pydantic models share database-safe domain maxima for
+the new profile values: up to 20,000 mm length, 5,000 mm width/height, 50,000 kg
+weights, 5,000 kW, 2,000 kWh usable battery, 600 km/h, 120 seconds acceleration,
+200 metres braking distance, and maintenance intervals of 2,000,000 km or 1,200
+months. More specific fields such as doors, wheelbase, cylinders, torque, and
+gear count have their corresponding maxima in the JSON Schema.
 
 Collection presence is semantically significant. If one of the four
 collections is omitted from a variant, the importer leaves the existing rows
