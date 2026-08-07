@@ -166,6 +166,9 @@ class VehicleSpec(BaseModel):
     seats: int | None = None
     cargo_volume_liters: float | None = None
     provenance: list[VehicleProvenance] = Field(default_factory=list)
+
+
+class VehicleSpecDetail(VehicleSpec):
     identity: VehicleIdentity = Field(default_factory=VehicleIdentity)
     dimensions: VehicleDimensions = Field(default_factory=VehicleDimensions)
     powertrain: VehiclePowertrain = Field(default_factory=VehiclePowertrain)
@@ -183,7 +186,7 @@ class VehicleSpec(BaseModel):
 
 
 class VehicleDetail(VehicleSummary):
-    specs: list[VehicleSpec]
+    specs: list[VehicleSpecDetail]
     provenance: list[VehicleProvenance] = Field(default_factory=list)
 
 
