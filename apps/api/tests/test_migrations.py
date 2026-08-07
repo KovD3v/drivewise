@@ -27,6 +27,10 @@ REQUIRED_TABLES = {
     "import_runs",
     "vehicle_provenance",
     "vehicle_spec_provenance",
+    "vehicle_maintenance_items",
+    "vehicle_safety_ratings",
+    "vehicle_features",
+    "vehicle_media_assets",
 }
 
 
@@ -43,6 +47,7 @@ def test_migration_files_are_ordered():
         "0002_create_mvp_schema.sql",
         "0003_seed_initial_vehicles.sql",
         "0004_curated_catalog.sql",
+        "0005_vehicle_knowledge_profile.sql",
     ]
 
 
@@ -128,6 +133,36 @@ def test_curated_catalog_migration_preserves_legacy_rows_conservatively():
     assert "recommendation_items_listing_identity_fkey" in sql
     assert "assumptions jsonb" in sql
     assert "exclusion_counts jsonb" in sql
+
+
+def test_vehicle_knowledge_profile_migration_is_relational_and_constrained():
+    sql = (MIGRATIONS_PATH / "0005_vehicle_knowledge_profile.sql").read_text()
+
+    for column in [
+        "generation_name text",
+        "engine_code text",
+        "length_mm integer",
+        "power_kw numeric(7, 2)",
+        "acceleration_0_100_s numeric(5, 2)",
+        "homologation_cycle text",
+    ]:
+        assert column in sql
+
+    for table in [
+        "vehicle_maintenance_items",
+        "vehicle_safety_ratings",
+        "vehicle_features",
+        "vehicle_media_assets",
+    ]:
+        assert f"CREATE TABLE IF NOT EXISTS {table}" in sql
+
+    assert "vehicle_maintenance_interval_check" in sql
+    assert "vehicle_features_category_check" in sql
+    assert "vehicle_features_availability_check" in sql
+    assert "vehicle_media_assets_type_check" in sql
+    assert "vehicle_media_assets_https_check" in sql
+    assert sql.count("source_url LIKE 'https://%'") == 4
+    assert "ON DELETE CASCADE" in sql
 
 
 @pytest.mark.skipif(
