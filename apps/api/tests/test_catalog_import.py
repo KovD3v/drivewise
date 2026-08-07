@@ -220,6 +220,36 @@ def test_catalog_vehicle_profile_rejects_http_media_url(tmp_path):
         load_catalog(path)
 
 
+def test_catalog_vehicle_profile_rejects_malformed_https_media_url(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0]["media"] = [
+        {
+            "asset_key": "metro-exterior",
+            "asset_type": "photo",
+            "title": "Metro exterior",
+            "url": "https://",
+            "source_key": "drivewise-synthetic-catalog",
+            "source_url": "https://example.test/catalog/metro",
+            "observed_at": "2026-07-16T09:00:00+02:00",
+        }
+    ]
+    path = tmp_path / "malformed-https-media.json"
+    path.write_text(json.dumps(raw_payload))
+
+    with pytest.raises(CatalogValidationError, match="absolute http\\(s\\) URL"):
+        load_catalog(path)
+
+
+def test_catalog_vehicle_profile_rejects_zero_payload_kg(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0]["payload_kg"] = 0
+    path = tmp_path / "zero-payload.json"
+    path.write_text(json.dumps(raw_payload))
+
+    with pytest.raises(CatalogValidationError, match="payload_kg"):
+        load_catalog(path)
+
+
 def test_catalog_requires_exactly_one_default_variant():
     payload = load_catalog(FIXTURE_PATH).model_copy(deep=True)
     payload.variants[1].is_default = True
