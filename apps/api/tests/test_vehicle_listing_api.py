@@ -2,10 +2,11 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.api.dependencies import get_listings_repository, get_vehicles_repository
 from app.main import app
-from app.schemas.vehicles import VehicleSpecDetail
+from app.schemas.vehicles import VehicleFeature, VehicleMediaAsset, VehicleSpecDetail
 
 
 FIAT_ID = UUID("00000000-0000-4000-8000-000000000001")
@@ -514,6 +515,32 @@ def test_vehicle_spec_detail_defaults_legacy_flat_records_to_empty_profile():
     assert spec.safety.equipment == []
     assert spec.technology_comfort == []
     assert spec.media == []
+
+
+@pytest.mark.parametrize(
+    ("resource", "field", "invalid_value"),
+    [
+        ("feature", "category", "infotainment"),
+        ("feature", "availability", "included"),
+        ("media", "asset_type", "video"),
+    ],
+)
+def test_vehicle_profile_response_models_reject_invalid_enums(
+    resource,
+    field,
+    invalid_value,
+):
+    spec = FakeVehiclesRepository().get_vehicle(FIAT_ID)["specs"][0]
+    if resource == "feature":
+        model = VehicleFeature
+        payload = spec["safety"]["adas"][0].copy()
+    else:
+        model = VehicleMediaAsset
+        payload = spec["media"][0].copy()
+    payload[field] = invalid_value
+
+    with pytest.raises(ValidationError):
+        model.model_validate(payload)
 
 
 def test_post_vehicle_resolve_matches_dirty_query_to_ranked_spec(

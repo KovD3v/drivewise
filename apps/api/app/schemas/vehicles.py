@@ -121,9 +121,9 @@ class VehicleSafetyRating(BaseModel):
 class VehicleFeature(BaseModel):
     id: UUID
     feature_key: str
-    category: str
+    category: Literal["adas", "safety", "technology", "comfort"]
     name: str
-    availability: str
+    availability: Literal["standard", "optional"]
     notes: str | None = None
     provenance: ProfileProvenance
 
@@ -137,7 +137,7 @@ class VehicleSafety(BaseModel):
 class VehicleMediaAsset(BaseModel):
     id: UUID
     asset_key: str
-    asset_type: str
+    asset_type: Literal["photo", "brochure", "manual"]
     title: str
     url: str
     mime_type: str | None = None

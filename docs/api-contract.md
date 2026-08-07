@@ -181,8 +181,9 @@ candidate reaches the minimum confidence. `match_level` is `vehicle` or `spec`.
 Returns one vehicle with linked specs. This is the only vehicle endpoint that
 returns the additive, detail-only knowledge profile: `GET /vehicles`,
 `POST /vehicles/resolve`, listing responses, and Advisor selected specs retain
-their existing flat summary/spec contracts. Consumers must not infer that a
-profile field absent from those endpoints is missing data.
+their existing flat summary/spec contracts. Model-analysis request and response
+contracts also remain flat. Consumers must not infer that a profile field absent
+from those endpoints is missing data.
 
 All profile scalar fields are nullable and are returned as `null` when the
 catalog has no value. Profile collections are always returned: an unavailable
@@ -250,20 +251,86 @@ Example response:
   "specs": [
     {
       "id": "20000000-0000-4000-8000-000000000001",
+      "variant_key": null,
+      "is_default": false,
       "trim": "1.0 FireFly Hybrid",
+      "body_style": "city_car",
+      "fuel_type": "mild_hybrid_petrol",
+      "list_price_eur": 15500.0,
       "drivetrain": "fwd",
       "transmission": "6-speed manual",
       "engine": "1.0L mild-hybrid petrol",
       "horsepower": 70,
       "battery_kwh": null,
+      "energy_consumption_kwh_100km": null,
       "consumption_l_100km": 5.0,
       "wltp_range_km": null,
       "co2_g_km": 113,
       "euro_emission_standard": "Euro 6e",
       "seats": 4,
-      "cargo_volume_liters": 225.0
+      "cargo_volume_liters": 225.0,
+      "provenance": [],
+      "identity": {
+        "generation_name": null,
+        "restyling_label": null,
+        "category": null,
+        "doors": null
+      },
+      "dimensions": {
+        "length_mm": null,
+        "width_mm": null,
+        "height_mm": null,
+        "wheelbase_mm": null,
+        "curb_weight_kg": null,
+        "gross_weight_kg": null,
+        "payload_kg": null,
+        "seats": 4,
+        "cargo_volume_liters": 225.0
+      },
+      "powertrain": {
+        "engine_description": "1.0L mild-hybrid petrol",
+        "engine_code": null,
+        "displacement_cc": null,
+        "cylinders": null,
+        "horsepower": 70,
+        "power_kw": null,
+        "torque_nm": null,
+        "fuel_type": "mild_hybrid_petrol",
+        "battery_total_kwh": null,
+        "battery_usable_kwh": null,
+        "wltp_range_km": null
+      },
+      "transmission_details": {
+        "transmission": "6-speed manual",
+        "transmission_type": null,
+        "gear_count": null,
+        "drivetrain": "fwd",
+        "differential_type": null
+      },
+      "performance": {
+        "acceleration_0_100_s": null,
+        "top_speed_kmh": null,
+        "braking_100_0_m": null,
+        "power_to_weight_kw_per_t": null
+      },
+      "official_efficiency": {
+        "homologation_cycle": null,
+        "consumption_l_100km": 5.0,
+        "energy_consumption_kwh_100km": null,
+        "co2_g_km": 113,
+        "euro_emission_standard": "Euro 6e"
+      },
+      "maintenance_schedule": [],
+      "safety": {
+        "ratings": [],
+        "adas": [],
+        "equipment": []
+      },
+      "technology_comfort": [],
+      "media": []
     }
-  ]
+  ],
+  "provenance": []
 }
 ```
 

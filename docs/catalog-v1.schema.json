@@ -97,18 +97,32 @@
       "anyOf": [
         {
           "required": ["interval_km"],
-          "properties": { "interval_km": { "type": "integer", "exclusiveMinimum": 0 } }
+          "properties": {
+            "interval_km": {
+              "type": "integer", "exclusiveMinimum": 0, "maximum": 2000000
+            }
+          }
         },
         {
           "required": ["interval_months"],
-          "properties": { "interval_months": { "type": "integer", "exclusiveMinimum": 0 } }
+          "properties": {
+            "interval_months": {
+              "type": "integer", "exclusiveMinimum": 0, "maximum": 1200
+            }
+          }
         }
       ],
       "properties": {
         "operation_code": { "type": "string", "minLength": 1, "maxLength": 120 },
         "title": { "type": "string", "minLength": 1, "maxLength": 240 },
-        "interval_km": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "interval_months": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "interval_km": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 2000000
+        },
+        "interval_months": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 1200
+        },
         "notes": { "type": ["string", "null"], "maxLength": 500 },
         "source_key": { "$ref": "#/$defs/childSourceKey" },
         "source_url": { "$ref": "#/$defs/httpsUrl" },
@@ -231,26 +245,70 @@
         "generation_name": { "type": ["string", "null"], "maxLength": 120 },
         "restyling_label": { "type": ["string", "null"], "maxLength": 120 },
         "category": { "type": ["string", "null"], "maxLength": 80 },
-        "doors": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "length_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "width_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "height_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "wheelbase_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "curb_weight_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "gross_weight_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "payload_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "doors": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0, "maximum": 10
+        },
+        "length_mm": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 20000
+        },
+        "width_mm": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 5000
+        },
+        "height_mm": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 5000
+        },
+        "wheelbase_mm": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 12000
+        },
+        "curb_weight_kg": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 50000
+        },
+        "gross_weight_kg": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 50000
+        },
+        "payload_kg": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 50000
+        },
         "engine_code": { "type": ["string", "null"], "maxLength": 120 },
-        "displacement_cc": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "cylinders": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "power_kw": { "type": ["number", "null"], "exclusiveMinimum": 0 },
-        "torque_nm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "battery_usable_kwh": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "displacement_cc": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 20000
+        },
+        "cylinders": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0, "maximum": 24
+        },
+        "power_kw": {
+          "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 5000
+        },
+        "torque_nm": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0,
+          "maximum": 50000
+        },
+        "battery_usable_kwh": {
+          "type": ["number", "null"], "exclusiveMinimum": 0,
+          "maximum": 2000
+        },
         "transmission_type": { "type": ["string", "null"], "maxLength": 80 },
-        "gear_count": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "gear_count": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0, "maximum": 30
+        },
         "differential_type": { "type": ["string", "null"], "maxLength": 80 },
-        "acceleration_0_100_s": { "type": ["number", "null"], "exclusiveMinimum": 0 },
-        "top_speed_kmh": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "braking_100_0_m": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "acceleration_0_100_s": {
+          "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 120
+        },
+        "top_speed_kmh": {
+          "type": ["integer", "null"], "exclusiveMinimum": 0, "maximum": 600
+        },
+        "braking_100_0_m": {
+          "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 200
+        },
         "homologation_cycle": { "type": ["string", "null"], "maxLength": 80 },
         "maintenance_schedule": {
           "type": "array",
