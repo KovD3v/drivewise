@@ -47,6 +47,179 @@ def test_catalog_fixture_validates_cross_references_and_same_trim_variants():
     assert len(compute_catalog_hash(payload)) == 64
 
 
+def test_catalog_loads_complete_vehicle_profile_fixture():
+    payload = load_catalog(FIXTURE_PATH)
+    variant = next(
+        item
+        for item in payload.variants
+        if item.variant_key == "it-acme-metro-2026-petrol"
+    )
+
+    assert variant.engine_code == "SYN-T10"
+    assert variant.power_kw == 74
+    assert len(variant.maintenance_schedule) == 2
+    assert len(variant.safety_ratings) == 1
+    assert {item.category for item in variant.features} == {
+        "adas",
+        "safety",
+        "technology",
+        "comfort",
+    }
+    assert {item.asset_type for item in variant.media} == {
+        "photo",
+        "brochure",
+        "manual",
+    }
+
+
+def test_catalog_json_schema_accepts_enriched_fixture():
+    from jsonschema import Draft202012Validator, FormatChecker
+
+    schema_path = ROOT / "docs/catalog-v1.schema.json"
+    schema = json.loads(schema_path.read_text())
+    instance = json.loads(FIXTURE_PATH.read_text())
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(
+        schema,
+        format_checker=FormatChecker(),
+    ).validate(instance)
+
+
+def test_catalog_distinguishes_omitted_and_explicitly_empty_profile_collections():
+    payload = load_catalog(FIXTURE_PATH)
+    enriched = payload.variants[0]
+    unenriched = payload.variants[1]
+
+    assert "maintenance_schedule" in enriched.model_fields_set
+    assert "maintenance_schedule" not in unenriched.model_fields_set
+    cleared = unenriched.model_copy(update={"maintenance_schedule": []})
+    cleared.__pydantic_fields_set__.add("maintenance_schedule")
+    assert "maintenance_schedule" in cleared.model_fields_set
+
+
+def test_catalog_vehicle_profile_rejects_maintenance_without_an_interval(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0]["maintenance_schedule"] = [
+        {
+            "operation_code": "engine-oil",
+            "title": "Engine oil and filter",
+            "source_key": "drivewise-synthetic-catalog",
+            "source_url": "https://example.test/maintenance/engine-oil",
+            "observed_at": "2026-07-16T09:00:00+02:00",
+        }
+    ]
+    path = tmp_path / "invalid-maintenance.json"
+    path.write_text(json.dumps(raw_payload))
+
+    with pytest.raises(CatalogValidationError, match="requires an interval"):
+        load_catalog(path)
+
+
+def test_catalog_vehicle_profile_rejects_unknown_child_source(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0]["features"] = [
+        {
+            "feature_key": "adaptive-cruise-control",
+            "category": "adas",
+            "name": "Adaptive cruise control",
+            "availability": "standard",
+            "source_key": "missing-source",
+            "source_url": "https://example.test/features/adaptive-cruise-control",
+            "observed_at": "2026-07-16T09:00:00+02:00",
+        }
+    ]
+    path = tmp_path / "unknown-child-source.json"
+    path.write_text(json.dumps(raw_payload))
+
+    with pytest.raises(CatalogValidationError, match="feature_key references unknown"):
+        load_catalog(path)
+
+
+@pytest.mark.parametrize(
+    ("collection", "record", "duplicate_message"),
+    [
+        (
+            "maintenance_schedule",
+            {
+                "operation_code": "engine-oil",
+                "title": "Engine oil and filter",
+                "interval_km": 15000,
+            },
+            "duplicate it-acme-metro-2026-petrol maintenance operation_code",
+        ),
+        (
+            "safety_ratings",
+            {
+                "assessment_system": "Euro NCAP",
+                "assessment_year": 2026,
+            },
+            "duplicate it-acme-metro-2026-petrol safety assessment",
+        ),
+        (
+            "features",
+            {
+                "feature_key": "adaptive-cruise-control",
+                "category": "adas",
+                "name": "Adaptive cruise control",
+                "availability": "standard",
+            },
+            "duplicate it-acme-metro-2026-petrol feature_key",
+        ),
+        (
+            "media",
+            {
+                "asset_key": "metro-exterior",
+                "asset_type": "photo",
+                "title": "Metro exterior",
+                "url": "https://example.test/media/metro-exterior.jpg",
+            },
+            "duplicate it-acme-metro-2026-petrol media asset_key",
+        ),
+    ],
+)
+def test_catalog_vehicle_profile_rejects_duplicate_child_keys(
+    collection,
+    record,
+    duplicate_message,
+    tmp_path,
+):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    child_source = {
+        "source_key": "drivewise-synthetic-catalog",
+        "source_url": "https://example.test/catalog/metro",
+        "observed_at": "2026-07-16T09:00:00+02:00",
+    }
+    raw_payload["variants"][0][collection] = [
+        {**record, **child_source},
+        {**record, **child_source},
+    ]
+    path = tmp_path / f"duplicate-{collection}.json"
+    path.write_text(json.dumps(raw_payload))
+
+    with pytest.raises(CatalogValidationError, match=duplicate_message):
+        load_catalog(path)
+
+
+def test_catalog_vehicle_profile_rejects_http_media_url(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["variants"][0]["media"] = [
+        {
+            "asset_key": "metro-exterior",
+            "asset_type": "photo",
+            "title": "Metro exterior",
+            "url": "http://example.test/media/metro-exterior.jpg",
+            "source_key": "drivewise-synthetic-catalog",
+            "source_url": "https://example.test/catalog/metro",
+            "observed_at": "2026-07-16T09:00:00+02:00",
+        }
+    ]
+    path = tmp_path / "http-media.json"
+    path.write_text(json.dumps(raw_payload))
+
+    with pytest.raises(CatalogValidationError, match="media URL must use https"):
+        load_catalog(path)
+
+
 def test_catalog_requires_exactly_one_default_variant():
     payload = load_catalog(FIXTURE_PATH).model_copy(deep=True)
     payload.variants[1].is_default = True

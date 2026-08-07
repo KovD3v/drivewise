@@ -8,7 +8,14 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 from uuid import UUID, uuid5
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from psycopg.types.json import Jsonb
 
 
@@ -72,6 +79,30 @@ VARIANT_PROVENANCE_FIELDS = (
     "euro_emission_standard",
     "seats",
     "cargo_volume_liters",
+    "generation_name",
+    "restyling_label",
+    "category",
+    "doors",
+    "length_mm",
+    "width_mm",
+    "height_mm",
+    "wheelbase_mm",
+    "curb_weight_kg",
+    "gross_weight_kg",
+    "payload_kg",
+    "engine_code",
+    "displacement_cc",
+    "cylinders",
+    "power_kw",
+    "torque_nm",
+    "battery_usable_kwh",
+    "transmission_type",
+    "gear_count",
+    "differential_type",
+    "acceleration_0_100_s",
+    "top_speed_kmh",
+    "braking_100_0_m",
+    "homologation_cycle",
 )
 
 
@@ -163,6 +194,80 @@ class ProvenancedRecord(StrictModel):
         return value
 
 
+class ChildSourceRecord(StrictModel):
+    source_key: str = Field(min_length=1, max_length=160)
+    source_url: str
+    observed_at: datetime
+
+    @field_validator("source_key")
+    @classmethod
+    def validate_source_key(cls, value: str) -> str:
+        return _validate_key(value, "source_key")
+
+    @field_validator("source_url")
+    @classmethod
+    def validate_source_url(cls, value: str) -> str:
+        url = _validate_url(value)
+        if not url.startswith("https://"):
+            raise ValueError("child source URL must use https")
+        return url
+
+    @field_validator("observed_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("observed_at must include a timezone")
+        return value
+
+
+class MaintenanceRecord(ChildSourceRecord):
+    operation_code: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=240)
+    interval_km: int | None = Field(default=None, gt=0)
+    interval_months: int | None = Field(default=None, gt=0)
+    notes: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def require_interval(self):
+        if self.interval_km is None and self.interval_months is None:
+            raise ValueError("maintenance item requires an interval")
+        return self
+
+
+class SafetyRatingRecord(ChildSourceRecord):
+    assessment_system: str = Field(min_length=1, max_length=80)
+    assessment_year: int = Field(ge=1990, le=2100)
+    overall_stars: int | None = Field(default=None, ge=0, le=5)
+    adult_occupant_percent: int | None = Field(default=None, ge=0, le=100)
+    child_occupant_percent: int | None = Field(default=None, ge=0, le=100)
+    vulnerable_road_users_percent: int | None = Field(default=None, ge=0, le=100)
+    safety_assist_percent: int | None = Field(default=None, ge=0, le=100)
+
+
+class FeatureRecord(ChildSourceRecord):
+    feature_key: str = Field(min_length=1, max_length=160)
+    category: Literal["adas", "safety", "technology", "comfort"]
+    name: str = Field(min_length=1, max_length=240)
+    availability: Literal["standard", "optional"]
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class MediaRecord(ChildSourceRecord):
+    asset_key: str = Field(min_length=1, max_length=160)
+    asset_type: Literal["photo", "brochure", "manual"]
+    title: str = Field(min_length=1, max_length=240)
+    url: str
+    mime_type: str | None = Field(default=None, max_length=120)
+    locale: str | None = Field(default=None, max_length=20)
+
+    @field_validator("url")
+    @classmethod
+    def require_https(cls, value: str) -> str:
+        if not value.startswith("https://"):
+            raise ValueError("media URL must use https")
+        return value
+
+
 class VehicleRecord(ProvenancedRecord):
     canonical_key: str = Field(min_length=1, max_length=200)
     model_family_key: str = Field(min_length=1, max_length=160)
@@ -203,6 +308,34 @@ class VariantRecord(ProvenancedRecord):
     euro_emission_standard: str | None = Field(default=None, max_length=80)
     seats: int = Field(gt=0, le=20)
     cargo_volume_liters: float = Field(ge=0)
+    generation_name: str | None = Field(default=None, max_length=120)
+    restyling_label: str | None = Field(default=None, max_length=120)
+    category: str | None = Field(default=None, max_length=80)
+    doors: int | None = Field(default=None, gt=0)
+    length_mm: int | None = Field(default=None, gt=0)
+    width_mm: int | None = Field(default=None, gt=0)
+    height_mm: int | None = Field(default=None, gt=0)
+    wheelbase_mm: int | None = Field(default=None, gt=0)
+    curb_weight_kg: int | None = Field(default=None, gt=0)
+    gross_weight_kg: int | None = Field(default=None, gt=0)
+    payload_kg: int | None = Field(default=None, ge=0)
+    engine_code: str | None = Field(default=None, max_length=120)
+    displacement_cc: int | None = Field(default=None, gt=0)
+    cylinders: int | None = Field(default=None, gt=0)
+    power_kw: float | None = Field(default=None, gt=0)
+    torque_nm: int | None = Field(default=None, gt=0)
+    battery_usable_kwh: float | None = Field(default=None, gt=0)
+    transmission_type: str | None = Field(default=None, max_length=80)
+    gear_count: int | None = Field(default=None, gt=0)
+    differential_type: str | None = Field(default=None, max_length=80)
+    acceleration_0_100_s: float | None = Field(default=None, gt=0)
+    top_speed_kmh: int | None = Field(default=None, gt=0)
+    braking_100_0_m: float | None = Field(default=None, gt=0)
+    homologation_cycle: str | None = Field(default=None, max_length=80)
+    maintenance_schedule: list[MaintenanceRecord] = Field(default_factory=list)
+    safety_ratings: list[SafetyRatingRecord] = Field(default_factory=list)
+    features: list[FeatureRecord] = Field(default_factory=list)
+    media: list[MediaRecord] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     provenance_claims: list[ProvenanceClaim] = Field(default_factory=list)
 
@@ -353,6 +486,32 @@ def validate_catalog(payload: CatalogPayload) -> CatalogSummary:
                 f"variant references unknown vehicle_key: {variant.vehicle_key}"
             )
         variants_by_vehicle[variant.vehicle_key].append(variant)
+
+    for variant in payload.variants:
+        child_groups = [
+            ("maintenance operation_code", variant.maintenance_schedule, "operation_code"),
+            ("safety assessment", variant.safety_ratings, None),
+            ("feature_key", variant.features, "feature_key"),
+            ("media asset_key", variant.media, "asset_key"),
+        ]
+        for label, records, key_name in child_groups:
+            for record in records:
+                if record.source_key not in source_keys:
+                    raise CatalogValidationError(
+                        f"{label} references unknown source_key: {record.source_key}"
+                    )
+            if key_name is not None:
+                _require_unique(
+                    f"{variant.variant_key} {label}",
+                    [getattr(record, key_name) for record in records],
+                )
+        _require_unique(
+            f"{variant.variant_key} safety assessment",
+            [
+                f"{record.assessment_system}:{record.assessment_year}"
+                for record in variant.safety_ratings
+            ],
+        )
 
     for vehicle_key, variants in variants_by_vehicle.items():
         default_count = sum(variant.is_default for variant in variants)

@@ -32,10 +32,21 @@
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9._-]*$"
     },
+    "childSourceKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
     "url": {
       "type": "string",
       "format": "uri",
       "pattern": "^https?://"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
     },
     "provenanceClaim": {
       "type": "object",
@@ -77,6 +88,79 @@
         "url": { "$ref": "#/$defs/url" },
         "license": { "type": "string", "minLength": 1 },
         "notes": { "type": ["string", "null"] }
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_code", "title", "source_key", "source_url", "observed_at"],
+      "anyOf": [
+        {
+          "required": ["interval_km"],
+          "properties": { "interval_km": { "type": "integer", "exclusiveMinimum": 0 } }
+        },
+        {
+          "required": ["interval_months"],
+          "properties": { "interval_months": { "type": "integer", "exclusiveMinimum": 0 } }
+        }
+      ],
+      "properties": {
+        "operation_code": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "interval_km": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "interval_months": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "notes": { "type": ["string", "null"], "maxLength": 500 },
+        "source_key": { "$ref": "#/$defs/childSourceKey" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
+        "observed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "safetyRating": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessment_system", "assessment_year", "source_key", "source_url", "observed_at"],
+      "properties": {
+        "assessment_system": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "assessment_year": { "type": "integer", "minimum": 1990, "maximum": 2100 },
+        "overall_stars": { "type": ["integer", "null"], "minimum": 0, "maximum": 5 },
+        "adult_occupant_percent": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "child_occupant_percent": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "vulnerable_road_users_percent": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "safety_assist_percent": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "source_key": { "$ref": "#/$defs/childSourceKey" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
+        "observed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_key", "category", "name", "availability", "source_key", "source_url", "observed_at"],
+      "properties": {
+        "feature_key": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "category": { "enum": ["adas", "safety", "technology", "comfort"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "availability": { "enum": ["standard", "optional"] },
+        "notes": { "type": ["string", "null"], "maxLength": 500 },
+        "source_key": { "$ref": "#/$defs/childSourceKey" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
+        "observed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "media": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_key", "asset_type", "title", "url", "source_key", "source_url", "observed_at"],
+      "properties": {
+        "asset_key": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "asset_type": { "enum": ["photo", "brochure", "manual"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "url": { "$ref": "#/$defs/httpsUrl" },
+        "mime_type": { "type": ["string", "null"], "maxLength": 120 },
+        "locale": { "type": ["string", "null"], "maxLength": 20 },
+        "source_key": { "$ref": "#/$defs/childSourceKey" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
+        "observed_at": { "type": "string", "format": "date-time" }
       }
     },
     "vehicle": {
@@ -144,6 +228,46 @@
         "euro_emission_standard": { "type": ["string", "null"] },
         "seats": { "type": "integer", "minimum": 1 },
         "cargo_volume_liters": { "type": "number", "minimum": 0 },
+        "generation_name": { "type": ["string", "null"], "maxLength": 120 },
+        "restyling_label": { "type": ["string", "null"], "maxLength": 120 },
+        "category": { "type": ["string", "null"], "maxLength": 80 },
+        "doors": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "length_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "width_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "height_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "wheelbase_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "curb_weight_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "gross_weight_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "payload_kg": { "type": ["integer", "null"], "minimum": 0 },
+        "engine_code": { "type": ["string", "null"], "maxLength": 120 },
+        "displacement_cc": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "cylinders": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "power_kw": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "torque_nm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "battery_usable_kwh": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "transmission_type": { "type": ["string", "null"], "maxLength": 80 },
+        "gear_count": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "differential_type": { "type": ["string", "null"], "maxLength": 80 },
+        "acceleration_0_100_s": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "top_speed_kmh": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
+        "braking_100_0_m": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "homologation_cycle": { "type": ["string", "null"], "maxLength": 80 },
+        "maintenance_schedule": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/maintenance" }
+        },
+        "safety_ratings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/safetyRating" }
+        },
+        "features": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/feature" }
+        },
+        "media": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/media" }
+        },
         "metadata": { "type": "object" },
         "source_key": { "$ref": "#/$defs/key" },
         "source_url": { "$ref": "#/$defs/url" },
