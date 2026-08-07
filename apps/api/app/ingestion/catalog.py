@@ -263,9 +263,10 @@ class MediaRecord(ChildSourceRecord):
     @field_validator("url")
     @classmethod
     def require_https(cls, value: str) -> str:
-        if not value.startswith("https://"):
+        url = _validate_url(value)
+        if not url.startswith("https://"):
             raise ValueError("media URL must use https")
-        return value
+        return url
 
 
 class VehicleRecord(ProvenancedRecord):
@@ -318,7 +319,7 @@ class VariantRecord(ProvenancedRecord):
     wheelbase_mm: int | None = Field(default=None, gt=0)
     curb_weight_kg: int | None = Field(default=None, gt=0)
     gross_weight_kg: int | None = Field(default=None, gt=0)
-    payload_kg: int | None = Field(default=None, ge=0)
+    payload_kg: int | None = Field(default=None, gt=0)
     engine_code: str | None = Field(default=None, max_length=120)
     displacement_cc: int | None = Field(default=None, gt=0)
     cylinders: int | None = Field(default=None, gt=0)

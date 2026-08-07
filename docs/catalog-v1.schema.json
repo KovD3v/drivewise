@@ -238,7 +238,7 @@
         "wheelbase_mm": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
         "curb_weight_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
         "gross_weight_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
-        "payload_kg": { "type": ["integer", "null"], "minimum": 0 },
+        "payload_kg": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
         "engine_code": { "type": ["string", "null"], "maxLength": 120 },
         "displacement_cc": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
         "cylinders": { "type": ["integer", "null"], "exclusiveMinimum": 0 },
