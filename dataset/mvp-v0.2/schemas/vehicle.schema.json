@@ -1,0 +1,1 @@
+{"title":"DriveWise Vehicle v0.2","type":"object","required":["id","brand","model","version","powertrain","pricing","dimensions","reliability","safety","vehicle_dna","known_issues","prepurchase_checks","recalls","maintenance","ownership_costs","depreciation","strengths","tradeoffs","alternatives"]}
