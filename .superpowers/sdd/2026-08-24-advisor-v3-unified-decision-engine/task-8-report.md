@@ -16,6 +16,6 @@
 
 ## Files and review
 
-Changed five specialist modules and `test_advisor_assessments.py`; commit `38532f76e19dc55d4316ce5c04bee4914128aaf0`.
+Changed five specialist modules and `test_advisor_assessments.py`; commit `5df6dcde6a975fecf250d16c8451a842a2fa4a4`.
 
 Self-review: no providers, database writes, dependencies, ranking, neutral fallback, or mocked specialist data. Known ceiling: explicit specialist input adapters intentionally defer calibration and official resolution to later tasks.
