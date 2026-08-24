@@ -14,6 +14,8 @@ from app.services.advisor.energy_prices import (
     LIQUID_ENERGY_PRICES_EUR_PER_LITER,
 )
 from app.services.advisor.tco import estimate_tco
+from app.services.advisor.constraints import evaluate_constraints
+from app.services.advisor.garage import family_fit, garage_fit
 
 
 AS_OF = datetime(2026, 8, 25, tzinfo=timezone.utc)
@@ -193,3 +195,54 @@ def test_recommendation_response_rejects_unknown_decision_status():
             groups=[],
             decision_status="estimated",
         )
+
+
+def test_passenger_constraint_excludes_insufficient_seats(candidate):
+    candidate["spec"]["seats"] = 4
+    result = evaluate_constraints(v3_request(passengers_usual=5), candidate)
+    assert result.status == "excluded"
+    assert result.reasons == ("insufficient_seats",)
+
+
+def test_family_fit_uses_versioned_cargo_target(candidate):
+    result = family_fit(children_count=2, passengers_usual=4, candidate=candidate)
+    assert result.version == "family-fit-v1"
+    assert result.details["cargo_target_liters"] == 400
+
+
+def test_garage_fit_fails_closed_without_folded_width(candidate):
+    garage = {
+        "useful_length_mm": 5000,
+        "useful_width_mm": 2500,
+        "useful_height_mm": 2200,
+        "door_width_mm": 2200,
+        "door_height_mm": 2000,
+    }
+    candidate["decision_context"] = {
+        "dimensions": {"length_mm": 4200, "body_width_mm": 1800, "height_mm": 1600}
+    }
+    result = garage_fit(garage, candidate)
+    assert result.status == "insufficient_data"
+    assert "vehicle.width_mirrors_folded_mm" in result.missing_data
+
+
+def test_garage_fit_compares_body_and_folded_mirror_width_separately(candidate):
+    garage = {
+        "useful_length_mm": 5000,
+        "useful_width_mm": 2500,
+        "useful_height_mm": 2200,
+        "door_width_mm": 2200,
+        "door_height_mm": 2000,
+    }
+    candidate["decision_context"] = {
+        "dimensions": {
+            "length_mm": 4200,
+            "body_width_mm": 1800,
+            "width_mirrors_folded_mm": 2100,
+            "height_mm": 1600,
+        }
+    }
+    result = garage_fit(garage, candidate)
+    assert result.status == "available"
+    assert result.details["margins"]["width_mm"] == 700
+    assert result.details["margins"]["door_width_mm"] == 100
