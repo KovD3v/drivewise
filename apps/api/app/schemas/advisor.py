@@ -18,9 +18,17 @@ PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
 ConstraintMode = Literal["hard", "soft"]
 AdvisorPriority = Literal[
     "price",
+    "budget",
     "efficiency_range",
     "space",
     "running_cost",
+    "family",
+    "reliability",
+    "safety",
+    "comfort",
+    "performance",
+    "technology",
+    "powertrain_fit",
 ]
 AdvisorCondition = Literal["any", "new", "used"]
 AdvisorOfferCondition = Literal["new", "used", "certified"]
@@ -267,6 +275,18 @@ class AdvisorRecommendationItem(BaseModel):
     selected_spec: AdvisorSelectedSpec
     offer: AdvisorOffer
     score: float
+    decision_status: Literal["complete", "insufficient_data"] = "insufficient_data"
+    decision_score: float | None = None
+    decision_confidence: float | None = None
+    structural_fit: float | None = None
+    preference_fit: float | None = None
+    pillar_scores: dict[str, float] = Field(default_factory=dict)
+    penalties: list[str] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    missing_factors: list[str] = Field(default_factory=list)
+    module_versions: dict[str, str] = Field(default_factory=dict)
+    assumptions: list[str] = Field(default_factory=list)
+    score_composition: dict[str, Any] = Field(default_factory=dict)
     component_scores: dict[AdvisorScoreComponent, float]
     positive_factors: list[AdvisorFactor]
     tradeoffs: list[AdvisorFactor]

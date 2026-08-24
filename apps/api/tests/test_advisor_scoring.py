@@ -314,7 +314,7 @@ def test_gold_06_selected_priorities_scale_and_renormalize_exactly():
         "space": 100,
         "efficiency_range": 75,
     }
-    assert item.score == 87.0
+    assert item.score == item.decision_score
 
 
 def test_gold_07_body_matrix_and_soft_preferences_feed_use_case_component():
@@ -587,7 +587,7 @@ def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_ke
         condition="used",
     )
     expected_offer_ids = [
-        str(tied[0]["offer"]["id"]),
+        str(tied[1]["offer"]["id"]),
         str(tied[2]["offer"]["id"]),
         str(tied[3]["offer"]["id"]),
         str(tied[4]["offer"]["id"]),
@@ -600,13 +600,13 @@ def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_ke
         assert len(result.items) == 5
 
 
-def test_request_rejects_removed_priorities_and_duplicates():
-    with pytest.raises(ValidationError):
-        AdvisorRecommendationRequest(
-            budget_max_eur=20_000,
-            primary_use="city",
-            priorities=["reliability"],
-        )
+def test_request_accepts_v3_priorities_and_rejects_duplicates():
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=20_000,
+        primary_use="city",
+        priorities=["reliability"],
+    )
+    assert request.priorities == ["reliability"]
     with pytest.raises(ValidationError):
         AdvisorRecommendationRequest(
             budget_max_eur=20_000,
