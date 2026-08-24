@@ -14,19 +14,28 @@ def recall_penalty(candidate: dict[str, Any], recalls: Sequence[Any]) -> ModuleA
         return ModuleAssessment(status="insufficient_data", version=RECALLS_VERSION, missing_data=("recalls",))
     penalty = 0.0
     unknown = False
+    unknown_status = False
     evidence = []
     for recall in recalls:
         applicability = str(_get(recall, "applicability") or "").lower()
         if applicability == "unknown":
             unknown = True
             continue
-        state = "match" if applicability in {"applicable", "match", "confirmed"} else _applicability(candidate, recall)
+        state = "match" if applicability in {"applicable", "matched", "match", "confirmed"} else _applicability(candidate, recall)
         if state == "unknown":
             unknown = True
-        elif state == "match" and str(_get(recall, "status") or "open").lower() == "open":
-            penalty += float(_get(recall, "penalty") or 6.0)
-            evidence.append(dict(recall) if isinstance(recall, Mapping) else {"recall": recall})
-    missing = ("recall_applicability",) if unknown else ()
+        elif state == "match":
+            status = str(_get(recall, "status") or "").strip().lower()
+            item = dict(recall) if isinstance(recall, Mapping) else {"recall": recall}
+            if status in {"open", "action_required", "action-required"}:
+                penalty += float(_get(recall, "penalty") or 6.0)
+                evidence.append(item)
+            elif status in {"resolved", "closed", "remediated"}:
+                evidence.append(item)
+            else:
+                unknown_status = True
+                evidence.append({**item, "status": "unknown"})
+    missing = tuple(name for name, flag in (("recall_applicability", unknown), ("recall_status", unknown_status)) if flag)
     return ModuleAssessment(status="available", version=RECALLS_VERSION, value=min(6.0, penalty), evidence=tuple(evidence), missing_data=missing)
 
 

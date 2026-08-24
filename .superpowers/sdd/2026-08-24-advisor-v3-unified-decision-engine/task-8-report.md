@@ -19,3 +19,10 @@
 Changed five specialist modules and `test_advisor_assessments.py`; commit `5df6dcde6a975fecf250d16c8451a842a2fa4a4`.
 
 Self-review: no providers, database writes, dependencies, ranking, neutral fallback, or mocked specialist data. Known ceiling: explicit specialist input adapters intentionally defer calibration and official resolution to later tasks.
+
+## Fix Round 1
+
+- Safety now fails closed for non-numeric/out-of-domain percentages and stars with `invalid_safety_rating`.
+- Issue applicability supports inclusive `production_year_min`/`production_year_max`, exact `model_year`, and explicit applicable/non-applicable states.
+- Recall applicability states are normalized; only open/action-required statuses penalize, resolved evidence remains visible, and missing/unknown status reports `recall_status`.
+- Verification: assessment tests `13 passed`; Ruff clean; full decision/scoring regressions rerun before commit.

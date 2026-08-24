@@ -13,6 +13,8 @@ _FIELDS = {
     "transmission_type": "transmission_type", "production_year": "model_year",
     "model_year": "model_year",
 }
+_NON_APPLICABLE = {"mismatched", "not_applicable", "not applicable", "conflict"}
+_APPLICABLE = {"applicable", "matched", "match", "confirmed"}
 
 
 def known_issue_penalty(candidate: dict[str, Any], issues: Sequence[Any]) -> ModuleAssessment:
@@ -33,6 +35,11 @@ def known_issue_penalty(candidate: dict[str, Any], issues: Sequence[Any]) -> Mod
 
 
 def _applicability(candidate: dict[str, Any], issue: Any) -> str:
+    explicit = str(_get(issue, "applicability") or "").strip().lower()
+    if explicit in _NON_APPLICABLE:
+        return "conflict"
+    if explicit in _APPLICABLE:
+        return "match"
     context = candidate.get("decision_context") or {}
     identity = context.get("identity") or {}
     powertrain = context.get("powertrain") or {}
@@ -40,6 +47,17 @@ def _applicability(candidate: dict[str, Any], issue: Any) -> str:
     spec = candidate.get("spec") or {}
     actual = {**identity, **powertrain, **vehicle, **spec}
     constraints = [(key, value) for key, value in _items(issue) if key in _FIELDS and value is not None]
+    for key, operator in (("production_year_min", ">="), ("production_year_max", "<=")):
+        expected = _get(issue, key)
+        if expected is None:
+            continue
+        actual_year = actual.get("model_year")
+        if actual_year is None:
+            return "unknown"
+        if (operator == ">=" and actual_year < expected) or (operator == "<=" and actual_year > expected):
+            return "conflict"
+    if _get(issue, "production_year_min") is not None or _get(issue, "production_year_max") is not None:
+        constraints.append(("model_year", actual.get("model_year")))
     if not constraints:
         return "unknown"
     missing = False
