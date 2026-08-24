@@ -12,6 +12,7 @@ from app.schemas.advisor import (
     AdvisorFuelType,
     AdvisorPriority,
     AdvisorRecommendationGroup,
+    AdvisorConstraintModes,
     PrimaryUse,
 )
 
@@ -56,11 +57,18 @@ class DecisionProfile(GuidedDecisionWireModel):
     budget_eur: DecisionFact[float] | None = None
     family: DecisionFact[bool] | None = None
     primary_use: DecisionFact[PrimaryUse] | None = None
+    usage: DecisionFact[list[PrimaryUse]] | None = None
+    children_count: DecisionFact[int] | None = None
+    passengers_usual: DecisionFact[int] | None = None
     annual_km: DecisionFact[int] | None = None
     condition: DecisionFact[AdvisorCondition] | None = None
     preferred_fuel_type: DecisionFact[AdvisorFuelType] | None = None
     max_mileage_km: DecisionFact[int] | None = None
     priorities: DecisionFact[list[AdvisorPriority]] | None = None
+    automatic_required: DecisionFact[bool] | None = None
+    constraint_modes: AdvisorConstraintModes = Field(
+        default_factory=AdvisorConstraintModes
+    )
     parking: DecisionFact[ParkingType] | None = None
     garage: GarageProfile = Field(default_factory=GarageProfile)
 

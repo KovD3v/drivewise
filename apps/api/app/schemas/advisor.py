@@ -8,6 +8,7 @@ from app.schemas.vehicles import VehicleSpec, VehicleSummary
 
 
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
+ConstraintMode = Literal["hard", "soft"]
 AdvisorPriority = Literal[
     "price",
     "efficiency_range",
@@ -60,12 +61,28 @@ NextAction = Literal[
 ]
 
 
+class AdvisorConstraintModes(BaseModel):
+    budget: ConstraintMode = "soft"
+    body_style: ConstraintMode = "soft"
+    fuel_type: ConstraintMode = "soft"
+    transmission: ConstraintMode = "soft"
+    garage: ConstraintMode = "soft"
+
+
 class AdvisorRecommendationRequest(BaseModel):
     _annual_km_was_defaulted: bool = PrivateAttr(default=False)
 
     budget_min_eur: float | None = Field(default=None, ge=0)
     budget_max_eur: float = Field(gt=0)
     primary_use: PrimaryUse
+    usage: list[PrimaryUse] | None = None
+    children_count: int | None = Field(default=None, ge=0)
+    passengers_usual: int | None = Field(default=None, ge=1)
+    garage: bool | None = None
+    automatic_required: bool | None = None
+    constraint_modes: AdvisorConstraintModes = Field(
+        default_factory=AdvisorConstraintModes
+    )
     condition: AdvisorCondition = "any"
     annual_km: int | None = Field(default=None, gt=0)
     preferred_fuel_type: AdvisorFuelType | None = None
@@ -89,6 +106,8 @@ class AdvisorRecommendationRequest(BaseModel):
                 "highway": 18_000,
                 "work": 18_000,
             }[self.primary_use]
+        if self.usage is None:
+            self.usage = [self.primary_use]
         return self
 
     @property
@@ -103,6 +122,16 @@ class AdvisorRecommendationRequest(BaseModel):
     ) -> list[AdvisorPriority]:
         if len(value) != len(set(value)):
             raise ValueError("priorities must not contain duplicates")
+        return value
+
+    @field_validator("usage")
+    @classmethod
+    def reject_duplicate_usage(
+        cls,
+        value: list[PrimaryUse] | None,
+    ) -> list[PrimaryUse] | None:
+        if value is not None and len(value) != len(set(value)):
+            raise ValueError("usage must not contain duplicates")
         return value
 
 
@@ -236,3 +265,14 @@ class AdvisorRecommendationResponse(BaseModel):
     assumptions: list[str]
     excluded_counts_by_reason: dict[str, int]
     groups: list[AdvisorRecommendationGroup]
+    decision_status: str = "insufficient_data"
+    decision_score: float | None = None
+    decision_confidence: float | None = None
+    structural_fit: float | None = None
+    preference_fit: float | None = None
+    pillar_scores: dict[str, float] = Field(default_factory=dict)
+    penalties: list[str] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    missing_factors: list[str] = Field(default_factory=list)
+    module_versions: dict[str, str] = Field(default_factory=dict)
+    score_composition: dict[str, Any] = Field(default_factory=dict)
