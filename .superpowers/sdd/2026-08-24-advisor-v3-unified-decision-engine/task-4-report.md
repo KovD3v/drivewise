@@ -71,6 +71,18 @@ Result: `6 passed, 1 skipped`; Ruff passed; diff check passed. Added an ADAS chi
 
 ## Fix Round 2
 
+## Fix Round 3
+
+GREEN commands:
+
+```text
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/python -m pytest apps/api/tests/test_advisor_api.py -q
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/ruff check apps/api/app/repositories/advisor.py apps/api/tests/test_advisor_api.py
+git diff --check
+```
+
+Result: 6 passed, 1 skipped; Ruff passed; diff check passed. Refactored the query-shape test to slice each aggregate's own nearest COALESCE through alias and assert its specific child table, correlation, permitted source alias, empty-array fallback, and feature category clause. The outer child-table absence guard remains.
+
 RED command:
 
 ```text

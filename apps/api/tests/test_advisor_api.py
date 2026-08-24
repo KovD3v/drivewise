@@ -387,22 +387,35 @@ def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
     AdvisorRepository(conn).list_candidates(as_of=AS_OF)
     sql = conn.calls[0][0]
 
-    for alias in (
-        "spec_provenance",
-        "maintenance_items",
-        "safety_ratings",
-        "safety_features",
-        "technology_comfort_features",
-    ):
-        assert f") AS {alias}" in sql
-        assert "COALESCE(" in sql
-        assert "ranking_permission = 'permitted'" in sql
-    assert "WHERE provenance.spec_id = s.id" in sql
-    assert "WHERE item.spec_id = s.id" in sql
-    assert "WHERE rating.spec_id = s.id" in sql
-    assert "WHERE feature.spec_id = s.id" in sql
-    assert "feature.category IN ('adas', 'safety')" in sql
-    assert "feature.category IN ('technology', 'comfort')" in sql
+    def aggregate_fragment(alias):
+        end = sql.index(f") AS {alias}") + len(f") AS {alias}")
+        start = sql.rfind("COALESCE(", 0, end)
+        return sql[start:end]
+
+    aggregates = (
+        ("spec_provenance", "vehicle_spec_provenance", "provenance"),
+        ("maintenance_items", "vehicle_maintenance_items", "item"),
+        ("safety_ratings", "vehicle_safety_ratings", "rating"),
+        ("safety_features", "vehicle_features", "feature"),
+        (
+            "technology_comfort_features",
+            "vehicle_features",
+            "feature",
+        ),
+    )
+    for alias, child_table, child_alias in aggregates:
+        fragment = aggregate_fragment(alias)
+        assert child_table in fragment
+        assert f"WHERE {child_alias}.spec_id = s.id" in fragment
+        assert f"{child_alias}_source.ranking_permission = 'permitted'" in fragment
+        assert "'[]'::jsonb" in fragment
+        assert f") AS {alias}" in fragment
+    assert "feature.category IN ('adas', 'safety')" in aggregate_fragment(
+        "safety_features"
+    )
+    assert "feature.category IN ('technology', 'comfort')" in aggregate_fragment(
+        "technology_comfort_features"
+    )
     outer_query = sql[sql.index("FROM listings AS l") :]
     for child_table in (
         "vehicle_spec_provenance",
