@@ -43,7 +43,7 @@ Reviewed SQL aliases against migration `0005_vehicle_knowledge_profile.sql`, che
 
 ## Commit
 
-SHA: `ed5e21c91ff592222974bbc4906d1eb20b9245ee`.
+SHA: `6bd8ab1a45e39f24bf067373ee07fae2ac26f51a` (implementation commit).
 
 ## Concerns
 
