@@ -103,6 +103,8 @@ class AdvisorRecommendationRequest(BaseModel):
     )
     condition: AdvisorCondition = "any"
     annual_km: int | None = Field(default=None, gt=0)
+    # Reliable charging access: True, no reliable access: False, unknown: None.
+    charging_context: bool | None = None
     preferred_fuel_type: AdvisorFuelType | None = None
     preferred_body_style: AdvisorBodyStyle | None = None
     max_mileage: int | None = Field(default=None, ge=0)

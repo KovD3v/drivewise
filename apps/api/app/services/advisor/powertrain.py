@@ -59,7 +59,8 @@ def powertrain_fit(
             missing.append("vehicle.energy_consumption_kwh_100km")
         if _positive(spec.get("wltp_range_km")) is None:
             missing.append("vehicle.wltp_range_km")
-        if not _charging_context(candidate):
+        charging_context = _charging_context(request, candidate)
+        if charging_context is None:
             missing.append("charging_context")
 
     if missing:
@@ -71,7 +72,13 @@ def powertrain_fit(
         )
 
     km = float(annual_km)
-    score = _base_score(str(fuel_type), usage, km)
+    phev_charging = _charging_context(request, candidate)
+    score = _base_score(
+        "petrol" if fuel_type == "plug_in_hybrid_petrol" and phev_charging is False
+        else str(fuel_type),
+        usage,
+        km,
+    )
     if fuel_type == "electric" and "highway" in usage:
         score += max(-6.0, min(0.0, (float(spec["wltp_range_km"]) - 350) / 100))
     if fuel_type == "plug_in_hybrid_petrol" and "highway" in usage:
@@ -140,7 +147,13 @@ def _base_score(fuel_type: str, usage: set[str], annual_km: float) -> float:
     return score
 
 
-def _charging_context(candidate: Mapping[str, Any]) -> bool:
+def _charging_context(
+    request: AdvisorRecommendationRequest | Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> bool | None:
+    request_context = _value(request, "charging_context")
+    if request_context is not None:
+        return bool(request_context)
     context = candidate.get("charging_context")
     if context is None:
         decision_context = candidate.get("decision_context") or {}
@@ -153,7 +166,7 @@ def _charging_context(candidate: Mapping[str, Any]) -> bool:
         context = (candidate.get("spec") or {}).get("charging_context")
     if isinstance(context, Mapping):
         return any(bool(value) for value in context.values())
-    return bool(context)
+    return bool(context) if context is not None else None
 
 
 def _value(obj: Any, name: str) -> Any:

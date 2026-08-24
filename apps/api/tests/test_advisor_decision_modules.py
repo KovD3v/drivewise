@@ -95,6 +95,28 @@ def test_phev_missing_measurable_facts_is_insufficient_data(candidate):
     assert "charging_context" in result.missing_data
 
 
+@pytest.mark.parametrize("charging_context", [True, False])
+def test_phev_request_charging_context_assesses_fully_measured_candidate(
+    charging_context, candidate
+):
+    candidate["spec"].update(
+        fuel_type="plug_in_hybrid_petrol",
+        energy_consumption_kwh_100km=18,
+        wltp_range_km=60,
+    )
+    result = powertrain_fit(
+        v3_request(charging_context=charging_context), candidate
+    )
+    assert result.status == "available"
+    assert result.details["fuel_type"] == "plug_in_hybrid_petrol"
+
+
+def test_request_charging_context_serializes_tri_state():
+    for value in (True, False, None):
+        request = v3_request(charging_context=value)
+        assert request.model_dump()["charging_context"] is value
+
+
 def test_tco_fails_closed_without_consumption(candidate):
     candidate["spec"]["consumption_l_100km"] = None
     result = estimate_tco(v3_request(), candidate, as_of=AS_OF)
