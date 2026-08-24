@@ -32,6 +32,7 @@ AdvisorFuelType = Literal[
     "mild_hybrid_petrol",
     "petrol",
     "petrol_lpg",
+    "plug_in_hybrid_petrol",
 ]
 AdvisorBodyStyle = Literal[
     "city_car",

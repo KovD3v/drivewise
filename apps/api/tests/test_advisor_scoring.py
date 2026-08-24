@@ -490,10 +490,6 @@ def test_gold_11_strict_eligibility_reports_one_exact_reason_per_offer():
         lambda value: value["spec"].update(consumption_l_100km=None),
     )
     changed(
-        "unsupported_phev",
-        lambda value: value["spec"].update(fuel_type="plug_in_hybrid_petrol"),
-    )
-    changed(
         "unsupported_fuel_type",
         lambda value: value["spec"].update(fuel_type="hydrogen"),
     )
@@ -544,6 +540,17 @@ def test_gold_11_strict_eligibility_reports_one_exact_reason_per_offer():
     assert result.excluded_counts_by_reason == {
         reason: 1 for reason, _ in cases
     }
+
+
+def test_phev_is_not_excluded_as_unsupported():
+    phev = candidate(499, fuel_type="plug_in_hybrid_petrol")
+    result = score_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=30_000, primary_use="city"),
+        [phev],
+        as_of=AS_OF,
+    )
+    assert result.items
+    assert "unsupported_phev" not in result.excluded_counts_by_reason
 
 
 def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_key():

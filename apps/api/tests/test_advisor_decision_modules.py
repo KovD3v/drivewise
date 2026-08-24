@@ -16,6 +16,7 @@ from app.services.advisor.energy_prices import (
 from app.services.advisor.tco import estimate_tco
 from app.services.advisor.constraints import evaluate_constraints
 from app.services.advisor.garage import family_fit, garage_fit
+from app.services.advisor.powertrain import powertrain_fit
 
 
 AS_OF = datetime(2026, 8, 25, tzinfo=timezone.utc)
@@ -55,6 +56,34 @@ def test_tco_returns_a_versioned_full_estimate(candidate):
     }
     assert annual["total"] == sum(value for key, value in annual.items() if key != "total")
     assert result.assumptions
+
+
+@pytest.mark.parametrize(
+    "fuel_type",
+    [
+        "petrol", "diesel", "mild_hybrid_petrol", "full_hybrid_petrol",
+        "plug_in_hybrid_petrol", "electric", "petrol_lpg",
+    ],
+)
+def test_powertrains_are_assessed_not_legacy_excluded(fuel_type, candidate):
+    candidate["spec"]["fuel_type"] = fuel_type
+    if fuel_type == "electric":
+        candidate["spec"].update(
+            energy_consumption_kwh_100km=18, wltp_range_km=350
+        )
+    if fuel_type == "plug_in_hybrid_petrol":
+        candidate["spec"].update(
+            energy_consumption_kwh_100km=18, wltp_range_km=60
+        )
+        candidate["decision_context"] = {"charging_context": {"home": True}}
+    result = powertrain_fit(v3_request(), candidate)
+    assert result.status in {"available", "estimated", "insufficient_data"}
+    assert result.version == "powertrain-fit-v1"
+
+
+def test_request_accepts_plug_in_hybrid_fuel_type():
+    request = v3_request(preferred_fuel_type="plug_in_hybrid_petrol")
+    assert request.preferred_fuel_type == "plug_in_hybrid_petrol"
 
 
 def test_tco_fails_closed_without_consumption(candidate):

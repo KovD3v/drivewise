@@ -330,8 +330,6 @@ def _exclusion_reason(
     fuel_type = spec.get("fuel_type")
     if not _nonblank(fuel_type):
         return "missing_fuel_type"
-    if _is_phev(str(fuel_type)):
-        return "unsupported_phev"
     if fuel_type not in LIQUID_ENERGY_PRICES_EUR_PER_LITER and fuel_type != "electric":
         return "unsupported_fuel_type"
     if body_style not in BODY_USE_MATRIX["city"]:
