@@ -16,8 +16,8 @@ TCO_VERSION = "tco-v1"
 _CENT = Decimal("0.01")
 
 
-def _money(value: Decimal) -> float:
-    return float(value.quantize(_CENT, rounding=ROUND_HALF_UP))
+def _money(value: Decimal) -> Decimal:
+    return value.quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
 def estimate_tco(
@@ -30,7 +30,7 @@ def estimate_tco(
     spec = candidate.get("spec", {})
     offer = candidate.get("offer", {})
     missing: list[str] = []
-    annual: dict[str, float] = {}
+    annual: dict[str, Decimal] = {}
 
     price = offer.get("price_eur")
     if price is not None:
@@ -65,7 +65,7 @@ def estimate_tco(
 
     power_kw = spec.get("power_kw")
     if fuel_type == "electric":
-        annual["tax"] = 0.0
+        annual["tax"] = Decimal("0.00")
     elif power_kw is None:
         missing.append("tax")
     else:
@@ -81,13 +81,13 @@ def estimate_tco(
     if model_year is None:
         missing.append("maintenance")
     else:
-        annual["maintenance"] = estimate_annual_maintenance(
+        annual["maintenance"] = _money(Decimal(str(estimate_annual_maintenance(
             model_year=model_year,
             current_km=offer.get("mileage"),
             body_style=spec.get("body_style"),
             fuel_type=fuel_type,
             analysis_year=as_of.year,
-        )
+        ))))
 
     tyre_rates = {
         "city_car": 180,
@@ -104,7 +104,7 @@ def estimate_tco(
     if tyres is None:
         missing.append("tyres")
     else:
-        annual["tyres"] = float(tyres)
+        annual["tyres"] = Decimal(str(tyres)).quantize(_CENT)
 
     if "energy" not in annual:
         return ModuleAssessment(
@@ -114,12 +114,18 @@ def estimate_tco(
             missing_data=tuple(dict.fromkeys(missing)),
         )
 
-    annual["total"] = sum(value for key, value in annual.items() if key != "total")
+    annual["total"] = _money(
+        sum(
+            (value for key, value in annual.items() if key != "total"),
+            Decimal("0.00"),
+        )
+    )
+    exposed_annual = {key: float(value) for key, value in annual.items()}
     return ModuleAssessment(
         status="estimated",
         version=TCO_VERSION,
-        value=annual["total"],
-        details={"annual_eur": annual},
+        value=float(annual["total"]),
+        details={"annual_eur": exposed_annual},
         assumptions=_assumptions(),
         missing_data=tuple(dict.fromkeys(missing)),
     )
@@ -128,7 +134,10 @@ def estimate_tco(
 def _assumptions() -> tuple[str, ...]:
     return (
         f"{TCO_VERSION}: annual kilometres come from the request.",
-        f"Energy uses MIMIT/ARERA rates ({ENERGY_ASSUMPTION_VERSION}).",
-        "Insurance is EUR 650 plus 0.8% of offer price, capped at EUR 1,600.",
-        "Tax, maintenance, tyres, and depreciation use the versioned TCO V1 heuristics.",
+        f"Energy uses MIMIT fuel and ARERA electricity rates ({ENERGY_ASSUMPTION_VERSION}).",
+        "Insurance formula: EUR 650 + 0.8% of offer price, capped at EUR 1,600.",
+        "Tax formula: EUR 2.58/kW through 100 kW (100 kW cap), then EUR 3.87/kW above 100 kW.",
+        "maintenance-v1 formula: EUR 420 city car or EUR 520 other body + EUR 70 per age year + EUR 2.50 per 1,000 km; electric base EUR 340.",
+        "Tyres: city_car/small_hatchback EUR 180; hatchback/sedan/wagon EUR 240; crossover/SUV/MPV/van EUR 300.",
+        "Depreciation formula: 9.333% of offer price annually (28% over three years).",
     )

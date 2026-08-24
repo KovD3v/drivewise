@@ -1,5 +1,6 @@
 from dataclasses import fields
 from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -62,6 +63,39 @@ def test_tco_omits_missing_non_energy_component(candidate):
     assert result.status == "estimated"
     assert "tax" in result.missing_data
     assert "tax" not in result.details["annual_eur"]
+
+
+def test_tco_rounds_components_and_total_to_decimal_cents(candidate):
+    candidate["offer"]["price_eur"] = 19_999.99
+    candidate["spec"]["consumption_l_100km"] = 5.123
+    annual = estimate_tco(
+        v3_request(annual_km=12_345), candidate, as_of=AS_OF
+    ).details["annual_eur"]
+    assert all(value == round(value, 2) for value in annual.values())
+    assert Decimal(str(annual["total"])) == sum(
+        (Decimal(str(value)) for key, value in annual.items() if key != "total"),
+        Decimal("0.00"),
+    )
+
+
+def test_tco_assumptions_name_reproducible_v1_constants(candidate):
+    assumptions = estimate_tco(v3_request(), candidate, as_of=AS_OF).assumptions
+    text = " ".join(assumptions)
+    for required in (
+        "EUR 650",
+        "0.8%",
+        "EUR 1,600",
+        "EUR 2.58/kW through 100 kW",
+        "EUR 3.87/kW above 100 kW",
+        "100 kW cap",
+        "9.333%",
+        "city_car/small_hatchback EUR 180",
+        "hatchback/sedan/wagon EUR 240",
+        "crossover/SUV/MPV/van EUR 300",
+        "maintenance-v1",
+        "it-energy-2026-07-16-v1",
+    ):
+        assert required in text
 
 
 def test_v2_request_defaults_to_single_usage_and_soft_preferences():
