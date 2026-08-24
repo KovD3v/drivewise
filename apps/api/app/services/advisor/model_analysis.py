@@ -342,10 +342,28 @@ def _annual_maintenance(
     current_km: int | None,
     analysis_year: int,
 ) -> float:
-    age = max(1, analysis_year - vehicle.model_year)
-    km_factor = (current_km or 0) / 1000 * 2.5
     body_style = spec.body_style if spec and spec.body_style else vehicle.body_style
     fuel_type = spec.fuel_type if spec and spec.fuel_type else vehicle.fuel_type
+    return estimate_annual_maintenance(
+        model_year=vehicle.model_year,
+        current_km=current_km,
+        body_style=body_style,
+        fuel_type=fuel_type,
+        analysis_year=analysis_year,
+    )
+
+
+def estimate_annual_maintenance(
+    *,
+    model_year: int,
+    current_km: int | None,
+    body_style: str | None,
+    fuel_type: str | None,
+    analysis_year: int,
+) -> float:
+    """Deterministic maintenance estimate shared with TCO V1."""
+    age = max(1, analysis_year - model_year)
+    km_factor = (current_km or 0) / 1000 * 2.5
     base_cost = 420 if body_style == "city_car" else 520
     if fuel_type == "electric":
         base_cost = 340

@@ -1,10 +1,67 @@
 from dataclasses import fields
+from datetime import datetime, timezone
+from uuid import UUID
 
 import pytest
 
 from app.schemas.advisor import AdvisorRecommendationRequest, AdvisorRecommendationResponse
 from app.schemas.guided_decisions import DecisionProfile
 from app.services.advisor.decision import ModuleAssessment
+from app.services.advisor.tco import estimate_tco
+
+
+AS_OF = datetime(2026, 8, 25, tzinfo=timezone.utc)
+
+
+def v3_request(**kwargs):
+    return AdvisorRecommendationRequest(
+        budget_max_eur=30_000,
+        primary_use="family",
+        annual_km=kwargs.pop("annual_km", 15_000),
+        **kwargs,
+    )
+
+
+@pytest.fixture
+def candidate():
+    return {
+        "vehicle": {"id": UUID("00000000-0000-4000-8000-000000000001"), "model_year": 2022},
+        "spec": {
+            "body_style": "hatchback",
+            "fuel_type": "petrol",
+            "consumption_l_100km": 5.0,
+            "power_kw": 96.0,
+        },
+        "offer": {"price_eur": 20_000.0, "condition": "used", "mileage": 40_000},
+    }
+
+
+def test_tco_returns_a_versioned_full_estimate(candidate):
+    result = estimate_tco(v3_request(), candidate, as_of=AS_OF)
+    assert result.status == "estimated"
+    assert result.version == "tco-v1"
+    annual = result.details["annual_eur"]
+    assert set(annual) == {
+        "energy", "insurance", "tax", "maintenance",
+        "tyres", "depreciation", "total",
+    }
+    assert annual["total"] == sum(value for key, value in annual.items() if key != "total")
+    assert result.assumptions
+
+
+def test_tco_fails_closed_without_consumption(candidate):
+    candidate["spec"]["consumption_l_100km"] = None
+    result = estimate_tco(v3_request(), candidate, as_of=AS_OF)
+    assert result.status == "insufficient_data"
+    assert "consumption" in result.missing_data
+
+
+def test_tco_omits_missing_non_energy_component(candidate):
+    candidate["spec"]["power_kw"] = None
+    result = estimate_tco(v3_request(), candidate, as_of=AS_OF)
+    assert result.status == "estimated"
+    assert "tax" in result.missing_data
+    assert "tax" not in result.details["annual_eur"]
 
 
 def test_v2_request_defaults_to_single_usage_and_soft_preferences():
