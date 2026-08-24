@@ -1,6 +1,6 @@
 # Advisor v3 unified decision engine design
 
-**Status:** Approved in conversation, pending written review
+**Status:** Approved
 **Date:** 2026-08-24
 **Target branch:** `feat/advisor-v3-unified-engine`
 **Base:** `origin/main` at `7b683b6`
