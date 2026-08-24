@@ -29,6 +29,8 @@ REQUIRED_TABLES = {
     "import_runs",
     "vehicle_provenance",
     "vehicle_spec_provenance",
+    "guided_decisions",
+    "guided_decision_turns",
     "vehicle_maintenance_items",
     "vehicle_safety_ratings",
     "vehicle_features",
@@ -53,6 +55,7 @@ def test_migration_files_are_ordered():
         "0003_seed_initial_vehicles.sql",
         "0004_curated_catalog.sql",
         "0005_vehicle_knowledge_profile.sql",
+        "0006_guided_decisions.sql",
     ]
 
 

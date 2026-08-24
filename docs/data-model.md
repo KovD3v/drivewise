@@ -27,6 +27,9 @@ variants, offers, and record-level provenance without calling external services.
 - `apps/api/migrations/0003_seed_initial_vehicles.sql` inserts synthetic seed data.
 - `apps/api/migrations/0004_curated_catalog.sql` adds stable catalog identity,
   variant-linked offers, import runs, and provenance.
+- `apps/api/migrations/0006_guided_decisions.sql` persists the current guided
+  decision state and append-only per-turn profile snapshots. Version `0005` is
+  reserved by the existing vehicle-knowledge-profile design.
 - `apps/api/migrations/0005_vehicle_knowledge_profile.sql` adds optional,
   detail-only vehicle-spec knowledge fields and relational child records.
 
@@ -233,6 +236,21 @@ Key columns:
 - `completed_at`
 
 `POST /advisor/recommendations` writes one row per recommendation run.
+
+### guided_decisions and guided_decision_turns
+
+`guided_decisions` stores the current versioned Decision Profile and the last
+complete frontend response. `guided_decision_turns` stores the user and
+assistant messages, changed field keys, the complete profile snapshot, and the
+complete response for every profile version. The `(decision_id,
+profile_version)` uniqueness constraint prevents duplicate versions, while the
+API's required `expectedProfileVersion` provides optimistic concurrency.
+
+Profile facts are JSONB because the contract is typed and validated at the API
+boundary while the field set is expected to evolve. Conversation snapshots are
+not treated as the only durable truth: the current profile is stored separately
+and every field retains value, confidence, source, confirmation, and update
+time.
 
 ### recommendation_items
 

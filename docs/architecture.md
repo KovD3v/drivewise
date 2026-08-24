@@ -54,6 +54,9 @@ GET /documents/{document_id}
 POST /search/documents
 POST /advisor/recommendations
 POST /advisor/model-analysis
+POST /guided-decisions
+POST /guided-decisions/{decision_id}/turns
+GET /guided-decisions/{decision_id}
 ```
 
 `/health` returns a small JSON payload for cheap local health checks. `/ready` verifies PostgreSQL with a simple query and is the endpoint to use when a process must only receive traffic after the DB is reachable.
@@ -65,6 +68,15 @@ Vehicle resolution is deterministic and market-scoped. It normalizes free-text d
 Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The Advisor v2 recommendations endpoint is independent of document search: it filters reviewed, fresh, exact Italian offer/spec pairs, produces transparent component scores and provenance, groups new and used results, and persists the versioned run and item breakdowns.
 
 `POST /advisor/model-analysis` is a non-persisted flow for a model the user has already chosen. It can start from a free-text query resolved through the vehicle resolver or a canonical vehicle reference, then returns a result-contract shape with verdict, price assessment, estimated costs, red flags, checklist, confidence, assumptions, warnings, missing data, and next actions.
+
+The Guided Decision API is a persisted, versioned state layer over the existing
+deterministic Advisor. Each turn returns typed profile facts with confidence,
+source, confirmation state, completion, engine confidence, missing information,
+the next highest-impact question, and an optional Advisor v2 preview. The v1
+wire contract is documented in `docs/guided-decision-contract.md`. Its current
+Italian interpreter is deliberately conservative and isolated from scoring so
+an LLM-backed interpreter can replace it without moving deterministic ranking
+or constraints into the model.
 
 ## Data
 
@@ -86,5 +98,6 @@ Embeddings have a dry-run planner and a fake-provider write path. `python apps/a
 - Real external embedding providers
 - Production hybrid/vector search
 - Non-deterministic advisor/model-analysis logic
+- Production LLM-backed guided-decision interpretation
 - Authentication
 - Deployment configuration

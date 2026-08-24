@@ -612,6 +612,9 @@ Response:
 
 ## Advisor
 
+The persisted conversational contract that incrementally builds an Advisor
+request is documented separately in `docs/guided-decision-contract.md`.
+
 ### POST /advisor/recommendations
 
 Creates a deterministic Advisor v2 run from reviewed, imported Italian catalog
