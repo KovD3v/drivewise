@@ -2,7 +2,14 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    field_validator,
+    model_validator,
+)
 
 from app.schemas.vehicles import VehicleSpec, VehicleSummary
 
@@ -62,9 +69,11 @@ NextAction = Literal[
 
 
 class AdvisorConstraintModes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     budget: ConstraintMode = "soft"
-    body_style: ConstraintMode = "soft"
-    fuel_type: ConstraintMode = "soft"
+    body_style: ConstraintMode = Field(default="soft", alias="bodyStyle")
+    fuel_type: ConstraintMode = Field(default="soft", alias="fuelType")
     transmission: ConstraintMode = "soft"
     garage: ConstraintMode = "soft"
 
@@ -265,7 +274,7 @@ class AdvisorRecommendationResponse(BaseModel):
     assumptions: list[str]
     excluded_counts_by_reason: dict[str, int]
     groups: list[AdvisorRecommendationGroup]
-    decision_status: str = "insufficient_data"
+    decision_status: Literal["complete", "insufficient_data"] = "insufficient_data"
     decision_score: float | None = None
     decision_confidence: float | None = None
     structural_fit: float | None = None

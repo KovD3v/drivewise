@@ -18,3 +18,7 @@ class ModuleAssessment:
     def __post_init__(self) -> None:
         if self.status == "insufficient_data" and self.value is not None:
             raise ValueError("insufficient_data cannot carry a value")
+        if self.status == "estimated" and (
+            not self.version.strip() or not self.assumptions
+        ):
+            raise ValueError("estimated assessments require version and assumptions")
