@@ -78,7 +78,7 @@ def test_sample_message_builds_structured_profile_and_next_question():
     assert profile.family.value is True
     assert result.response.next_question.id == "annual_km"
     assert result.response.preview_ranking.status == "insufficient_inventory"
-    assert result.response.preview_ranking.scoring_version == "advisor-v2.0"
+    assert result.response.preview_ranking.scoring_version == "advisor-v3.0"
     assert result.response.profile_completion > 0
     assert result.response.decision_confidence > 0
     assert repository.calls == [("list", AS_OF), ("excluded", AS_OF)]

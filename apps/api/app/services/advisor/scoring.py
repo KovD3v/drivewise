@@ -226,7 +226,16 @@ def score_recommendations(
             excluded[reason] += 1
             continue
 
-        constraint_evaluation = evaluate_constraints(request, candidate)
+        garage_assessment = (
+            _safe_assessment("garage-fit-v1", lambda: garage_fit(request, candidate))
+            if request.garage is not None
+            else None
+        )
+        constraint_evaluation = evaluate_constraints(
+            request,
+            candidate,
+            garage_assessment=garage_assessment,
+        )
         if constraint_evaluation.status == "excluded":
             excluded[constraint_evaluation.reasons[0]] += 1
             continue
@@ -236,6 +245,7 @@ def score_recommendations(
             candidate,
             weights,
             evaluation_time,
+            garage_assessment=garage_assessment,
             constraint_tradeoffs=constraint_evaluation.soft_tradeoffs,
             constraint_missing=constraint_evaluation.missing_data,
         )
@@ -465,6 +475,7 @@ def _score_candidate(
     weights: dict[AdvisorScoreComponent, float],
     as_of: datetime,
     *,
+    garage_assessment: ModuleAssessment | None = None,
     constraint_tradeoffs: tuple[str, ...] = (),
     constraint_missing: tuple[str, ...] = (),
 ) -> AdvisorRecommendationItem:
@@ -515,7 +526,7 @@ def _score_candidate(
     component_scores = {
         component: round(score, 2) for component, score in raw_scores.items()
     }
-    assessments = _assess_candidate(request, candidate, as_of)
+    assessments = _assess_candidate(request, candidate, as_of, garage_assessment)
     factors = {
         "price_fit": _available(raw_scores["price_fit"]),
         "tco": _tco_assessment(assessments["tco"], request.budget_max_eur),
@@ -540,10 +551,15 @@ def _score_candidate(
     missing_factors = list(
         dict.fromkeys(pillar_missing + preference_missing + list(constraint_missing))
     )
-    decision_status = "complete" if preference is not None else "insufficient_data"
+    constraint_insufficient = bool(constraint_missing)
+    decision_status = (
+        "complete"
+        if preference is not None and not constraint_insufficient
+        else "insufficient_data"
+    )
     decision_score = (
         round(structural * 0.65 + preference * 0.35, 1)
-        if preference is not None
+        if preference is not None and not constraint_insufficient
         else None
     )
     final_score = decision_score if decision_score is not None else round(structural, 1)
@@ -673,6 +689,7 @@ def _assess_candidate(
     request: AdvisorRecommendationRequest,
     candidate: dict[str, Any],
     as_of: datetime,
+    garage_assessment: ModuleAssessment | None = None,
 ) -> dict[str, ModuleAssessment]:
     context = candidate.get("decision_context") or {}
     try:
@@ -725,8 +742,8 @@ def _assess_candidate(
             ),
         ),
         "garage_fit": (
-            _safe_assessment("garage-fit-v1", lambda: garage_fit(request, candidate))
-            if request.garage is not None
+            garage_assessment
+            if garage_assessment is not None
             else ModuleAssessment(
                 status="insufficient_data",
                 version="garage-fit-v1",
@@ -1187,11 +1204,12 @@ def _stable_rank_key(item: AdvisorRecommendationItem) -> tuple[Any, ...]:
 def _with_ranking_confidence(
     items: list[AdvisorRecommendationItem],
 ) -> list[AdvisorRecommendationItem]:
+    comparison = "none" if len(items) < 2 else "within_group_gap"
     if len(items) < 2:
-        stability = 70.0
+        stability = 0.0
     else:
         scores = sorted((item.score for item in items), reverse=True)
-        stability = max(0.0, min(100.0, 60.0 + (scores[0] - scores[1]) * 4.5))
+        stability = max(0.0, min(100.0, scores[0] - scores[1]))
     result: list[AdvisorRecommendationItem] = []
     for item in items:
         profile = _number(item.evidence.get("profile_completeness"))
@@ -1205,7 +1223,17 @@ def _with_ranking_confidence(
             evidence_completeness=evidence,
             ranking_stability=stability,
         )
-        result.append(item.model_copy(update={"decision_confidence": confidence.value}))
+        evidence_data = dict(item.evidence)
+        evidence_data["ranking_stability"] = stability
+        evidence_data["ranking_comparison"] = comparison
+        result.append(
+            item.model_copy(
+                update={
+                    "decision_confidence": confidence.value,
+                    "evidence": evidence_data,
+                }
+            )
+        )
     return result
 
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.schemas.advisor import AdvisorRecommendationRequest
+from app.services.advisor.decision import ModuleAssessment
 from app.services.advisor.garage import garage_fit
 
 
@@ -19,7 +20,9 @@ class ConstraintEvaluation:
 
 
 def evaluate_constraints(
-    request: AdvisorRecommendationRequest, candidate: dict[str, Any]
+    request: AdvisorRecommendationRequest,
+    candidate: dict[str, Any],
+    garage_assessment: ModuleAssessment | None = None,
 ) -> ConstraintEvaluation:
     spec = candidate.get("spec") or {}
     offer = candidate.get("offer") or {}
@@ -81,7 +84,7 @@ def evaluate_constraints(
             tradeoffs.append("transmission_mismatch")
 
     if request.garage:
-        garage = garage_fit(request, candidate)
+        garage = garage_assessment or garage_fit(request, candidate)
         if garage.status == "insufficient_data":
             if request.constraint_modes.garage == "hard":
                 missing.extend(garage.missing_data)

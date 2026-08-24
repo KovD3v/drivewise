@@ -26,3 +26,12 @@ Missing factors are omitted, never scored as neutral 50. Economics and Practical
 Commit: `1a5a008a6c52ca348d827f1c391bfbd5ca89bc45` (`feat(api): unify ranking in Advisor v3`).
 
 Self-review concern: top-level API response and persistence wiring still need Task 10; this task intentionally keeps v3 metadata on each scored item and leaves those integration changes untouched.
+
+## Fix Round 1
+
+- RED: `python -m pytest apps/api/tests/test_advisor_v3_scoring.py -q` — `7 passed, 4 failed`; failures covered hard-garage propagation, duplicate garage calls, ranking audit data, and exact 80/90/83.5 composition.
+- GREEN/focused suite: `python -m pytest apps/api/tests/test_advisor_v3_scoring.py apps/api/tests/test_advisor_scoring.py apps/api/tests/test_advisor_decision_modules.py apps/api/tests/test_advisor_assessments.py apps/api/tests/test_advisor_api.py apps/api/tests/test_guided_decisions.py -q` — `102 passed, 2 skipped`.
+- Ruff: `python -m ruff check` on changed scorer, constraints, confidence, schema, and focused tests — `All checks passed`.
+- Diff check: `git diff --check` — clean.
+
+Round 1 fixes: constraint `insufficient_data` now forces provisional output; garage assessment is safe, precomputed, and passed to constraints exactly once; single-item and zero-gap groups report ranking stability `0` with explicit comparison metadata; exact stubbed gold composition asserts 80.0/90.0/83.5; API accepts `safety` and rejects unknown priorities. Guided preview version assertion is updated to v3.

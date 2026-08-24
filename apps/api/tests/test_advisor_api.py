@@ -234,7 +234,7 @@ def test_post_advisor_v2_returns_frontend_shape_and_persists_run_context(
     assert fake_repository.completed_run_id == RUN_ID
 
 
-def test_post_advisor_rejects_retired_priorities(client):
+def test_post_advisor_accepts_v3_priorities_and_rejects_unknown(client):
     response = client.post(
         "/advisor/recommendations",
         json={
@@ -243,7 +243,16 @@ def test_post_advisor_rejects_retired_priorities(client):
             "priorities": ["safety"],
         },
     )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    invalid = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["not_a_priority"],
+        },
+    )
+    assert invalid.status_code == 422
 
 
 class RecordingResult:

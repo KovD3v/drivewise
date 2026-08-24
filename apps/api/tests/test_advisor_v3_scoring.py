@@ -2,7 +2,9 @@ from datetime import datetime, timezone
 
 from app.schemas.advisor import AdvisorRecommendationRequest
 from app.services.advisor.confidence import decision_confidence
+from app.services.advisor.decision import ModuleAssessment
 from app.services.advisor.scoring import score_recommendations
+from app.services.advisor import scoring as scoring_module
 
 from test_advisor_scoring import candidate
 
@@ -31,12 +33,13 @@ def complete_candidate(index: int = 1):
     return result
 
 
-def score_one(candidate_data, priorities):
+def score_one(candidate_data, priorities, **request_updates):
     request = AdvisorRecommendationRequest(
         budget_max_eur=20_000,
         primary_use="city",
         priorities=priorities,
         annual_km=15_000,
+        **request_updates,
     )
     return score_recommendations(request, [candidate_data], as_of=AS_OF).items[0]
 
@@ -104,3 +107,156 @@ def test_module_failure_is_insufficient_data_without_neutral_score(monkeypatch):
     assert item.decision_score is None
     assert "reliability" in item.missing_factors
     assert item.evidence["assessments"]["reliability"]["value"] is None
+
+
+def test_constraint_insufficient_data_forces_provisional_result():
+    candidate_data = complete_candidate()
+    request_garage = {
+        "useful_length_mm": 5000,
+        "useful_width_mm": 2500,
+        "useful_height_mm": 2200,
+        "door_width_mm": 2200,
+        "door_height_mm": 2000,
+    }
+    candidate_data["decision_context"]["dimensions"].pop("width_mirrors_folded_mm")
+    item = score_one(
+        candidate_data,
+        priorities=["price"],
+        garage=request_garage,
+        constraint_modes={"garage": "hard"},
+    )
+    assert item.decision_status == "insufficient_data"
+    assert item.decision_score is None
+    assert item.score == item.structural_fit
+    assert "vehicle.width_mirrors_folded_mm" in item.missing_factors
+
+
+def test_garage_assessment_runs_once_and_failure_is_provisional(monkeypatch):
+    calls = 0
+
+    def fail(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("controlled garage failure")
+
+    monkeypatch.setattr(scoring_module, "garage_fit", fail)
+    item = score_one(
+        complete_candidate(),
+        priorities=["price"],
+        garage={
+            "useful_length_mm": 5000,
+            "useful_width_mm": 2500,
+            "useful_height_mm": 2200,
+            "door_width_mm": 2200,
+            "door_height_mm": 2000,
+        },
+        constraint_modes={"garage": "hard"},
+    )
+    assert calls == 1
+    assert item.decision_status == "insufficient_data"
+    assert item.decision_score is None
+    assert "module_error:RuntimeError" in item.evidence["missing_data"]
+
+
+def test_ranking_stability_has_no_invented_single_or_tie_signal():
+    one = score_one(complete_candidate(), priorities=["price"])
+    assert one.evidence["ranking_stability"] == 0
+    assert one.evidence["ranking_comparison"] == "none"
+
+    first = complete_candidate(1)
+    second = complete_candidate(2)
+    tied = score_recommendations(
+        AdvisorRecommendationRequest(
+            budget_max_eur=20_000,
+            primary_use="city",
+            priorities=["price"],
+            annual_km=15_000,
+        ),
+        [first, second],
+        as_of=AS_OF,
+    ).items
+    assert all(item.evidence["ranking_stability"] == 0 for item in tied)
+    assert all(item.evidence["ranking_comparison"] == "within_group_gap" for item in tied)
+
+    separated_candidate = complete_candidate(3)
+    separated_candidate["offer"]["price_eur"] = 19_000
+    separated = score_recommendations(
+        AdvisorRecommendationRequest(
+            budget_max_eur=20_000,
+            primary_use="city",
+            priorities=["price"],
+            annual_km=15_000,
+        ),
+        [first, separated_candidate],
+        as_of=AS_OF,
+    ).items
+    assert separated[0].evidence["ranking_stability"] > 0
+
+
+def test_exact_composition_gold_uses_stubbed_assessments(monkeypatch):
+    candidate_data = complete_candidate()
+    candidate_data["offer"]["price_eur"] = 19_444.444444
+    candidate_data["spec"]["consumption_l_100km"] = 7.6666667 / 1.91662
+    candidate_data["decision_context"]["vehicle_dna"] = {
+        "city": {"value": 80},
+        "comfort": {"value": 90},
+        "sport": {"value": 70},
+        "travel": {"value": 71.3333333},
+        "technology": {"value": 80},
+    }
+    monkeypatch.setattr(
+        scoring_module,
+        "estimate_tco",
+        lambda *args, **kwargs: ModuleAssessment(
+            status="estimated", version="tco-v1", value=4923.809524, assumptions=("stub",)
+        ),
+    )
+    monkeypatch.setattr(
+        scoring_module,
+        "assess_reliability",
+        lambda _candidate: ModuleAssessment(status="available", version="reliability-v1", value=90),
+    )
+    monkeypatch.setattr(
+        scoring_module,
+        "assess_safety",
+        lambda _candidate: ModuleAssessment(status="available", version="safety-v1", value=66.190476),
+    )
+    monkeypatch.setattr(
+        scoring_module,
+        "powertrain_fit",
+        lambda *args, **kwargs: ModuleAssessment(status="available", version="powertrain-fit-v1", value=80),
+    )
+    monkeypatch.setattr(
+        scoring_module,
+        "family_fit",
+        lambda *args, **kwargs: ModuleAssessment(status="available", version="family-fit-v1", value=80),
+    )
+    item = score_one(
+        candidate_data,
+        priorities=["reliability", "running_cost", "comfort"],
+    )
+    assert item.structural_fit == 80.0
+    assert item.preference_fit == 90.0
+    assert item.decision_score == 83.5
+    assert item.score == item.decision_score
+
+
+def test_priority_metric_mapping_is_complete():
+    assert set(scoring_module.PRIORITY_METRIC) == {
+        "price", "budget", "running_cost", "space", "family", "reliability",
+        "safety", "comfort", "performance", "technology", "efficiency_range",
+        "powertrain_fit",
+    }
+
+
+def test_penalties_are_ordered_and_capped_before_composition():
+    candidate_data = complete_candidate()
+    candidate_data["decision_context"]["known_issues"] = [
+        {"applicability": "applicable", "severity": "critical", "penalty": 20}
+    ]
+    candidate_data["decision_context"]["recalls"] = [
+        {"applicability": "applicable", "status": "open", "penalty": 20}
+    ]
+    item = score_one(candidate_data, priorities=["price"])
+    assert item.penalties == ["known_issue_penalty:8", "recall_penalty:6"]
+    assert item.structural_fit <= 100 - 14
