@@ -33,7 +33,7 @@ def get_guided_decision_clock() -> datetime:
 @router.post(
     "",
     response_model=GuidedDecisionResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 def create_guided_decision(
     request: CreateGuidedDecisionRequest,

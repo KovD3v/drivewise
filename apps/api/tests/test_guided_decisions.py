@@ -275,7 +275,7 @@ def test_guided_decision_api_uses_camel_case_contract_and_versioning(guided_clie
         },
     )
 
-    assert created.status_code == 201
+    assert created.status_code == 200
     payload = created.json()
     assert payload["contractVersion"] == "guided-decision-v1"
     assert payload["profileVersion"] == 1
