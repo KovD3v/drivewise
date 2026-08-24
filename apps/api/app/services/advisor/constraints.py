@@ -40,6 +40,8 @@ def evaluate_constraints(
         reasons.append("above_budget")
     elif price > request.budget_max_eur * 1.1:
         reasons.append("above_budget_tolerance")
+    elif price > request.budget_max_eur:
+        tradeoffs.append("above_budget")
 
     mileage = _number(offer.get("mileage"))
     if request.max_mileage is not None:

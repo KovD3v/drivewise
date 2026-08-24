@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from app.schemas.advisor import AdvisorRecommendationRequest
 from app.services.advisor.decision import ModuleAssessment
 
 
@@ -45,7 +46,10 @@ def family_fit(
     )
 
 
-def garage_fit(request: Any, candidate: dict[str, Any]) -> ModuleAssessment:
+def garage_fit(
+    request: AdvisorRecommendationRequest | dict[str, Any],
+    candidate: dict[str, Any],
+) -> ModuleAssessment:
     garage = _value(request, "garage")
     if garage is None and isinstance(request, Mapping):
         garage = request

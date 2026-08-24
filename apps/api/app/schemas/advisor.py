@@ -78,6 +78,14 @@ class AdvisorConstraintModes(BaseModel):
     garage: ConstraintMode = "soft"
 
 
+class AdvisorGarageDimensions(BaseModel):
+    useful_length_mm: int = Field(gt=0)
+    useful_width_mm: int = Field(gt=0)
+    useful_height_mm: int = Field(gt=0)
+    door_width_mm: int = Field(gt=0)
+    door_height_mm: int = Field(gt=0)
+
+
 class AdvisorRecommendationRequest(BaseModel):
     _annual_km_was_defaulted: bool = PrivateAttr(default=False)
 
@@ -87,7 +95,7 @@ class AdvisorRecommendationRequest(BaseModel):
     usage: list[PrimaryUse] | None = None
     children_count: int | None = Field(default=None, ge=0)
     passengers_usual: int | None = Field(default=None, ge=1)
-    garage: bool | None = None
+    garage: AdvisorGarageDimensions | None = None
     automatic_required: bool | None = None
     constraint_modes: AdvisorConstraintModes = Field(
         default_factory=AdvisorConstraintModes

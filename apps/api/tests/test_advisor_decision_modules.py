@@ -246,3 +246,103 @@ def test_garage_fit_compares_body_and_folded_mirror_width_separately(candidate):
     assert result.status == "available"
     assert result.details["margins"]["width_mm"] == 700
     assert result.details["margins"]["door_width_mm"] == 100
+
+
+@pytest.mark.parametrize(
+    ("price", "mode", "status", "reasons", "tradeoffs"),
+    [
+        (19_999, "soft", "excluded", ("below_budget_min",), ()),
+        (30_000, "soft", "eligible", (), ()),
+        (30_001, "soft", "eligible", (), ("above_budget",)),
+        (33_000, "soft", "eligible", (), ("above_budget",)),
+        (33_001, "soft", "excluded", ("above_budget_tolerance",), ()),
+        (30_001, "hard", "excluded", ("above_budget",), ()),
+    ],
+)
+def test_budget_boundaries_preserve_v2_and_hard_modes(
+    candidate, price, mode, status, reasons, tradeoffs
+):
+    candidate["offer"]["price_eur"] = price
+    request = v3_request(
+        budget_min_eur=20_000,
+        constraint_modes={"budget": mode},
+    )
+    result = evaluate_constraints(request, candidate)
+    assert result.status == status
+    assert result.reasons == reasons
+    assert result.soft_tradeoffs == tradeoffs
+
+
+def test_family_fit_none_children_uses_baseline_and_missing_cargo_is_insufficient(candidate):
+    candidate["spec"]["cargo_volume_liters"] = None
+    result = family_fit(children_count=None, passengers_usual=None, candidate=candidate)
+    assert result.status == "insufficient_data"
+    assert result.details["cargo_target_liters"] == 250
+    assert result.missing_data == ("vehicle.cargo_volume_liters",)
+
+
+def test_family_fit_caps_target_and_requires_seats_only_for_passengers(candidate):
+    candidate["spec"].update({"cargo_volume_liters": 600, "seats": None})
+    result = family_fit(children_count=10, passengers_usual=None, candidate=candidate)
+    assert result.status == "available"
+    assert result.details["cargo_target_liters"] == 550
+    result = family_fit(children_count=0, passengers_usual=4, candidate=candidate)
+    assert result.status == "insufficient_data"
+    assert result.missing_data == ("vehicle.seats",)
+
+
+def test_request_accepts_typed_garage_dimensions():
+    request = v3_request(
+        garage={
+            "useful_length_mm": 5000,
+            "useful_width_mm": 2500,
+            "useful_height_mm": 2200,
+            "door_width_mm": 2200,
+            "door_height_mm": 2000,
+        }
+    )
+    assert request.garage.useful_width_mm == 2500
+
+
+def test_garage_mode_controls_incompatible_result(candidate):
+    candidate["decision_context"] = {
+        "dimensions": {
+            "length_mm": 5200,
+            "body_width_mm": 2600,
+            "width_mirrors_folded_mm": 2700,
+            "height_mm": 1600,
+        }
+    }
+    garage = {
+        "useful_length_mm": 5000,
+        "useful_width_mm": 2500,
+        "useful_height_mm": 2200,
+        "door_width_mm": 2200,
+        "door_height_mm": 2000,
+    }
+    soft = evaluate_constraints(v3_request(garage=garage), candidate)
+    assert soft.status == "eligible"
+    assert soft.soft_tradeoffs == ("garage_incompatible",)
+    hard = evaluate_constraints(
+        v3_request(garage=garage, constraint_modes={"garage": "hard"}), candidate
+    )
+    assert hard.status == "excluded"
+    assert hard.reasons == ("garage_incompatible",)
+
+
+def test_hard_garage_missing_folded_width_is_insufficient_data(candidate):
+    candidate["decision_context"] = {
+        "dimensions": {"length_mm": 4200, "body_width_mm": 1800, "height_mm": 1600}
+    }
+    garage = {
+        "useful_length_mm": 5000,
+        "useful_width_mm": 2500,
+        "useful_height_mm": 2200,
+        "door_width_mm": 2200,
+        "door_height_mm": 2000,
+    }
+    result = evaluate_constraints(
+        v3_request(garage=garage, constraint_modes={"garage": "hard"}), candidate
+    )
+    assert result.status == "insufficient_data"
+    assert "vehicle.width_mirrors_folded_mm" in result.missing_data
