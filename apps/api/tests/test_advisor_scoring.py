@@ -512,18 +512,10 @@ def test_gold_11_strict_eligibility_reports_one_exact_reason_per_offer():
         electric_consumption=18,
         ev_range=None,
     )
-    ev_short_range = candidate(
-        402,
-        fuel_type="electric",
-        consumption=None,
-        electric_consumption=18,
-        ev_range=249,
-    )
     cases.extend(
         [
             ("missing_ev_consumption", ev_missing_consumption),
             ("missing_ev_range", ev_missing_range),
-            ("insufficient_highway_ev_range", ev_short_range),
         ]
     )
 
@@ -551,6 +543,23 @@ def test_phev_is_not_excluded_as_unsupported():
     )
     assert result.items
     assert "unsupported_phev" not in result.excluded_counts_by_reason
+
+
+def test_highway_ev_under_250_km_is_not_excluded_for_range():
+    ev = candidate(
+        498,
+        fuel_type="electric",
+        consumption=None,
+        electric_consumption=18,
+        ev_range=249,
+    )
+    result = score_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=30_000, primary_use="highway"),
+        [ev],
+        as_of=AS_OF,
+    )
+    assert result.items
+    assert "insufficient_highway_ev_range" not in result.excluded_counts_by_reason
 
 
 def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_key():

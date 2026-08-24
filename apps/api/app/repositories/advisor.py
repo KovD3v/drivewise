@@ -277,6 +277,51 @@ class AdvisorRepository:
                   )
                 )
                 OR (
+                  s.fuel_type = 'plug_in_hybrid_petrol'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM vehicle_spec_provenance AS phev_liquid_provenance
+                    JOIN sources AS phev_liquid_source
+                      ON phev_liquid_source.id = phev_liquid_provenance.source_id
+                    WHERE phev_liquid_provenance.spec_id = s.id
+                      AND phev_liquid_provenance.is_current
+                      AND phev_liquid_source.ranking_permission = 'permitted'
+                      AND COALESCE(
+                        phev_liquid_provenance.metadata->'supported_metrics',
+                        phev_liquid_provenance.metadata->'metrics',
+                        '[]'::jsonb
+                      ) ? 'consumption_l_100km'
+                  )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM vehicle_spec_provenance AS phev_energy_provenance
+                    JOIN sources AS phev_energy_source
+                      ON phev_energy_source.id = phev_energy_provenance.source_id
+                    WHERE phev_energy_provenance.spec_id = s.id
+                      AND phev_energy_provenance.is_current
+                      AND phev_energy_source.ranking_permission = 'permitted'
+                      AND COALESCE(
+                        phev_energy_provenance.metadata->'supported_metrics',
+                        phev_energy_provenance.metadata->'metrics',
+                        '[]'::jsonb
+                      ) ? 'energy_consumption_kwh_100km'
+                  )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM vehicle_spec_provenance AS phev_range_provenance
+                    JOIN sources AS phev_range_source
+                      ON phev_range_source.id = phev_range_provenance.source_id
+                    WHERE phev_range_provenance.spec_id = s.id
+                      AND phev_range_provenance.is_current
+                      AND phev_range_source.ranking_permission = 'permitted'
+                      AND COALESCE(
+                        phev_range_provenance.metadata->'supported_metrics',
+                        phev_range_provenance.metadata->'metrics',
+                        '[]'::jsonb
+                      ) ? 'wltp_range_km'
+                  )
+                )
+                OR (
                   s.fuel_type <> 'electric'
                   AND EXISTS (
                     SELECT 1
@@ -303,8 +348,6 @@ class AdvisorRepository:
               AND nullif(trim(s.variant_key), '') IS NOT NULL
               AND nullif(trim(s.body_style), '') IS NOT NULL
               AND nullif(trim(s.fuel_type), '') IS NOT NULL
-              AND lower(replace(s.fuel_type, '-', '_')) NOT LIKE '%%plug%%'
-              AND lower(s.fuel_type) <> 'phev'
               AND s.fuel_type IN (
                 'diesel',
                 'electric',
@@ -312,7 +355,8 @@ class AdvisorRepository:
                 'hybrid_petrol',
                 'mild_hybrid_petrol',
                 'petrol',
-                'petrol_lpg'
+                'petrol_lpg',
+                'plug_in_hybrid_petrol'
               )
               AND s.body_style IN (
                 'city_car',
@@ -334,7 +378,14 @@ class AdvisorRepository:
                   AND s.wltp_range_km IS NOT NULL
                 )
                 OR (
+                  lower(s.fuel_type) = 'plug_in_hybrid_petrol'
+                  AND s.consumption_l_100km IS NOT NULL
+                  AND s.energy_consumption_kwh_100km IS NOT NULL
+                  AND s.wltp_range_km IS NOT NULL
+                )
+                OR (
                   lower(s.fuel_type) <> 'electric'
+                  AND lower(s.fuel_type) <> 'plug_in_hybrid_petrol'
                   AND s.consumption_l_100km IS NOT NULL
                 )
               )
@@ -393,9 +444,6 @@ class AdvisorRepository:
                   THEN 'missing_body_style'
                 WHEN nullif(trim(s.fuel_type), '') IS NULL
                   THEN 'missing_fuel_type'
-                WHEN lower(replace(s.fuel_type, '-', '_')) LIKE '%%plug%%'
-                  OR lower(s.fuel_type) = 'phev'
-                  THEN 'unsupported_phev'
                 WHEN s.fuel_type NOT IN (
                   'diesel',
                   'electric',
@@ -403,7 +451,8 @@ class AdvisorRepository:
                   'hybrid_petrol',
                   'mild_hybrid_petrol',
                   'petrol',
-                  'petrol_lpg'
+                  'petrol_lpg',
+                  'plug_in_hybrid_petrol'
                 )
                   THEN 'unsupported_fuel_type'
                 WHEN s.body_style NOT IN (
@@ -428,7 +477,14 @@ class AdvisorRepository:
                 WHEN lower(s.fuel_type) = 'electric'
                   AND s.wltp_range_km IS NULL
                   THEN 'missing_ev_range'
+                WHEN lower(s.fuel_type) = 'plug_in_hybrid_petrol'
+                  AND s.energy_consumption_kwh_100km IS NULL
+                  THEN 'missing_ev_consumption'
+                WHEN lower(s.fuel_type) = 'plug_in_hybrid_petrol'
+                  AND s.wltp_range_km IS NULL
+                  THEN 'missing_ev_range'
                 WHEN lower(s.fuel_type) <> 'electric'
+                  AND lower(s.fuel_type) <> 'plug_in_hybrid_petrol'
                   AND s.consumption_l_100km IS NULL
                   THEN 'missing_liquid_consumption'
                 WHEN EXISTS (
@@ -501,6 +557,34 @@ class AdvisorRepository:
                         liquid_provenance.metadata->'metrics',
                         '[]'::jsonb
                       ) ? 'consumption_l_100km'
+                  )
+                ) OR (
+                  s.fuel_type = 'plug_in_hybrid_petrol'
+                  AND (
+                    NOT EXISTS (
+                      SELECT 1 FROM vehicle_spec_provenance AS phev_energy_provenance
+                      JOIN sources AS phev_energy_source
+                        ON phev_energy_source.id = phev_energy_provenance.source_id
+                      WHERE phev_energy_provenance.spec_id = s.id
+                        AND phev_energy_provenance.is_current
+                        AND phev_energy_source.ranking_permission = 'permitted'
+                        AND COALESCE(
+                          phev_energy_provenance.metadata->'supported_metrics',
+                          phev_energy_provenance.metadata->'metrics', '[]'::jsonb
+                        ) ? 'energy_consumption_kwh_100km'
+                    )
+                    OR NOT EXISTS (
+                      SELECT 1 FROM vehicle_spec_provenance AS phev_range_provenance
+                      JOIN sources AS phev_range_source
+                        ON phev_range_source.id = phev_range_provenance.source_id
+                      WHERE phev_range_provenance.spec_id = s.id
+                        AND phev_range_provenance.is_current
+                        AND phev_range_source.ranking_permission = 'permitted'
+                        AND COALESCE(
+                          phev_range_provenance.metadata->'supported_metrics',
+                          phev_range_provenance.metadata->'metrics', '[]'::jsonb
+                        ) ? 'wltp_range_km'
+                    )
                   )
                 )
                   THEN 'missing_spec_provenance'

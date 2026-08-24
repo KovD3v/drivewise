@@ -86,6 +86,15 @@ def test_request_accepts_plug_in_hybrid_fuel_type():
     assert request.preferred_fuel_type == "plug_in_hybrid_petrol"
 
 
+def test_phev_missing_measurable_facts_is_insufficient_data(candidate):
+    candidate["spec"]["fuel_type"] = "plug_in_hybrid_petrol"
+    result = powertrain_fit(v3_request(), candidate)
+    assert result.status == "insufficient_data"
+    assert "vehicle.energy_consumption_kwh_100km" in result.missing_data
+    assert "vehicle.wltp_range_km" in result.missing_data
+    assert "charging_context" in result.missing_data
+
+
 def test_tco_fails_closed_without_consumption(candidate):
     candidate["spec"]["consumption_l_100km"] = None
     result = estimate_tco(v3_request(), candidate, as_of=AS_OF)

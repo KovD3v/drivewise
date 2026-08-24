@@ -426,6 +426,16 @@ def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
         assert f"JOIN {child_table}" not in outer_query
 
 
+def test_candidate_query_recognizes_phev_without_removing_source_gates():
+    conn = RecordingConnection()
+    AdvisorRepository(conn).list_candidates(as_of=AS_OF)
+    sql = conn.calls[0][0]
+    assert "'plug_in_hybrid_petrol'" in sql
+    assert "unsupported_phev" not in sql
+    assert "ranking_permission = 'permitted'" in sql
+    assert "import_run.status = 'completed'" in sql
+
+
 def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():
     scoring = score_recommendations(
         AdvisorRecommendationRequest(

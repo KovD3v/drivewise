@@ -345,8 +345,6 @@ def _exclusion_reason(
         ev_range = _positive_number(spec.get("wltp_range_km"))
         if ev_range is None:
             return "missing_ev_range"
-        if request.primary_use == "highway" and ev_range < 250:
-            return "insufficient_highway_ev_range"
     elif _positive_number(spec.get("consumption_l_100km")) is None:
         return "missing_liquid_consumption"
 
