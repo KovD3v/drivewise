@@ -117,6 +117,43 @@ def test_request_charging_context_serializes_tri_state():
         assert request.model_dump()["charging_context"] is value
 
 
+def test_phev_without_charging_uses_petrol_highway_baseline(candidate):
+    candidate["spec"].update(
+        fuel_type="plug_in_hybrid_petrol",
+        energy_consumption_kwh_100km=18,
+        wltp_range_km=60,
+    )
+    phev = powertrain_fit(
+        AdvisorRecommendationRequest(
+            budget_max_eur=30_000,
+            primary_use="highway",
+            annual_km=15_000,
+            charging_context=False,
+        ),
+        candidate,
+    )
+    candidate["spec"]["fuel_type"] = "petrol"
+    petrol = powertrain_fit(
+        AdvisorRecommendationRequest(
+            budget_max_eur=30_000, primary_use="highway", annual_km=15_000
+        ),
+        candidate,
+    )
+    assert phev.value == petrol.value
+
+    candidate["spec"]["fuel_type"] = "plug_in_hybrid_petrol"
+    charging = powertrain_fit(
+        AdvisorRecommendationRequest(
+            budget_max_eur=30_000,
+            primary_use="highway",
+            annual_km=15_000,
+            charging_context=True,
+        ),
+        candidate,
+    )
+    assert charging.value != phev.value
+
+
 def test_tco_fails_closed_without_consumption(candidate):
     candidate["spec"]["consumption_l_100km"] = None
     result = estimate_tco(v3_request(), candidate, as_of=AS_OF)

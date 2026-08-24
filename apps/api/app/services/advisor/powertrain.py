@@ -81,7 +81,11 @@ def powertrain_fit(
     )
     if fuel_type == "electric" and "highway" in usage:
         score += max(-6.0, min(0.0, (float(spec["wltp_range_km"]) - 350) / 100))
-    if fuel_type == "plug_in_hybrid_petrol" and "highway" in usage:
+    if (
+        fuel_type == "plug_in_hybrid_petrol"
+        and phev_charging is True
+        and "highway" in usage
+    ):
         score -= 4
 
     energy_rate = (
