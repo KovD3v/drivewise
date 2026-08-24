@@ -328,7 +328,13 @@ def test_candidate_maps_source_aware_decision_context():
                 "source_url": "https://example.test/safety/panda",
             }
         ],
-        "safety_features": [],
+        "safety_features": [
+            {
+                "category": "adas",
+                "name": "Autonomous emergency braking",
+                "source_url": "https://example.test/adas/panda",
+            }
+        ],
         "technology_comfort_features": [],
         "listing_id": UUID("30000000-0000-4000-8000-000000000001"),
         "source_id": SOURCE_ID,
@@ -357,6 +363,21 @@ def test_candidate_maps_source_aware_decision_context():
     assert context["powertrain"]["power_kw"] == 96.0
     assert context["safety"]["ratings"][0]["overall_stars"] == 5
     assert context["safety"]["ratings"][0]["source_url"].startswith("https://")
+    assert context["safety"]["features"][0]["category"] == "adas"
+
+
+def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
+    conn = RecordingConnection()
+    AdvisorRepository(conn).list_candidates(as_of=AS_OF)
+    sql = conn.calls[0][0]
+
+    assert sql.count("ranking_permission = 'permitted'") >= 5
+    assert "feature.category IN ('adas', 'safety')" in sql
+    assert sql.count("COALESCE(") >= 5
+    assert "WHERE item.spec_id = s.id" in sql
+    assert "WHERE rating.spec_id = s.id" in sql
+    assert "WHERE feature.spec_id = s.id" in sql
+    assert "FROM listings AS l" in sql
 
 
 def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():

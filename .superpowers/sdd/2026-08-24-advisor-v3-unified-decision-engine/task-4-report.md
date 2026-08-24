@@ -48,3 +48,23 @@ SHA: `6bd8ab1a45e39f24bf067373ee07fae2ac26f51a` (implementation commit).
 ## Concerns
 
 Live PostgreSQL syntax and catalog tests could not be fully verified without `TEST_DATABASE_URL` and the missing `jsonschema` package.
+
+## Fix Round 1
+
+RED command:
+
+```text
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/python -m pytest apps/api/tests/test_advisor_api.py -q
+```
+
+Result: `1 failed, 5 passed, 1 skipped`; the SQL-shape regression correctly rejected the missing `IN ('adas', 'safety')` filter.
+
+GREEN commands:
+
+```text
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/python -m pytest apps/api/tests/test_advisor_api.py -q
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/ruff check apps/api/app/repositories/advisor.py apps/api/tests/test_advisor_api.py
+git diff --check
+```
+
+Result: `6 passed, 1 skipped`; Ruff passed; diff check passed. Added an ADAS child assertion and RecordingConnection coverage for permitted-source predicates, correlated child aggregates, COALESCE empty collections, and unchanged outer listing query shape. Implementation commit SHA is recorded in the enclosing task commit.

@@ -170,7 +170,7 @@ class AdvisorRepository:
                   FROM vehicle_features AS feature
                   JOIN sources AS feature_source ON feature_source.id = feature.source_id
                   WHERE feature.spec_id = s.id
-                    AND feature.category = 'safety'
+                    AND feature.category IN ('adas', 'safety')
                     AND feature_source.ranking_permission = 'permitted'
                 ),
                 '[]'::jsonb
