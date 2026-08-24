@@ -790,12 +790,12 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
             "top_speed_kmh": row["top_speed_kmh"],
             "braking_100_0_m": row["braking_100_0_m"],
         },
-        "maintenance": row["maintenance_items"],
+        "maintenance": row["maintenance_items"] or [],
         "safety": {
-            "ratings": row["safety_ratings"],
-            "features": row["safety_features"],
+            "ratings": row["safety_ratings"] or [],
+            "features": row["safety_features"] or [],
         },
-        "technology_comfort": row["technology_comfort_features"],
+        "technology_comfort": row["technology_comfort_features"] or [],
     }
     return candidate
 
@@ -893,7 +893,7 @@ def _metric_provenance(
         "energy_consumption_kwh_100km",
         "wltp_range_km",
     )
-    for source in row["spec_provenance"]:
+    for source in row["spec_provenance"] or []:
         metadata = source.get("metadata") or {}
         supported_metrics = set(
             metadata.get("supported_metrics") or metadata.get("metrics") or []

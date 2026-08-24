@@ -365,19 +365,52 @@ def test_candidate_maps_source_aware_decision_context():
     assert context["safety"]["ratings"][0]["source_url"].startswith("https://")
     assert context["safety"]["features"][0]["category"] == "adas"
 
+    row.update(
+        maintenance_items=None,
+        safety_ratings=None,
+        safety_features=None,
+        technology_comfort_features=None,
+        spec_provenance=None,
+    )
+    empty_candidate = AdvisorRepository(RecordingConnection([row])).list_candidates(
+        as_of=AS_OF
+    )[0]
+    empty_context = empty_candidate["decision_context"]
+    assert empty_context["maintenance"] == []
+    assert empty_context["safety"]["ratings"] == []
+    assert empty_context["safety"]["features"] == []
+    assert empty_context["technology_comfort"] == []
+
 
 def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
     conn = RecordingConnection()
     AdvisorRepository(conn).list_candidates(as_of=AS_OF)
     sql = conn.calls[0][0]
 
-    assert sql.count("ranking_permission = 'permitted'") >= 5
-    assert "feature.category IN ('adas', 'safety')" in sql
-    assert sql.count("COALESCE(") >= 5
+    for alias in (
+        "spec_provenance",
+        "maintenance_items",
+        "safety_ratings",
+        "safety_features",
+        "technology_comfort_features",
+    ):
+        assert f") AS {alias}" in sql
+        assert "COALESCE(" in sql
+        assert "ranking_permission = 'permitted'" in sql
+    assert "WHERE provenance.spec_id = s.id" in sql
     assert "WHERE item.spec_id = s.id" in sql
     assert "WHERE rating.spec_id = s.id" in sql
     assert "WHERE feature.spec_id = s.id" in sql
-    assert "FROM listings AS l" in sql
+    assert "feature.category IN ('adas', 'safety')" in sql
+    assert "feature.category IN ('technology', 'comfort')" in sql
+    outer_query = sql[sql.index("FROM listings AS l") :]
+    for child_table in (
+        "vehicle_spec_provenance",
+        "vehicle_maintenance_items",
+        "vehicle_safety_ratings",
+        "vehicle_features",
+    ):
+        assert f"JOIN {child_table}" not in outer_query
 
 
 def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():

@@ -68,3 +68,23 @@ git diff --check
 ```
 
 Result: `6 passed, 1 skipped`; Ruff passed; diff check passed. Added an ADAS child assertion and RecordingConnection coverage for permitted-source predicates, correlated child aggregates, COALESCE empty collections, and unchanged outer listing query shape. Implementation commit SHA is recorded in the enclosing task commit.
+
+## Fix Round 2
+
+RED command:
+
+```text
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/python -m pytest apps/api/tests/test_advisor_api.py -q
+```
+
+Result: `1 failed, 5 passed, 1 skipped`; the all-`None` child aggregate case failed before mapping because `spec_provenance` was not null-safe.
+
+GREEN commands:
+
+```text
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/python -m pytest apps/api/tests/test_advisor_api.py -q
+/Users/kovd3v/Documents/Projects/drivewise/apps/api/.venv/bin/ruff check apps/api/app/repositories/advisor.py apps/api/tests/test_advisor_api.py
+git diff --check
+```
+
+Result: `6 passed, 1 skipped`; Ruff passed; diff check passed. Query-shape coverage now checks each named aggregate independently, category-specific feature subqueries, permitted-source predicates, correlated `spec_id = s.id`, COALESCE aliases, and absence of child joins after the outer listings FROM. Mapper fallbacks produce empty lists for null child aggregates.
