@@ -53,6 +53,19 @@ class AdvisorRepository:
               s.euro_emission_standard,
               s.seats,
               s.cargo_volume_liters,
+              s.generation_name,
+              s.restyling_label,
+              s.category,
+              s.length_mm,
+              s.width_mm,
+              s.height_mm,
+              s.curb_weight_kg,
+              s.engine_code,
+              s.power_kw,
+              s.transmission_type,
+              s.acceleration_0_100_s,
+              s.top_speed_kmh,
+              s.braking_100_0_m,
               l.id AS listing_id,
               l.source_id,
               l.listing_ref,
@@ -90,6 +103,102 @@ class AdvisorRepository:
                 ),
                 '[]'::jsonb
               ) AS spec_provenance
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', item.id,
+                      'operation_code', item.operation_code,
+                      'title', item.title,
+                      'interval_km', item.interval_km,
+                      'interval_months', item.interval_months,
+                      'notes', item.notes,
+                      'source_id', item.source_id,
+                      'source_name', item_source.name,
+                      'source_url', item.source_url,
+                      'observed_at', item.observed_at
+                    ) ORDER BY item.operation_code, item.id
+                  )
+                  FROM vehicle_maintenance_items AS item
+                  JOIN sources AS item_source ON item_source.id = item.source_id
+                  WHERE item.spec_id = s.id
+                    AND item_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS maintenance_items
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', rating.id,
+                      'assessment_system', rating.assessment_system,
+                      'assessment_year', rating.assessment_year,
+                      'overall_stars', rating.overall_stars,
+                      'adult_occupant_percent', rating.adult_occupant_percent,
+                      'child_occupant_percent', rating.child_occupant_percent,
+                      'vulnerable_road_users_percent', rating.vulnerable_road_users_percent,
+                      'safety_assist_percent', rating.safety_assist_percent,
+                      'source_id', rating.source_id,
+                      'source_name', rating_source.name,
+                      'source_url', rating.source_url,
+                      'observed_at', rating.observed_at
+                    ) ORDER BY rating.assessment_year DESC, rating.id
+                  )
+                  FROM vehicle_safety_ratings AS rating
+                  JOIN sources AS rating_source ON rating_source.id = rating.source_id
+                  WHERE rating.spec_id = s.id
+                    AND rating_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS safety_ratings
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', feature.id,
+                      'feature_key', feature.feature_key,
+                      'category', feature.category,
+                      'name', feature.name,
+                      'availability', feature.availability,
+                      'notes', feature.notes,
+                      'source_id', feature.source_id,
+                      'source_name', feature_source.name,
+                      'source_url', feature.source_url,
+                      'observed_at', feature.observed_at
+                    ) ORDER BY feature.feature_key, feature.id
+                  )
+                  FROM vehicle_features AS feature
+                  JOIN sources AS feature_source ON feature_source.id = feature.source_id
+                  WHERE feature.spec_id = s.id
+                    AND feature.category = 'safety'
+                    AND feature_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS safety_features
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', feature.id,
+                      'feature_key', feature.feature_key,
+                      'category', feature.category,
+                      'name', feature.name,
+                      'availability', feature.availability,
+                      'notes', feature.notes,
+                      'source_id', feature.source_id,
+                      'source_name', feature_source.name,
+                      'source_url', feature.source_url,
+                      'observed_at', feature.observed_at
+                    ) ORDER BY feature.category, feature.feature_key, feature.id
+                  )
+                  FROM vehicle_features AS feature
+                  JOIN sources AS feature_source ON feature_source.id = feature.source_id
+                  WHERE feature.spec_id = s.id
+                    AND feature.category IN ('technology', 'comfort')
+                    AND feature_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS technology_comfort_features
             FROM listings AS l
             JOIN vehicles AS v
               ON v.id = l.vehicle_id
@@ -643,7 +752,7 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "valid_until": row["valid_until"],
         "is_active": row["is_active"],
     }
-    return {
+    candidate = {
         "vehicle": _model_analysis_vehicle(row),
         "spec": spec,
         "offer": offer,
@@ -657,6 +766,38 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "repository_eligible": True,
         "provenance": _metric_provenance(row, spec, offer),
     }
+    candidate["decision_context"] = {
+        "identity": {
+            "generation_name": row["generation_name"],
+            "restyling_label": row["restyling_label"],
+            "category": row["category"],
+        },
+        "dimensions": {
+            "length_mm": row["length_mm"],
+            "body_width_mm": row["width_mm"],
+            "height_mm": row["height_mm"],
+            "width_mirrors_folded_mm": None,
+            "curb_weight_kg": row["curb_weight_kg"],
+        },
+        "powertrain": {
+            "engine_code": row["engine_code"],
+            "power_kw": row["power_kw"],
+            "fuel_type": row["spec_fuel_type"],
+            "transmission_type": row["transmission_type"],
+        },
+        "performance": {
+            "acceleration_0_100_s": row["acceleration_0_100_s"],
+            "top_speed_kmh": row["top_speed_kmh"],
+            "braking_100_0_m": row["braking_100_0_m"],
+        },
+        "maintenance": row["maintenance_items"],
+        "safety": {
+            "ratings": row["safety_ratings"],
+            "features": row["safety_features"],
+        },
+        "technology_comfort": row["technology_comfort_features"],
+    }
+    return candidate
 
 
 def _model_analysis_vehicle(row: dict[str, Any]) -> dict[str, Any]:

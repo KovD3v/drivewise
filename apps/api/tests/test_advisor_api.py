@@ -255,12 +255,13 @@ class RecordingResult:
 
 
 class RecordingConnection:
-    def __init__(self) -> None:
+    def __init__(self, rows=None) -> None:
         self.calls: list[tuple[str, tuple[Any, ...] | None]] = []
+        self.rows = rows or []
 
     def execute(self, sql, params=None):
         self.calls.append((sql, params))
-        return RecordingResult()
+        return RecordingResult(self.rows)
 
 
 def test_model_analysis_repository_uses_broad_exact_spec_query():
@@ -274,6 +275,88 @@ def test_model_analysis_repository_uses_broad_exact_spec_query():
     assert "l.spec_id = s.id" in sql
     assert "l.last_seen_at >=" not in sql
     assert "import_run.status = 'completed'" not in sql
+
+
+def test_candidate_maps_source_aware_decision_context():
+    row = {
+        "vehicle_id": VEHICLE_ID,
+        "canonical_key": "it-fiat-panda-2026",
+        "model_family_key": "it-fiat-panda",
+        "make": "Fiat",
+        "model": "Panda",
+        "model_year": 2026,
+        "vehicle_body_style": "city_car",
+        "vehicle_fuel_type": "mild_hybrid_petrol",
+        "market": "IT",
+        "base_price_eur": 18_000,
+        "spec_id": SPEC_ID,
+        "variant_key": "it-fiat-panda-2026-city",
+        "is_default": True,
+        "trim": "City",
+        "spec_body_style": "city_car",
+        "spec_fuel_type": "mild_hybrid_petrol",
+        "list_price_eur": 18_000,
+        "drivetrain": "fwd",
+        "transmission": "manual",
+        "engine": "1.0 mild hybrid",
+        "horsepower": 70,
+        "battery_kwh": None,
+        "energy_consumption_kwh_100km": None,
+        "consumption_l_100km": 5.0,
+        "wltp_range_km": None,
+        "co2_g_km": 110,
+        "euro_emission_standard": "Euro 6e",
+        "seats": 4,
+        "cargo_volume_liters": 225,
+        "generation_name": "Fourth generation",
+        "restyling_label": "2024 update",
+        "category": "city_car",
+        "length_mm": 4189,
+        "width_mm": 1859,
+        "height_mm": 1551,
+        "curb_weight_kg": 1055,
+        "engine_code": "GSE-T3",
+        "power_kw": 96.0,
+        "transmission_type": "manual",
+        "acceleration_0_100_s": 10.5,
+        "top_speed_kmh": 180,
+        "braking_100_0_m": 38.0,
+        "maintenance_items": [],
+        "safety_ratings": [
+            {
+                "overall_stars": 5,
+                "source_url": "https://example.test/safety/panda",
+            }
+        ],
+        "safety_features": [],
+        "technology_comfort_features": [],
+        "listing_id": UUID("30000000-0000-4000-8000-000000000001"),
+        "source_id": SOURCE_ID,
+        "listing_ref": "panda-new-1",
+        "title": "Fiat Panda new",
+        "price_eur": 17_500,
+        "mileage": None,
+        "condition": "new",
+        "location_region": "Piemonte",
+        "source_url": "https://example.test/offers/1",
+        "listed_at": "2026-07-10",
+        "last_seen_at": "2026-07-15T10:00:00Z",
+        "valid_until": "2026-08-15T00:00:00Z",
+        "is_active": True,
+        "listing_source_name": "Reviewed catalog",
+        "listing_source_license": "Synthetic test data",
+        "listing_source_ranking_permission": "permitted",
+        "import_status": "completed",
+        "spec_provenance": [],
+    }
+    candidate = AdvisorRepository(RecordingConnection([row])).list_candidates(
+        as_of=AS_OF
+    )[0]
+    context = candidate["decision_context"]
+    assert context["dimensions"]["length_mm"] == 4189
+    assert context["powertrain"]["power_kw"] == 96.0
+    assert context["safety"]["ratings"][0]["overall_stars"] == 5
+    assert context["safety"]["ratings"][0]["source_url"].startswith("https://")
 
 
 def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():
