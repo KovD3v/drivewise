@@ -8,6 +8,11 @@ import pytest
 from app.schemas.advisor import AdvisorRecommendationRequest, AdvisorRecommendationResponse
 from app.schemas.guided_decisions import DecisionProfile
 from app.services.advisor.decision import ModuleAssessment
+from app.services.advisor.energy_prices import (
+    ELECTRICITY_PRICE_EUR_PER_KWH,
+    ENERGY_ASSUMPTION_VERSION,
+    LIQUID_ENERGY_PRICES_EUR_PER_LITER,
+)
 from app.services.advisor.tco import estimate_tco
 
 
@@ -96,6 +101,15 @@ def test_tco_assumptions_name_reproducible_v1_constants(candidate):
         "it-energy-2026-07-16-v1",
     ):
         assert required in text
+
+
+def test_tco_assumptions_name_energy_formula_rates_and_version(candidate):
+    text = " ".join(estimate_tco(v3_request(), candidate, as_of=AS_OF).assumptions)
+    assert "consumption × rate × annual_km ÷ 100" in text
+    assert ENERGY_ASSUMPTION_VERSION in text
+    for fuel_type, rate in LIQUID_ENERGY_PRICES_EUR_PER_LITER.items():
+        assert f"{fuel_type} EUR {rate:.5f}/L" in text
+    assert f"electricity EUR {ELECTRICITY_PRICE_EUR_PER_KWH:.5f}/kWh" in text
 
 
 def test_v2_request_defaults_to_single_usage_and_soft_preferences():

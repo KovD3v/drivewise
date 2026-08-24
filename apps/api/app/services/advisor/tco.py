@@ -132,9 +132,14 @@ def estimate_tco(
 
 
 def _assumptions() -> tuple[str, ...]:
+    liquid_rates = ", ".join(
+        f"{fuel_type} EUR {rate:.5f}/L"
+        for fuel_type, rate in LIQUID_ENERGY_PRICES_EUR_PER_LITER.items()
+    )
     return (
         f"{TCO_VERSION}: annual kilometres come from the request.",
-        f"Energy uses MIMIT fuel and ARERA electricity rates ({ENERGY_ASSUMPTION_VERSION}).",
+        "Energy formula: consumption × rate × annual_km ÷ 100.",
+        f"Energy rates from MIMIT fuel and ARERA electricity ({ENERGY_ASSUMPTION_VERSION}): {liquid_rates}; electricity EUR {ELECTRICITY_PRICE_EUR_PER_KWH:.5f}/kWh.",
         "Insurance formula: EUR 650 + 0.8% of offer price, capped at EUR 1,600.",
         "Tax formula: EUR 2.58/kW through 100 kW (100 kW cap), then EUR 3.87/kW above 100 kW.",
         "maintenance-v1 formula: EUR 420 city car or EUR 520 other body + EUR 70 per age year + EUR 2.50 per 1,000 km; electric base EUR 340.",
