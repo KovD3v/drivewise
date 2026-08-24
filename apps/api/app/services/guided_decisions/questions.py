@@ -33,6 +33,14 @@ def _has_garage(profile: DecisionProfile) -> bool:
     return profile.parking is not None and profile.parking.value == "garage"
 
 
+def _explicit_family(profile: DecisionProfile) -> bool:
+    return profile.family is not None and profile.family.value is True
+
+
+def _explicit_profile(profile: DecisionProfile) -> bool:
+    return profile.vehicle_type is not None or _explicit_family(profile)
+
+
 QUESTION_DEFINITIONS = (
     QuestionDefinition(
         key="budget_eur",
@@ -168,6 +176,82 @@ QUESTION_DEFINITIONS = (
             ),
         ),
         is_answered=_has("priorities"),
+    ),
+    QuestionDefinition(
+        key="usage",
+        priority=0.48,
+        completion_weight=0.35,
+        question=NextQuestion(
+            id="usage",
+            type="multi_select",
+            label="In quali contesti userai normalmente il veicolo?",
+            reason="Più contesti espliciti rendono il confronto meno dipendente da un solo uso.",
+            constraints=QuestionConstraints(
+                options=["city", "highway", "family", "work", "new_driver"]
+            ),
+        ),
+        is_answered=_has("usage"),
+        is_applicable=_explicit_profile,
+    ),
+    QuestionDefinition(
+        key="children_count",
+        priority=0.46,
+        completion_weight=0.30,
+        question=NextQuestion(
+            id="children_count",
+            type="number",
+            label="Quanti figli viaggiano abitualmente con te?",
+            reason="Il numero di bambini incide su spazio e compatibilità familiare.",
+            constraints=QuestionConstraints(minimum=0, unit="children"),
+        ),
+        is_answered=_has("children_count"),
+        is_applicable=_explicit_family,
+    ),
+    QuestionDefinition(
+        key="passengers_usual",
+        priority=0.45,
+        completion_weight=0.30,
+        question=NextQuestion(
+            id="passengers_usual",
+            type="number",
+            label="Quante persone viaggiano normalmente insieme?",
+            reason="I posti necessari sono un vincolo pratico distinto dall'uso principale.",
+            constraints=QuestionConstraints(minimum=1, unit="passengers"),
+        ),
+        is_answered=_has("passengers_usual"),
+        is_applicable=_explicit_profile,
+    ),
+    QuestionDefinition(
+        key="automatic_required",
+        priority=0.43,
+        completion_weight=0.25,
+        question=NextQuestion(
+            id="automatic_required",
+            type="boolean",
+            label="Il cambio automatico è obbligatorio?",
+            reason="Un requisito di trasmissione può diventare un vincolo esplicito.",
+        ),
+        is_answered=_has("automatic_required"),
+        is_applicable=_explicit_profile,
+    ),
+    QuestionDefinition(
+        key="constraint_modes",
+        priority=0.40,
+        completion_weight=0.20,
+        question=NextQuestion(
+            id="constraint_modes",
+            type="multi_select",
+            label="Quali preferenze vuoi trattare come vincoli rigidi?",
+            reason="Separare vincoli rigidi e preferenze morbide rende il ranking trasparente.",
+            constraints=QuestionConstraints(
+                options=["budget", "body_style", "fuel_type", "transmission", "garage"]
+            ),
+        ),
+        is_answered=lambda profile: any(
+            value == "hard"
+            for value in profile.constraint_modes.model_dump().values()
+        ),
+        is_applicable=_explicit_profile,
     ),
     QuestionDefinition(
         key="garage.door_width_mm",
@@ -309,6 +393,8 @@ def weighted_fact_confidence(profile: DecisionProfile) -> float:
 def _fact_for_key(profile: DecisionProfile, key: str):
     if key.startswith("garage."):
         return getattr(profile.garage, key.split(".", maxsplit=1)[1])
+    if key == "constraint_modes":
+        return None
     return getattr(profile, key)
 
 
@@ -322,6 +408,11 @@ def _affected_components(key: str) -> list[str]:
         "preferred_fuel_type": ["use_case_fit", "running_cost"],
         "parking": ["garage_compatibility", "charging_context"],
         "priorities": ["component_weights"],
+        "usage": ["use_case_fit"],
+        "children_count": ["space", "family_fit"],
+        "passengers_usual": ["space", "family_fit"],
+        "automatic_required": ["eligibility", "powertrain_fit"],
+        "constraint_modes": ["eligibility", "component_weights"],
     }
     if key.startswith("garage."):
         return ["garage_compatibility"]

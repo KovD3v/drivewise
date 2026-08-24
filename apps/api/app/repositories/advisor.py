@@ -738,6 +738,26 @@ class AdvisorRepository:
         for condition_group, rank, item in ranked_items:
             breakdown = {
                 "condition_group": condition_group,
+                "decision_status": item.decision_status,
+                "decision_score": item.decision_score,
+                "decision_confidence": item.decision_confidence,
+                "confidence_components": {
+                    key: item.evidence.get(key)
+                    for key in (
+                        "profile_completeness",
+                        "evidence_completeness",
+                        "ranking_stability",
+                        "ranking_comparison",
+                    )
+                    if key in item.evidence
+                },
+                "structural_fit": item.structural_fit,
+                "preference_fit": item.preference_fit,
+                "pillar_scores": item.pillar_scores,
+                "penalties": item.penalties,
+                "missing_factors": item.missing_factors,
+                "module_versions": item.module_versions,
+                "assumptions": item.assumptions,
                 "component_scores": item.component_scores,
                 "positive_factors": [
                     factor.model_dump(mode="json") for factor in item.positive_factors
@@ -746,7 +766,15 @@ class AdvisorRepository:
                     factor.model_dump(mode="json") for factor in item.tradeoffs
                 ],
                 "evidence": item.evidence,
+                "provenance": [
+                    entry.model_dump(mode="json") for entry in item.provenance
+                ],
             }
+            if "normalized_weights" in item.evidence:
+                breakdown["legacy_compatibility"] = {
+                    "label": "v2_normalized_weights",
+                    "normalized_weights": item.evidence["normalized_weights"],
+                }
             rationale = " ".join(
                 factor.message
                 for factor in [*item.positive_factors, *item.tradeoffs]

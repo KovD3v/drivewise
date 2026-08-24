@@ -5,6 +5,7 @@ import unicodedata
 from datetime import datetime
 from typing import Any
 
+from app.schemas.advisor import AdvisorConstraintModes
 from app.schemas.guided_decisions import DecisionFact, DecisionProfile
 
 
@@ -116,6 +117,28 @@ def extract_profile_updates(
             updated_fields=updated_fields,
         )
 
+    children_count = _extract_count(normalized, ("figli", "bambini"))
+    if children_count is not None:
+        _set_fact(
+            updated_profile,
+            "children_count",
+            children_count,
+            captured_at,
+            confidence=0.98,
+            updated_fields=updated_fields,
+        )
+
+    passengers_usual = _extract_passengers(normalized)
+    if passengers_usual is not None:
+        _set_fact(
+            updated_profile,
+            "passengers_usual",
+            passengers_usual,
+            captured_at,
+            confidence=0.96,
+            updated_fields=updated_fields,
+        )
+
     if _contains_any(normalized, ("famiglia", "familiare", "figli", "bambini")):
         _set_fact(
             updated_profile,
@@ -155,6 +178,34 @@ def extract_profile_updates(
             confidence=0.98,
             updated_fields=updated_fields,
         )
+
+    usage = _extract_usage(normalized)
+    if usage:
+        _set_fact(
+            updated_profile,
+            "usage",
+            usage,
+            captured_at,
+            confidence=0.93,
+            updated_fields=updated_fields,
+        )
+
+    automatic_required = _extract_automatic_required(normalized)
+    if automatic_required is not None:
+        _set_fact(
+            updated_profile,
+            "automatic_required",
+            automatic_required,
+            captured_at,
+            confidence=0.99,
+            updated_fields=updated_fields,
+        )
+
+    _extract_constraint_modes(
+        normalized,
+        updated_profile,
+        updated_fields=updated_fields,
+    )
 
     fuel_type = _first_matching_value(normalized, FUEL_TERMS)
     if fuel_type is not None:
@@ -355,6 +406,102 @@ def _extract_primary_use(normalized: str) -> str | None:
     if _contains_any(normalized, ("citta", "urbano", "tragitti brevi")):
         return "city"
     return None
+
+
+_ITALIAN_COUNTS = {
+    "uno": 1,
+    "una": 1,
+    "due": 2,
+    "tre": 3,
+    "quattro": 4,
+    "cinque": 5,
+    "sei": 6,
+    "sette": 7,
+    "otto": 8,
+    "nove": 9,
+    "dieci": 10,
+}
+
+
+def _extract_count(normalized: str, terms: tuple[str, ...]) -> int | None:
+    expression = rf"\b(\d+|{'|'.join(_ITALIAN_COUNTS)})\s+(?:{'|'.join(terms)})\b"
+    match = re.search(expression, normalized)
+    if match is None:
+        return None
+    return _count_value(match.group(1))
+
+
+def _extract_passengers(normalized: str) -> int | None:
+    expression = rf"\b(?:siamo|viaggiamo|viaggiano)\s+in\s+(\d+|{'|'.join(_ITALIAN_COUNTS)})\b"
+    match = re.search(expression, normalized)
+    if match is not None:
+        return _count_value(match.group(1))
+    return _extract_count(normalized, ("persone", "passeggeri"))
+
+
+def _count_value(value: str) -> int | None:
+    return int(value) if value.isdigit() else _ITALIAN_COUNTS.get(value)
+
+
+def _extract_usage(normalized: str) -> list[str]:
+    terms = (
+        ("citta", "city"),
+        ("urbano", "city"),
+        ("autostrada", "highway"),
+        ("extraurbano", "highway"),
+        ("lunghi viaggi", "highway"),
+        ("lavoro", "work"),
+        ("professionale", "work"),
+        ("neopatentato", "new_driver"),
+        ("prima auto", "new_driver"),
+    )
+    matches = [
+        (normalized.find(term), mapped)
+        for term, mapped in terms
+        if normalized.find(term) >= 0
+    ]
+    return _deduplicate([mapped for _, mapped in sorted(matches)])
+
+
+def _extract_automatic_required(normalized: str) -> bool | None:
+    if re.search(
+        r"\b(?:automatico|cambio automatico)\b.*\b(?:obbligatorio|required|necessario|solo)\b",
+        normalized,
+    ):
+        return True
+    if re.search(r"\b(?:manuale|cambio manuale)\b.*\b(?:va bene|ok|preferito)\b", normalized):
+        return False
+    return None
+
+
+def _extract_constraint_modes(
+    normalized: str,
+    profile: DecisionProfile,
+    *,
+    updated_fields: list[str],
+) -> None:
+    changes = {}
+    if re.search(r"\b(?:budget|spesa)\b.*\b(?:rigido|fisso|obbligatorio)\b", normalized):
+        changes["budget"] = "hard"
+    if re.search(r"\b(?:suv|categoria|carrozzeria)\b.*\b(?:obbligatorio|necessario)\b", normalized):
+        changes["body_style"] = "hard"
+    if re.search(r"\b(?:diesel|benzina|elettric[oa]|ibrid[oa])\b.*\b(?:obbligatorio|necessario)\b", normalized):
+        changes["fuel_type"] = "hard"
+    if re.search(r"\b(?:automatico|cambio automatico)\b.*\b(?:obbligatorio|required|necessario|solo)\b", normalized):
+        changes["transmission"] = "hard"
+    if re.search(r"\b(?:garage|box)\b.*\b(?:obbligatorio|necessario)\b", normalized):
+        changes["garage"] = "hard"
+    if not changes:
+        return
+    modes = profile.constraint_modes.model_copy(deep=True)
+    changed = False
+    for field_name, value in changes.items():
+        if getattr(modes, field_name) != value:
+            setattr(modes, field_name, value)
+            changed = True
+    if changed:
+        profile.constraint_modes = AdvisorConstraintModes.model_validate(modes)
+        updated_fields.append("constraint_modes")
 
 
 def _extract_condition(normalized: str) -> str | None:

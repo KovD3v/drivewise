@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from app.schemas.advisor import AdvisorRecommendationRequest
+from app.schemas.advisor import AdvisorGarageDimensions
 from app.schemas.guided_decisions import (
     DecisionProfile,
     GarageCompatibility,
@@ -102,18 +103,7 @@ def _build_preview_ranking(
             [],
         )
 
-    request = AdvisorRecommendationRequest(
-        budget_max_eur=profile.budget_eur.value,
-        primary_use=profile.primary_use.value,
-        condition=profile.condition.value if profile.condition else "any",
-        annual_km=profile.annual_km.value if profile.annual_km else None,
-        preferred_fuel_type=(
-            profile.preferred_fuel_type.value if profile.preferred_fuel_type else None
-        ),
-        preferred_body_style=profile.category.value if profile.category else None,
-        max_mileage=(profile.max_mileage_km.value if profile.max_mileage_km else None),
-        priorities=profile.priorities.value if profile.priorities else [],
-    )
+    request = _advisor_request_from_profile(profile)
     candidates = advisor_repository.list_candidates(as_of=as_of)
     repository_exclusions = advisor_repository.count_excluded_candidates(as_of=as_of)
     result = score_recommendations(
@@ -124,12 +114,67 @@ def _build_preview_ranking(
     )
     has_items = any(group.items for group in result.groups)
     preview = PreviewRanking(
-        status="ready" if has_items else "insufficient_inventory",
+        status=(
+            "ready"
+            if has_items and all(
+                item.decision_status == "complete"
+                for group in result.groups
+                for item in group.items
+            )
+            else "provisional"
+            if has_items
+            else "insufficient_inventory"
+        ),
         scoring_version=SCORING_VERSION,
         assumptions=build_assumptions(request),
         groups=result.groups,
     )
     return preview, _garage_compatibility(profile, result.groups, candidates)
+
+
+def _advisor_request_from_profile(profile: DecisionProfile) -> AdvisorRecommendationRequest:
+    garage_values = {
+        field_name: getattr(profile.garage, field_name).value
+        for field_name in (
+            "useful_length_mm",
+            "useful_width_mm",
+            "useful_height_mm",
+            "door_width_mm",
+            "door_height_mm",
+        )
+        if getattr(profile.garage, field_name) is not None
+    }
+    garage = (
+        AdvisorGarageDimensions.model_validate(garage_values)
+        if len(garage_values) == 5
+        else None
+    )
+    return AdvisorRecommendationRequest(
+        budget_max_eur=profile.budget_eur.value,
+        primary_use=profile.primary_use.value,
+        usage=profile.usage.value if profile.usage else None,
+        children_count=(
+            profile.children_count.value if profile.children_count else None
+        ),
+        passengers_usual=(
+            profile.passengers_usual.value if profile.passengers_usual else None
+        ),
+        garage=garage,
+        automatic_required=(
+            profile.automatic_required.value
+            if profile.automatic_required
+            else None
+        ),
+        constraint_modes=profile.constraint_modes,
+        condition=profile.condition.value if profile.condition else "any",
+        annual_km=profile.annual_km.value if profile.annual_km else None,
+        preferred_fuel_type=(
+            profile.preferred_fuel_type.value if profile.preferred_fuel_type else None
+        ),
+        preferred_body_style=profile.category.value if profile.category else None,
+        max_mileage=(profile.max_mileage_km.value if profile.max_mileage_km else None),
+        priorities=profile.priorities.value if profile.priorities else [],
+    )
 
 
 def _garage_compatibility(

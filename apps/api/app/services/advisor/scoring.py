@@ -592,6 +592,10 @@ def _score_candidate(
         "normalized_weights": {
             component: round(weight, 6) for component, weight in weights.items()
         },
+        "legacy_compatibility": {
+            "label": "v2_normalized_weights",
+            "note": "Retained for clients that still inspect the v2 component weights; v3 ranking uses pillar and preference composition.",
+        },
         "assessments": {
             name: _assessment_payload(value)
             for name, value in assessments.items()

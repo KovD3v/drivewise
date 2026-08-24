@@ -97,6 +97,7 @@ class NextQuestion(GuidedDecisionWireModel):
 
 RankingStatus = Literal[
     "blocked",
+    "provisional",
     "ready",
     "insufficient_inventory",
 ]

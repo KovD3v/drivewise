@@ -21,6 +21,7 @@ from app.services.advisor.scoring import (
     build_assumptions,
     score_recommendations,
 )
+from app.services.advisor.confidence import CONFIDENCE_VERSION
 from app.schemas.vehicles import VehicleResolveRequest
 from app.services.vehicles.resolver import resolve_vehicle_query
 
@@ -47,7 +48,22 @@ def create_recommendations(
         initial_excluded_counts=repository_exclusions,
     )
     assumptions = build_assumptions(request)
-    request_payload = request.model_dump(mode="json")
+    normalized_profile = request.model_dump(mode="json")
+    active_modules = {
+        name: version
+        for item in result.items
+        for name, version in item.module_versions.items()
+    }
+    active_versions = {
+        "scoring": SCORING_VERSION,
+        "confidence": CONFIDENCE_VERSION,
+        "modules": dict(sorted(active_modules.items())),
+    }
+    request_payload = {
+        **normalized_profile,
+        "normalized_profile": normalized_profile,
+        "active_versions": active_versions,
+    }
     request_payload["scoring_version"] = SCORING_VERSION
     request_payload["evaluated_at"] = as_of.isoformat()
     request_payload["annual_km_defaulted"] = request.annual_km_was_defaulted

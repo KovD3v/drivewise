@@ -84,6 +84,28 @@ def test_sample_message_builds_structured_profile_and_next_question():
     assert repository.calls == [("list", AS_OF), ("excluded", AS_OF)]
 
 
+def test_guided_profile_collects_family_and_constraints():
+    repository = EmptyAdvisorRepository()
+    result = process_guided_decision_turn(
+        decision_id=DECISION_ID,
+        profile_version=1,
+        current_profile=DecisionProfile(),
+        message=(
+            "Siamo in cinque con tre figli, città e autostrada, "
+            "automatico obbligatorio"
+        ),
+        advisor_repository=repository,
+        as_of=AS_OF,
+    )
+
+    profile = result.profile
+    assert profile.children_count.value == 3
+    assert profile.passengers_usual.value == 5
+    assert profile.automatic_required.value is True
+    assert profile.usage.value == ["city", "highway"]
+    assert result.response.preview_ranking.status == "blocked"
+
+
 def test_short_answer_uses_previous_next_question_context():
     repository = EmptyAdvisorRepository()
     first = process_guided_decision_turn(

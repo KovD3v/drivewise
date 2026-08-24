@@ -255,6 +255,49 @@ def test_post_advisor_accepts_v3_priorities_and_rejects_unknown(client):
     assert invalid.status_code == 422
 
 
+def test_post_advisor_persists_v3_breakdown_and_active_versions(
+    client,
+    fake_repository,
+):
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["safety"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["scoring_version"] == "advisor-v3.0"
+    item = payload["groups"][0]["items"][0]
+    assert item["structural_fit"] is not None
+    assert item["decision_confidence"] is not None
+    assert item["module_versions"]
+    assert item["evidence"]["legacy_compatibility"]["label"] == (
+        "v2_normalized_weights"
+    )
+    assert fake_repository.run_payload["active_versions"]["scoring"] == "advisor-v3.0"
+    stored_item = fake_repository.saved_groups[1][0].items[0]
+    assert stored_item.score_composition
+
+
+def test_post_advisor_does_not_complete_run_when_item_write_fails(
+    fake_repository,
+):
+    def fail_save(*_args):
+        raise RuntimeError("item write failed")
+
+    fake_repository.save_items = fail_save
+    with pytest.raises(RuntimeError, match="item write failed"):
+        TestClient(app).post(
+            "/advisor/recommendations",
+            json={"budget_max_eur": 20_000, "primary_use": "city"},
+        )
+    assert fake_repository.completed_run_id is None
+
+
 class RecordingResult:
     def __init__(self, rows=None) -> None:
         self.rows = rows or []
