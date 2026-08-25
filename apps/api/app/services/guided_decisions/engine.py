@@ -217,11 +217,22 @@ def _decision_confidence(
     preview_ranking: PreviewRanking,
 ) -> float:
     profile_signal = weighted_fact_confidence(profile)
-    ranking_signal = {
-        "blocked": 0.0,
-        "insufficient_inventory": 0.15,
-        "ready": 0.70,
-    }[preview_ranking.status]
+    if preview_ranking.status == "provisional":
+        ranking_signal = max(
+            (
+                item.decision_confidence or 0.0
+                for group in preview_ranking.groups
+                for item in group.items
+            ),
+            default=0.0,
+        ) / 100
+        ranking_signal = max(0.0, min(1.0, ranking_signal))
+    else:
+        ranking_signal = {
+            "blocked": 0.0,
+            "insufficient_inventory": 0.15,
+            "ready": 0.70,
+        }[preview_ranking.status]
     return round(0.85 * profile_signal + 0.15 * ranking_signal, 2)
 
 

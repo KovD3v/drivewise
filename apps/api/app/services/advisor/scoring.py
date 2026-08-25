@@ -17,17 +17,22 @@ from app.schemas.advisor import (
     AdvisorSelectedSpec,
     AdvisorVehicleSummary,
 )
-from app.services.advisor.confidence import decision_confidence
+from app.services.advisor.confidence import CONFIDENCE_VERSION, decision_confidence
 from app.services.advisor.constraints import evaluate_constraints
 from app.services.advisor.decision import ModuleAssessment
-from app.services.advisor.garage import family_fit, garage_fit
-from app.services.advisor.issues import known_issue_penalty
-from app.services.advisor.powertrain import powertrain_fit
-from app.services.advisor.recalls import recall_penalty
-from app.services.advisor.reliability import assess_reliability
-from app.services.advisor.safety import assess_safety
-from app.services.advisor.tco import estimate_tco
-from app.services.advisor.vehicle_dna import assess_vehicle_dna
+from app.services.advisor.garage import (
+    FAMILY_FIT_VERSION,
+    GARAGE_FIT_VERSION,
+    family_fit,
+    garage_fit,
+)
+from app.services.advisor.issues import ISSUES_VERSION, known_issue_penalty
+from app.services.advisor.powertrain import POWERTRAIN_FIT_VERSION, powertrain_fit
+from app.services.advisor.recalls import RECALLS_VERSION, recall_penalty
+from app.services.advisor.reliability import RELIABILITY_VERSION, assess_reliability
+from app.services.advisor.safety import SAFETY_VERSION, assess_safety
+from app.services.advisor.tco import TCO_VERSION, estimate_tco
+from app.services.advisor.vehicle_dna import DNA_VERSION, assess_vehicle_dna
 from app.services.advisor.energy_prices import (
     ARERA_SOURCE_NAME,
     ARERA_SOURCE_URL,
@@ -44,6 +49,24 @@ from app.services.advisor.energy_prices import (
 SCORING_VERSION = "advisor-v3.0"
 FRESHNESS_DAYS = 30
 MAX_ITEMS_PER_GROUP = 5
+
+ACTIVE_MODULE_VERSIONS = {
+    "scoring": SCORING_VERSION,
+    "decision_confidence": CONFIDENCE_VERSION,
+    "tco": TCO_VERSION,
+    "usage_fit": "usage-fit-v1",
+    "family_fit": FAMILY_FIT_VERSION,
+    "garage_fit": GARAGE_FIT_VERSION,
+    "reliability": RELIABILITY_VERSION,
+    "safety": SAFETY_VERSION,
+    "comfort": DNA_VERSION,
+    "sport": DNA_VERSION,
+    "travel": DNA_VERSION,
+    "technology": DNA_VERSION,
+    "powertrain_fit": POWERTRAIN_FIT_VERSION,
+    "known_issues": ISSUES_VERSION,
+    "recalls": RECALLS_VERSION,
+}
 
 PILLAR_WEIGHTS = {
     "economics": 0.266667,

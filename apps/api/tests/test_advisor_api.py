@@ -283,6 +283,29 @@ def test_post_advisor_persists_v3_breakdown_and_active_versions(
     assert stored_item.score_composition
 
 
+
+def test_post_advisor_empty_run_keeps_configured_active_versions(
+    client,
+    fake_repository,
+):
+    fake_repository.list_candidates = lambda *, as_of: []
+    fake_repository.count_excluded_candidates = lambda *, as_of: {
+        "stale_offer": 2
+    }
+
+    response = client.post(
+        "/advisor/recommendations",
+        json={"budget_max_eur": 20_000, "primary_use": "city"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["groups"] == [{"condition": "new", "items": []}, {"condition": "used", "items": []}]
+    active_modules = fake_repository.run_payload["active_versions"]["modules"]
+    assert active_modules["tco"] == "tco-v1"
+    assert active_modules["family_fit"] == "family-fit-v1"
+    assert active_modules["garage_fit"] == "garage-fit-v1"
+
+
 def test_post_advisor_does_not_complete_run_when_item_write_fails(
     fake_repository,
 ):
@@ -540,6 +563,9 @@ def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():
     assert all(params[4] == SPEC_ID for _, params in item_calls)
     assert all(params[9] == SCORING_VERSION for _, params in item_calls)
     assert all(isinstance(params[10], Jsonb) for _, params in item_calls)
+    breakdown = item_calls[0][1][10].obj
+    assert breakdown["score_composition"]
+    assert breakdown["strengths"]
 
 
 @pytest.mark.skipif(

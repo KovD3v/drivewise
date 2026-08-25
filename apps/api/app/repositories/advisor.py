@@ -758,6 +758,8 @@ class AdvisorRepository:
                 "missing_factors": item.missing_factors,
                 "module_versions": item.module_versions,
                 "assumptions": item.assumptions,
+                "strengths": item.strengths,
+                "score_composition": item.score_composition,
                 "component_scores": item.component_scores,
                 "positive_factors": [
                     factor.model_dump(mode="json") for factor in item.positive_factors

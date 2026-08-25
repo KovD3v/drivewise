@@ -17,6 +17,7 @@ from app.schemas.advisor import (
 )
 from app.services.advisor.model_analysis import build_model_analysis
 from app.services.advisor.scoring import (
+    ACTIVE_MODULE_VERSIONS,
     SCORING_VERSION,
     build_assumptions,
     score_recommendations,
@@ -49,11 +50,12 @@ def create_recommendations(
     )
     assumptions = build_assumptions(request)
     normalized_profile = request.model_dump(mode="json")
-    active_modules = {
+    actual_modules = {
         name: version
         for item in result.items
         for name, version in item.module_versions.items()
     }
+    active_modules = {**ACTIVE_MODULE_VERSIONS, **actual_modules}
     active_versions = {
         "scoring": SCORING_VERSION,
         "confidence": CONFIDENCE_VERSION,

@@ -29,10 +29,13 @@ from app.schemas.guided_decisions import (
     GuidedDecisionRecord,
 )
 from app.services.guided_decisions.engine import process_guided_decision_turn
+from app.services.guided_decisions.interpreter import extract_profile_updates
+from app.services.guided_decisions.questions import next_question
 from app.services.guided_decisions.garage import (
     VehicleDimensions,
     evaluate_garage_compatibility,
 )
+from test_advisor_scoring import candidate as scoring_candidate
 
 
 AS_OF = datetime(2026, 8, 12, 10, tzinfo=timezone.utc)
@@ -52,6 +55,12 @@ class EmptyAdvisorRepository:
     def count_excluded_candidates(self, *, as_of):
         self.calls.append(("excluded", as_of))
         return {}
+
+
+class CandidateAdvisorRepository(EmptyAdvisorRepository):
+    def list_candidates(self, *, as_of):
+        self.calls.append(("list", as_of))
+        return [scoring_candidate(1)]
 
 
 def test_sample_message_builds_structured_profile_and_next_question():
@@ -104,6 +113,110 @@ def test_guided_profile_collects_family_and_constraints():
     assert profile.automatic_required.value is True
     assert profile.usage.value == ["city", "highway"]
     assert result.response.preview_ranking.status == "blocked"
+
+
+def test_guided_provisional_preview_has_non_empty_items_and_confidence():
+    repository = CandidateAdvisorRepository()
+    result = process_guided_decision_turn(
+        decision_id=DECISION_ID,
+        profile_version=1,
+        current_profile=DecisionProfile(),
+        message="Cerco un'auto in città con budget 20.000 euro",
+        advisor_repository=repository,
+        as_of=AS_OF,
+    )
+
+    assert result.response.preview_ranking.status == "provisional"
+    assert any(
+        group.items for group in result.response.preview_ranking.groups
+    )
+    assert 0 < result.response.decision_confidence <= 1
+
+
+def test_guided_api_create_and_turn_keep_non_empty_provisional_preview():
+    decisions_repository = InMemoryGuidedDecisionsRepository()
+    advisor_repository = CandidateAdvisorRepository()
+    app.dependency_overrides[get_guided_decisions_repository] = lambda: (
+        decisions_repository
+    )
+    app.dependency_overrides[get_advisor_repository] = lambda: advisor_repository
+    app.dependency_overrides[get_guided_decision_clock] = lambda: AS_OF
+    try:
+        client = TestClient(app)
+        created = client.post(
+            "/guided-decisions",
+            json={"message": "Città, budget 20.000 euro"},
+        )
+        assert created.status_code == 200
+        assert created.json()["previewRanking"]["status"] == "provisional"
+        assert any(
+            group["items"] for group in created.json()["previewRanking"]["groups"]
+        )
+
+        decision_id = created.json()["decisionId"]
+        updated = client.post(
+            f"/guided-decisions/{decision_id}/turns",
+            json={"message": "15.000 km all'anno", "expectedProfileVersion": 1},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["previewRanking"]["status"] == "provisional"
+        assert any(
+            group["items"] for group in updated.json()["previewRanking"]["groups"]
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_interpreter_handles_negated_automatic_and_children_without_family():
+    profile, updated = extract_profile_updates(
+        "Non è obbligatorio l'automatico e non ho figli, preferisco la città",
+        DecisionProfile(),
+        expected_question_id=None,
+        captured_at=AS_OF,
+    )
+
+    assert profile.automatic_required.value is False
+    assert profile.constraint_modes.transmission == "soft"
+    assert profile.children_count.value == 0
+    assert profile.family.value is False
+    assert profile.primary_use.value == "city"
+    assert set(updated) >= {
+        "automatic_required",
+        "children_count",
+        "family",
+        "primary_use",
+    }
+
+
+def test_interpreter_unknown_phrase_does_not_change_profile():
+    profile, updated = extract_profile_updates(
+        "Forse vedremo più avanti",
+        DecisionProfile(),
+        expected_question_id=None,
+        captured_at=AS_OF,
+    )
+
+    assert profile == DecisionProfile()
+    assert updated == []
+
+
+def test_contextual_constraint_modes_answer_uses_question_options():
+    profile = _complete_guided_profile()
+    assert next_question_for_test(profile) == "constraint_modes"
+
+    result = process_guided_decision_turn(
+        decision_id=DECISION_ID,
+        profile_version=4,
+        current_profile=profile,
+        message="budget, categoria e cambio",
+        advisor_repository=EmptyAdvisorRepository(),
+        as_of=AS_OF,
+    )
+
+    assert result.profile.constraint_modes.budget == "hard"
+    assert result.profile.constraint_modes.body_style == "hard"
+    assert result.profile.constraint_modes.transmission == "hard"
+    assert result.response.next_question is None
 
 
 def test_short_answer_uses_previous_next_question_context():
@@ -466,3 +579,27 @@ def _fact(value):
         confirmed=True,
         updated_at=AS_OF,
     )
+
+
+def _complete_guided_profile() -> DecisionProfile:
+    return DecisionProfile(
+        vehicle_type=_fact("car"),
+        category=_fact("suv"),
+        budget_eur=_fact(35_000),
+        family=_fact(True),
+        primary_use=_fact("family"),
+        usage=_fact(["family"]),
+        children_count=_fact(2),
+        passengers_usual=_fact(4),
+        annual_km=_fact(15_000),
+        condition=_fact("any"),
+        preferred_fuel_type=_fact("petrol"),
+        priorities=_fact(["space"]),
+        automatic_required=_fact(True),
+        parking=_fact("outdoor_space"),
+    )
+
+
+def next_question_for_test(profile: DecisionProfile) -> str | None:
+    question = next_question(profile)
+    return question.id if question else None

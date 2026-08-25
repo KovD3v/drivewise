@@ -117,7 +117,10 @@ def extract_profile_updates(
             updated_fields=updated_fields,
         )
 
-    children_count = _extract_count(normalized, ("figli", "bambini"))
+    no_children = bool(
+        re.search(r"\b(?:non ho|senza|nessun)\s+(?:figli|bambini|figlio)\b", normalized)
+    )
+    children_count = 0 if no_children else _extract_count(normalized, ("figli", "bambini"))
     if children_count is not None:
         _set_fact(
             updated_profile,
@@ -139,7 +142,17 @@ def extract_profile_updates(
             updated_fields=updated_fields,
         )
 
-    if _contains_any(normalized, ("famiglia", "familiare", "figli", "bambini")):
+    if no_children:
+        _set_fact(
+            updated_profile,
+            "family",
+            False,
+            captured_at,
+            confidence=0.98,
+            updated_fields=updated_fields,
+        )
+
+    if _contains_any(normalized, ("famiglia", "familiare", "figli", "bambini")) and not no_children:
         _set_fact(
             updated_profile,
             "family",
@@ -204,6 +217,7 @@ def extract_profile_updates(
     _extract_constraint_modes(
         normalized,
         updated_profile,
+        automatic_required=automatic_required,
         updated_fields=updated_fields,
     )
 
@@ -266,6 +280,14 @@ def _extract_contextual_answer(
     updated_fields: list[str],
 ) -> None:
     if expected_question_id is None:
+        return
+
+    if expected_question_id == "constraint_modes":
+        _apply_constraint_modes(
+            profile,
+            _constraint_mode_options(normalized),
+            updated_fields=updated_fields,
+        )
         return
 
     if expected_question_id in GARAGE_DIMENSION_FIELDS:
@@ -465,6 +487,15 @@ def _extract_usage(normalized: str) -> list[str]:
 
 def _extract_automatic_required(normalized: str) -> bool | None:
     if re.search(
+        r"\b(?:automatico|cambio automatico)\b\s+(?:non|nn)\s+(?:e|è)?\s*"
+        r"(?:obbligatorio|necessario)\b",
+        normalized,
+    ) or re.search(
+        r"\bnon\s+(?:e|è)?\s*(?:obbligatorio|necessario)\b.*\bautomatico\b",
+        normalized,
+    ):
+        return False
+    if re.search(
         r"\b(?:automatico|cambio automatico)\b.*\b(?:obbligatorio|required|necessario|solo)\b",
         normalized,
     ):
@@ -478,6 +509,7 @@ def _extract_constraint_modes(
     normalized: str,
     profile: DecisionProfile,
     *,
+    automatic_required: bool | None,
     updated_fields: list[str],
 ) -> None:
     changes = {}
@@ -487,10 +519,34 @@ def _extract_constraint_modes(
         changes["body_style"] = "hard"
     if re.search(r"\b(?:diesel|benzina|elettric[oa]|ibrid[oa])\b.*\b(?:obbligatorio|necessario)\b", normalized):
         changes["fuel_type"] = "hard"
-    if re.search(r"\b(?:automatico|cambio automatico)\b.*\b(?:obbligatorio|required|necessario|solo)\b", normalized):
+    if automatic_required is True:
         changes["transmission"] = "hard"
     if re.search(r"\b(?:garage|box)\b.*\b(?:obbligatorio|necessario)\b", normalized):
         changes["garage"] = "hard"
+    _apply_constraint_modes(profile, changes, updated_fields=updated_fields)
+
+
+def _constraint_mode_options(normalized: str) -> dict[str, str]:
+    terms = {
+        "budget": ("budget", "spesa"),
+        "body_style": ("body_style", "categoria", "carrozzeria"),
+        "fuel_type": ("fuel_type", "carburante", "alimentazione"),
+        "transmission": ("transmission", "cambio"),
+        "garage": ("garage", "box"),
+    }
+    return {
+        field_name: "hard"
+        for field_name, options in terms.items()
+        if any(option in normalized for option in options)
+    }
+
+
+def _apply_constraint_modes(
+    profile: DecisionProfile,
+    changes: dict[str, str],
+    *,
+    updated_fields: list[str],
+) -> None:
     if not changes:
         return
     modes = profile.constraint_modes.model_copy(deep=True)
@@ -600,20 +656,28 @@ def _normalize(value: str) -> str:
 
 
 def _contains_any(value: str, terms: tuple[str, ...]) -> bool:
-    return any(term in value for term in terms)
+    return any(_contains_term(value, term) for term in terms)
 
 
 def _first_matching_value(value: str, mapping: dict[str, str]) -> str | None:
     for term, mapped_value in mapping.items():
-        if term in value:
+        if _contains_term(value, term):
             return mapped_value
     return None
 
 
 def _matching_values(value: str, mapping: dict[str, str]) -> list[str]:
     return _deduplicate(
-        [mapped_value for term, mapped_value in mapping.items() if term in value]
+        [
+            mapped_value
+            for term, mapped_value in mapping.items()
+            if _contains_term(value, term)
+        ]
     )
+
+
+def _contains_term(value: str, term: str) -> bool:
+    return re.search(rf"(?<!\w){re.escape(term)}(?!\w)", value) is not None
 
 
 def _deduplicate(values: list[str]) -> list[str]:
