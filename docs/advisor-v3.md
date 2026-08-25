@@ -25,7 +25,7 @@ exists. The active runtime and its current inputs are listed below.
 | Vehicle DNA | Adapter only, `vehicle-dna-v1` | `insufficient_data` without calibrated factor values | Produce calibrated factor values and evidence |
 | TCO | Yes, `tco-v1` estimated module | Versioned energy rates and deterministic estimates | Replace the estimate provider or input without changing the scoring contract |
 | Valuation | Not implemented | No valuation module is called by v3 | Produce exact-variant market and residual values |
-| Garage dimensions | Yes when requested, `garage-fit-v1` | Catalog dimensions, including folded-mirror width | Replace catalog measurements with sourced exact-spec measurements |
+| Garage dimensions | Yes when requested, `garage-fit-v1` | Trusted catalog length, body width, and height; folded-mirror width is currently unavailable and fails closed | Replace catalog measurements with sourced exact-spec measurements |
 
 ## Score and pillars
 
@@ -131,7 +131,9 @@ fields, including `score`, `component_scores`, `positive_factors`,
 `tradeoffs`, `evidence`, and `provenance`. New fields include
 `decision_status`, `decision_score`, `decision_confidence`, `structural_fit`,
 `preference_fit`, `pillar_scores`, `penalties`, `missing_factors`,
-`module_versions`, and `score_composition`.
+`warnings`, `module_versions`, and `score_composition`. The response also
+reports top-level `insufficient_data_counts_by_reason` aggregated from item
+missing factors and warnings.
 
 Decision status is `complete` when both score parts are available and
 `insufficient_data` otherwise. For the latter, `decision_score` is `null`.
@@ -149,9 +151,13 @@ an exclusion or a zero value unless a hard constraint has enough evidence to
 prove incompatibility.
 
 Family fit uses `min(550, 250 + 75 * children_count)` litres as the cargo target.
+When `children_count` is omitted, the baseline request has no child-specific
+uplift; the module does not infer children from passenger count.
 Passenger requests require a known seat count. A missing cargo value makes
 family fit insufficient. Garage fit checks useful length, body width, height,
 door height, and door width against the vehicle width with mirrors folded.
+The current repository does not provide a trusted folded-width metric, so that
+input remains unavailable and the check fails closed until a source supplies it.
 Missing measurements are insufficient data. A hard incompatible garage
 excludes the candidate; a soft incompatible garage is a trade-off.
 
@@ -196,7 +202,9 @@ EUR 1.91662/L, diesel EUR 2.04276/L, LPG EUR 0.77695/L, and electricity EUR
 offer price, capped at EUR 1,600. Tax is EUR 2.58/kW through 100 kW and EUR
 3.87/kW above 100 kW. Maintenance and tyres use the named `maintenance-v1`
 and body-class assumptions returned in the response. Depreciation is 9.333%
-of offer price per year.
+of offer price per year. For PHEVs, this estimate uses liquid consumption and
+the liquid-fuel rate only. Electric share, range, and charging context remain
+in `powertrain-fit-v1` and are not folded into the liquid-only TCO estimate.
 
 TCO works now from versioned estimates. Replacing it means swapping the
 estimate provider or its input data. Consumers continue to read the same

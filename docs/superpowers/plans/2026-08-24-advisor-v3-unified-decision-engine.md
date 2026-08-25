@@ -797,9 +797,9 @@ Expected: zero failures. The existing frontend retry test may print its known ro
 
 - [ ] **Step 2: Run disposable PostgreSQL verification**
 
-Create a fresh `pgvector/pgvector:pg16` database, apply migrations `0001` through `0006`, import `data/fixtures/catalog/catalog-v1.synthetic.json`, rerun the identical import, and run PostgreSQL tests. Do not reuse a database with recommendation runs.
+Create a fresh `pgvector/pgvector:pg16` database, apply migrations `0001` through `0007`, import `data/fixtures/catalog/catalog-v1.synthetic.json`, rerun the identical import, and run PostgreSQL tests. Do not reuse a database with recommendation runs.
 
-Expected: migrations through `0006`, first import completed, second import unchanged, all integration tests pass.
+Expected: migrations through `0007`, first import completed, second import unchanged, all integration tests pass.
 
 - [ ] **Step 3: Run API and browser smoke**
 

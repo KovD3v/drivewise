@@ -81,7 +81,8 @@ enums used by the Advisor and web form. Every source must explicitly declare a
 to Advisor rankings; `not_permitted` and `manual_validation_only` records remain
 available for review without becoming rankable.
 
-Vehicle and variant records may provide `provenance_claims` when different
+Primary vehicle, variant, and listing source URLs must use HTTPS. Vehicle and
+variant records may provide `provenance_claims` when different
 sources support different fields (for example, homologation metrics from a
 public dataset and price/space fields from a reviewed local record). Each claim
 lists its exact URL, observation time, and `supported_metrics`. The importer

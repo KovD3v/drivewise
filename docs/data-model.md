@@ -32,6 +32,8 @@ variants, offers, and record-level provenance without calling external services.
   reserved by the existing vehicle-knowledge-profile design.
 - `apps/api/migrations/0005_vehicle_knowledge_profile.sql` adds optional,
   detail-only vehicle-spec knowledge fields and relational child records.
+- `apps/api/migrations/0007_https_primary_provenance.sql` validates existing
+  primary provenance and rejects non-HTTPS vehicle, spec, and listing URLs.
 
 Run migrations with:
 

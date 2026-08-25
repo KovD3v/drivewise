@@ -56,7 +56,7 @@
       ],
       "properties": {
         "source_key": { "$ref": "#/$defs/key" },
-        "source_url": { "$ref": "#/$defs/url" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
         "observed_at": { "type": "string", "format": "date-time" },
         "supported_metrics": {
           "type": "array",
@@ -192,7 +192,7 @@
         "model_year": { "type": "integer", "minimum": 1980, "maximum": 2100 },
         "market": { "type": "string", "minLength": 2, "maxLength": 8 },
         "source_key": { "$ref": "#/$defs/key" },
-        "source_url": { "$ref": "#/$defs/url" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
         "observed_at": { "type": "string", "format": "date-time" },
         "provenance_claims": {
           "type": "array",
@@ -222,7 +222,7 @@
         "fuel_type": {
           "enum": [
             "diesel", "electric", "full_hybrid_petrol", "hybrid_petrol",
-            "mild_hybrid_petrol", "petrol", "petrol_lpg"
+            "mild_hybrid_petrol", "petrol", "petrol_lpg", "plug_in_hybrid_petrol"
           ]
         },
         "list_price_eur": { "type": ["number", "null"], "minimum": 0 },
@@ -328,7 +328,7 @@
         },
         "metadata": { "type": "object" },
         "source_key": { "$ref": "#/$defs/key" },
-        "source_url": { "$ref": "#/$defs/url" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
         "observed_at": { "type": "string", "format": "date-time" },
         "provenance_claims": {
           "type": "array",
@@ -356,7 +356,7 @@
         "is_active": { "type": "boolean" },
         "raw_payload": { "type": "object" },
         "source_key": { "$ref": "#/$defs/key" },
-        "source_url": { "$ref": "#/$defs/url" },
+        "source_url": { "$ref": "#/$defs/httpsUrl" },
         "observed_at": { "type": "string", "format": "date-time" }
       }
     }

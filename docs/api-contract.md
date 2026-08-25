@@ -688,6 +688,7 @@ Example response:
     "it-energy-2026-07-16-v1: ARERA electricity reference..."
   ],
   "excluded_counts_by_reason": {"stale_offer": 2},
+  "insufficient_data_counts_by_reason": {"powertrain_fit": 1},
   "groups": [
     {
       "condition": "new",
@@ -705,8 +706,15 @@ Example response:
           "pillar_scores": {"economics": 90.0, "practicality": 82.0, "reliability_safety": 78.0, "driving": 80.0, "technology": 76.0, "powertrain_fit": 86.0},
           "penalties": [],
           "missing_factors": [],
+          "warnings": [],
           "module_versions": {"scoring": "advisor-v3.0", "tco": "tco-v1", "powertrain_fit": "powertrain-fit-v1"},
-          "score_composition": {"structural_weight": 0.65, "preference_weight": 0.35},
+          "score_composition": {
+            "structural_fit_weight": 65,
+            "preference_fit_weight": 35,
+            "pillar_weights": {"economics": 0.266667, "practicality": 0.177778, "reliability_safety": 0.222222, "driving": 0.111111, "technology": 0.111111, "powertrain_fit": 0.111111},
+            "pillar_components": {"economics": {"price_fit": 0.45, "tco": 0.4, "running_cost": 0.15}, "practicality": {"category_fit": 0.22, "usage_fit": 0.33, "family_fit": 0.25, "garage_fit": 0.2}, "reliability_safety": {"reliability": 0.58, "safety": 0.42}, "driving": {"comfort": 0.48, "sport": 0.22, "travel": 0.3}, "technology": {"technology": 1.0}, "powertrain_fit": {"powertrain_fit": 1.0}},
+            "preference_weights": [0.5, 0.3, 0.2]
+          },
           "component_scores": {
             "price_fit": 89,
             "use_case_fit": 100,
@@ -768,8 +776,10 @@ limits of the synthetic benchmark.
 Positive factors require a component score of at least 80; tradeoffs require a
 score below 70. Any soft budget overrun is always reported with exact euros and
 percentage. Offers are ranked before keeping the best offer per
-`model_family_key`; at most five are returned per group. Stable ties use score,
-price, make, model, then listing ID.
+`model_family_key`; at most five are returned per group. Complete items sort
+before insufficient-data items. Within each status, stable ties use effective
+score, confidence, price, mileage with missing last, listing reference, then
+listing ID.
 
 ### POST /advisor/model-analysis
 

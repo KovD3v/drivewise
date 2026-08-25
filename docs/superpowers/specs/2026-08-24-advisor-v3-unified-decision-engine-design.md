@@ -109,7 +109,9 @@ The integration must retain its current guarantees:
 
 The existing local Guided Decision work is ported into the isolated branch and
 extended rather than rewritten. Migration `0006_guided_decisions.sql` remains
-additive. The flow persists the current profile and append-only turn snapshots,
+additive, and migration `0007_https_primary_provenance.sql` follows it for
+forward-only primary URL validation. The flow persists the current profile and
+append-only turn snapshots,
 uses optimistic concurrency through `expectedProfileVersion`, and delegates
 ranking to Advisor v3.
 
@@ -502,7 +504,8 @@ versions, assumptions, and evidence. No new scoring migration is required.
 - active module versions.
 
 Guided Decision persistence remains in migration `0006`. Vehicle Knowledge
-Profile remains migration `0005`.
+Profile remains migration `0005`; primary provenance HTTPS constraints are in
+forward migration `0007`.
 
 ## Specialist prerequisite modules
 
@@ -579,7 +582,7 @@ a failing test.
 
 ### Data and migration tests
 
-- migrations apply from an empty database through `0006`;
+- migrations apply from an empty database through `0007`;
 - Vehicle Knowledge Profile omitted-versus-empty behavior remains correct;
 - malformed provenance and invalid profile values fail validation;
 - Advisor repository returns the exact facts needed by modules.
