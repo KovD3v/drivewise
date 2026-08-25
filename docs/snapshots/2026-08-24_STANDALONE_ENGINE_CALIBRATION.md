@@ -25,4 +25,5 @@
 - Il motore rimane deterministico: l'LLM non determina il ranking.
 - La calibrazione reale dovrà essere ripetuta su dataset verificato e valutazioni umane raccolte da utenti/tester.
 
-Il dettaglio finale e le correzioni che portano alla v1.0 sono documentati in `FINAL_CALIBRATION_REPORT.md`.
+Il dettaglio finale e le correzioni che portano alla v1.0 sono documentati in
+`2026-08-24_STANDALONE_ENGINE_FINAL_CALIBRATION.md`.

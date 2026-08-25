@@ -2,7 +2,7 @@
 
 ## Scope
 
-The MVP data model stores synthetic vehicle records, basic specs, source metadata, listing snapshots, document text, and deterministic advisor recommendation outputs.
+The MVP data model stores synthetic vehicle records, basic specs, source metadata, listing snapshots, document text, and deterministic Advisor v3 recommendation outputs.
 
 The schema is oriented to the Italian and European market. Prices are stored in euro, listing odometers are interpreted as kilometres, and technical fields use WLTP and European emissions assumptions.
 
@@ -235,7 +235,11 @@ Key columns:
 - `created_at`
 - `completed_at`
 
-`POST /advisor/recommendations` writes one row per recommendation run.
+`POST /advisor/recommendations` writes one row per Advisor v3 recommendation
+run. `request_payload` contains the normalized profile, defaulted fields,
+constraint modes, evaluation timestamp, and active module versions. The run's
+`scoring_version` is `advisor-v3.0`; assumptions and exclusion counts preserve
+the inputs needed to explain the result.
 
 ### guided_decisions and guided_decision_turns
 
@@ -254,7 +258,7 @@ time.
 
 ### recommendation_items
 
-Stores ranked deterministic advisor output items.
+Stores ranked deterministic Advisor v3 output items.
 
 Key columns:
 
@@ -268,6 +272,14 @@ Key columns:
 - `rationale`
 - `scoring_version`
 - `score_breakdown jsonb`
+
+The breakdown stores `decision_status`, `decision_score`, provisional legacy
+`score` behavior, confidence components, structural and preference fit, pillar
+scores, penalties, missing factors, module versions, assumptions, evidence,
+and provenance. `decision_score` is null for `insufficient_data`; the legacy
+`score` can retain provisional Structural Fit for existing clients. Exact
+vehicle, listing, and spec identities remain required, so a result cannot be
+detached from the offer and variant that produced it.
 
 Rank and vehicle uniqueness are enforced within each new/used condition group,
 so one family can appear once in each group without collisions. Legacy V1 rows

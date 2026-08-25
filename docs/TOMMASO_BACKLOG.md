@@ -1,18 +1,21 @@
-# DriveWise — Backend Delivery Plan for Tommaso
+# DriveWise backend delivery plan for Tommaso
 
-_Owner: Tommaso — Backend / Data / API_
+_Owner: Tommaso, backend, data, and API_
 _Status: Ready to start_
 _Priority: Critical for MVP_
 
 ## 1. Mission
 
-The objective is not to design a second scoring system. The Decision Engine v1.0 in `decision_engine/` is the source implementation for MVP recommendation logic.
+This backlog predates Advisor v3. The current ranking implementation is
+`apps/api/app/services/advisor/`; the retired `decision_engine/` package is
+historical material only. New work must use the v3 contracts in
+`docs/advisor-v3.md`.
 
 Tommaso's job is to turn the existing prototype assets into a reliable backend boundary that Lovable can consume.
 
 The first successful milestone is a working vertical slice:
 
-`Lovable /app/start → backend API → Decision Engine v1.0 → ranking JSON → Lovable Decision Report`
+`Lovable /app/start → backend API → Advisor v3 → ranking JSON → Lovable Decision Report`
 
 ## 2. Non-negotiable architectural rules
 
@@ -27,7 +30,7 @@ The first successful milestone is a working vertical slice:
 
 ---
 
-# Sprint A — Backend Foundation
+# Sprint A: backend foundation
 
 ## A1. Inspect current repository before coding
 
@@ -36,7 +39,7 @@ Review:
 - `docs/api-contract.md`;
 - `docs/architecture.md`;
 - current data ingestion/catalog code;
-- `decision_engine/README.md`;
+- `docs/advisor-v3.md`;
 - `docs/PROJECT_CONTEXT.md` and `docs/DECISIONS.md`.
 
 Do not create duplicate services if equivalent code already exists.
@@ -78,11 +81,12 @@ Do not use unrestricted `*` in production configuration unless explicitly approv
 
 ---
 
-# Sprint B — Decision Engine Integration
+# Sprint B: Advisor integration
 
 ## B1. Package/import the engine
 
-Integrate `decision_engine/drivewise_engine` as an application dependency.
+Use `apps/api/app/services/advisor/` as the application dependency. The
+standalone package described by this older section has been retired.
 
 Preferred approaches:
 - local package in monorepo with Python package metadata; or
@@ -138,7 +142,7 @@ Flow:
 1. validate request;
 2. map DTO → `DecisionProfile`;
 3. load eligible vehicle catalog;
-4. call Decision Engine v1.0;
+4. call Advisor v3;
 5. generate a decision/session id;
 6. return ranking and excluded vehicles;
 7. optionally persist the decision if persistence layer is ready.
@@ -187,7 +191,7 @@ This will be important when ranking changes after future calibration.
 
 ---
 
-# Sprint C — Vehicle Catalog APIs
+# Sprint C: vehicle catalog APIs
 
 ## C1. Vehicle repository abstraction
 
@@ -263,7 +267,7 @@ This prevents the frontend from trying to reconstruct contextual scoring.
 
 ---
 
-# Sprint D — Session / Guided Decision Flow
+# Sprint D: session and Guided Decision flow
 
 This can follow the first direct decision endpoint; do not block the initial vertical slice on conversational orchestration.
 
@@ -315,7 +319,7 @@ The frontend should receive a typed `nextQuestion`, e.g. `number`, `single_choic
 
 ---
 
-# Sprint E — Garage Fit
+# Sprint E: Garage Fit
 
 ## E1. Reuse engine logic
 
@@ -341,7 +345,7 @@ The UI explanation can be generated from the deterministic margins.
 
 ---
 
-# Sprint F — Dataset / Data Quality
+# Sprint F: dataset and data quality
 
 ## F1. Import the v0.2 fixtures
 
@@ -392,7 +396,7 @@ Before scaling beyond fixtures, produce a short technical proposal covering:
 
 ---
 
-# Sprint G — Persistence
+# Sprint G: persistence
 
 ## G1. PostgreSQL-ready design
 
@@ -417,7 +421,7 @@ A persisted decision should be reproducible by recording:
 
 ---
 
-# Sprint H — Explainability / AI Integration
+# Sprint H: explainability and AI integration
 
 This is deliberately after deterministic API integration.
 
@@ -443,7 +447,7 @@ Do not expose generic unrestricted chatbot behavior as the core product experien
 
 ---
 
-# Sprint I — Testing
+# Sprint I: testing
 
 ## I1. Unit tests
 Maintain Decision Engine tests.
@@ -470,7 +474,7 @@ Decision calculation on the small catalog should feel immediate. Capture timings
 
 ---
 
-# Sprint L — Observability and Operational Basics
+# Sprint L: observability and operational basics
 
 Implement structured logging including:
 - request/correlation id;
@@ -486,7 +490,7 @@ Add meaningful errors with stable error codes for frontend handling.
 
 ---
 
-# Required API MVP — priority order
+# Required API MVP: priority order
 
 ### P0
 - `GET /api/v1/health`
@@ -534,13 +538,13 @@ The exact score may evolve only through an intentional engine version change. Th
 
 ---
 
-# Definition of Done — Tommaso MVP backend
+# Definition of Done: Tommaso MVP backend
 
 Tommaso's backend phase is considered MVP-ready when:
 
 - [ ] backend starts locally from documented instructions;
 - [ ] FastAPI/OpenAPI available;
-- [ ] Decision Engine v1.0 is imported, not reimplemented;
+- [x] Advisor v3 is the single ranking runtime;
 - [ ] engine regression tests pass;
 - [ ] `POST /api/v1/decisions` executes real Python scoring;
 - [ ] Decision Score/Confidence/explainability returned to client;

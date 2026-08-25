@@ -11,7 +11,7 @@ The backend keeps three responsibilities separate:
 1. The interpreter extracts conservative profile updates from the conversation.
 2. The decision engine computes completeness, confidence, missing information,
    and the highest-impact next question.
-3. Advisor v2 performs deterministic eligibility, scoring, and ranking over
+3. Advisor v3 performs deterministic eligibility, scoring, and ranking over
    reviewed exact vehicle/variant/offer pairs.
 
 The current interpreter is a deliberately narrow Italian baseline with no
@@ -154,7 +154,7 @@ All three successful operations return the same shape:
   },
   "previewRanking": {
     "status": "ready",
-    "scoringVersion": "advisor-v2.0",
+    "scoringVersion": "advisor-v3.0",
     "blockingReasons": [],
     "assumptions": [],
     "groups": []
@@ -202,11 +202,11 @@ the flow is not a fixed questionnaire.
 ambiguous:
 
 - `blocked`: `budget_eur` or `primary_use` is missing;
-- `ready`: Advisor v2 returned at least one eligible exact offer;
+- `ready`: Advisor v3 returned at least one eligible exact offer;
 - `insufficient_inventory`: the profile is rankable, but no eligible reviewed
   offer is available.
 
-The preview reuses `advisor-v2.0` without persisting a formal recommendation
+The preview reuses `advisor-v3.0` without persisting a formal recommendation
 run. Its assumptions remain visible, including a default annual distance when
 `annual_km` is still unknown.
 

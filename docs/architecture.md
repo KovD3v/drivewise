@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Drivewise helps users compare and evaluate vehicles before purchase. This MVP includes local app scaffolding, seed data, read-only vehicle/listing/document APIs, vehicle input resolution, document search with default text mode and explicit fake-vector dev mode, local fixture ingestion, deterministic Advisor v2 recommendations over reviewed exact-variant catalog offers with metric-level provenance, and a deterministic model analysis flow.
+Drivewise helps users compare and evaluate vehicles before purchase. This MVP includes local app scaffolding, seed data, read-only vehicle/listing/document APIs, vehicle input resolution, document search with default text mode and explicit fake-vector dev mode, local fixture ingestion, deterministic Advisor v3 recommendations over reviewed exact-variant catalog offers with metric-level provenance, and a deterministic model analysis flow.
 
 ## Monorepo Layout
 
@@ -65,18 +65,24 @@ Database-backed dependencies use a small local connection pool initialized and c
 
 Vehicle resolution is deterministic and market-scoped. It normalizes free-text descriptions, ranks canonical vehicle/spec candidates by explicit make, model, year, trim, fuel, and body-style evidence, and reports matched, ambiguous, or no-match outcomes without writing to the database.
 
-Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The Advisor v2 recommendations endpoint is independent of document search: it filters reviewed, fresh, exact Italian offer/spec pairs, produces transparent component scores and provenance, groups new and used results, and persists the versioned run and item breakdowns.
+Document search is read-only and defaults to deterministic `text_only` scoring. It also supports explicit `vector_fake` dev/test mode, which embeds the query with the local `FakeEmbeddingProvider` and searches only documents that already have stored fake pgvector embeddings. Search responses never expose `embedding` or `embedding_model`. The Advisor v3 recommendations endpoint is independent of document search: it filters reviewed, fresh, exact Italian offer/spec pairs, evaluates constraints and versioned modules, produces the 65/35 decision score with component evidence and provenance, groups new and used results, and persists the versioned run and item breakdowns.
 
 `POST /advisor/model-analysis` is a non-persisted flow for a model the user has already chosen. It can start from a free-text query resolved through the vehicle resolver or a canonical vehicle reference, then returns a result-contract shape with verdict, price assessment, estimated costs, red flags, checklist, confidence, assumptions, warnings, missing data, and next actions.
 
 The Guided Decision API is a persisted, versioned state layer over the existing
-deterministic Advisor. Each turn returns typed profile facts with confidence,
+deterministic Advisor v3. Each turn returns typed profile facts with confidence,
 source, confirmation state, completion, engine confidence, missing information,
-the next highest-impact question, and an optional Advisor v2 preview. The v1
+the next highest-impact question, and an optional Advisor v3 preview. The v1
 wire contract is documented in `docs/guided-decision-contract.md`. Its current
 Italian interpreter is deliberately conservative and isolated from scoring so
 an LLM-backed interpreter can replace it without moving deterministic ranking
 or constraints into the model.
+
+Advisor v3 is the only ranking runtime. TCO uses the versioned `tco-v1`
+estimator today. Reliability, known issues, official recalls, Vehicle DNA, and
+valuation have explicit adapters and documented input contracts, but no live
+provider is claimed until its exact applicability, evidence, status, and
+version requirements are met. See `docs/advisor-v3.md`.
 
 ## Data
 

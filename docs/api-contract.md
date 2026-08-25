@@ -617,7 +617,7 @@ request is documented separately in `docs/guided-decision-contract.md`.
 
 ### POST /advisor/recommendations
 
-Creates a deterministic Advisor v2 run from reviewed, imported Italian catalog
+Creates a deterministic Advisor v3 run from reviewed, imported Italian catalog
 offers. It does not call an LLM, search documents, generate embeddings, or
 ingest external data.
 
@@ -663,16 +663,24 @@ omitted, it defaults to 10,000 for city/new-driver, 14,000 for family, and
 Allowed `priorities` values:
 
 - `price`
+- `budget`
 - `efficiency_range`
 - `space`
 - `running_cost`
+- `family`
+- `reliability`
+- `safety`
+- `comfort`
+- `performance`
+- `technology`
+- `powertrain_fit`
 
 Example response:
 
 ```json
 {
   "run_id": "50000000-0000-4000-8000-000000000001",
-  "scoring_version": "advisor-v2.0",
+  "scoring_version": "advisor-v3.0",
   "assumptions": [
     "Annual distance: 10000 km (default for primary_use=city); used only for the annual energy-cost estimate.",
     "The running_cost component covers energy only; maintenance, tax, insurance, depreciation, and financing are excluded.",
@@ -689,6 +697,16 @@ Example response:
           "selected_spec": {"id": "...", "variant_key": "..."},
           "offer": {"id": "...", "spec_id": "...", "price_eur": 17500},
           "score": 86.42,
+          "decision_status": "complete",
+          "decision_score": 86.42,
+          "decision_confidence": 78.5,
+          "structural_fit": 88.0,
+          "preference_fit": 83.5,
+          "pillar_scores": {"economics": 90.0, "practicality": 82.0, "reliability_safety": 78.0, "driving": 80.0, "technology": 76.0, "powertrain_fit": 86.0},
+          "penalties": [],
+          "missing_factors": [],
+          "module_versions": {"scoring": "advisor-v3.0", "tco": "tco-v1", "powertrain_fit": "powertrain-fit-v1"},
+          "score_composition": {"structural_weight": 0.65, "preference_weight": 0.35},
           "component_scores": {
             "price_fit": 89,
             "use_case_fit": 100,
@@ -718,13 +736,19 @@ Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,
 and backed by spec provenance. Price, model-family identity, body, fuel, seats,
 cargo, and powertrain consumption evidence are required. Used/certified offers
-also require mileage. PHEVs are excluded, as are highway EVs below 250 km WLTP.
-`budget_min_eur`, the 110% maximum-budget tolerance, and used `max_mileage` are
-hard constraints; fuel and body preferences are soft.
+also require mileage. Recognized powertrains are assessed or marked
+`insufficient_data`; PHEVs and highway EVs are not blanket exclusions. The
+powertrain module requires relevant consumption, range, usage, distance, and
+charging inputs. `budget_min_eur`, the 110% maximum-budget tolerance, and used
+`max_mileage` are hard constraints by default; fuel and body preferences are
+soft unless the request selects hard mode.
 
-Base component weights are price 30, use case 25, running cost 20, space 15,
-and efficiency/range 10. Each selected priority multiplies its component weight
-by 1.5, then all weights are normalized to 100. Component formulas are fixed:
+The v3 structural pillar weights are Economics 26.6667%, Practicality
+17.7778%, Reliability and Safety 22.2222%, Driving 11.1111%, Technology
+11.1111%, and Powertrain Fit 11.1111%. Available pillars are renormalized when
+data is missing. Legacy `component_scores` remain in the response for client
+compatibility. Their values are no longer the v3 ranking formula. Component
+details for the retained legacy component fields are fixed:
 
 - price is 100 through 75% of budget, falls linearly to 70 at budget, then to 0 at 110%;
 - use case is 60% body/use matrix, 20% fuel preference, and 20% body preference;
@@ -732,6 +756,14 @@ by 1.5, then all weights are normalized to 100. Component formulas are fixed:
 - space is 40% seat sufficiency and 60% use-specific cargo band;
 - liquid efficiency is linear from 100 at 4 L/100 km to 0 at 8;
 - EV efficiency/range averages the 14-24 kWh/100 km and 150-500 km curves.
+
+The complete v3 score is `65% Structural Fit + 35% Preference Fit`, with six
+pillars and ordered preference weights of `50% / 30% / 20%`. If required data
+is missing, the response reports `decision_status=insufficient_data`, a null
+`decision_score`, explicit `missing_factors`, and a provisional legacy `score`
+containing Structural Fit. See [`advisor-v3.md`](advisor-v3.md) for module
+versions, TCO assumptions, specialist prerequisites, audit fields, and the
+limits of the synthetic benchmark.
 
 Positive factors require a component score of at least 80; tradeoffs require a
 score below 70. Any soft budget overrun is always reported with exact euros and
