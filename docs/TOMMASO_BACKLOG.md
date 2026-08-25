@@ -1,27 +1,33 @@
 # DriveWise backend delivery plan for Tommaso
 
 _Owner: Tommaso, backend, data, and API_
-_Status: Ready to start_
-_Priority: Critical for MVP_
+_Status: Superseded, historical reference_
+_Priority: Archived after Advisor v3 integration_
 
-## 1. Mission
+## Current implementation
 
 This backlog predates Advisor v3. The current ranking implementation is
 `apps/api/app/services/advisor/`; the retired `decision_engine/` package is
 historical material only. New work must use the v3 contracts in
 `docs/advisor-v3.md`.
 
-Tommaso's job is to turn the existing prototype assets into a reliable backend boundary that Lovable can consume.
-
-The first successful milestone is a working vertical slice:
+The current vertical slice is:
 
 `Lovable /app/start → backend API → Advisor v3 → ranking JSON → Lovable Decision Report`
+
+## Superseded backlog, historical reference only
+
+The sections below describe the pre-Advisor-v3 integration plan. They are kept
+to explain earlier decisions and acceptance criteria. They are not current
+implementation instructions. Do not recreate `decision_engine/`, add a second
+`DecisionProfile` runtime, or invoke a standalone scorer. Current work uses
+`apps/api/app/services/advisor/` and the contracts in `docs/advisor-v3.md`.
 
 ## 2. Non-negotiable architectural rules
 
 1. **Do not copy scoring formulas into controllers or TypeScript.**
-2. Keep the Decision Engine as a standalone Python domain module.
-3. API/service code may map DTOs to `DecisionProfile`, invoke the engine, and map the result back to DTOs.
+2. **Historical rule, superseded:** the old plan kept a standalone Python domain module. The repository now has one Advisor v3 runtime in the API.
+3. **Historical flow, superseded:** the old plan mapped DTOs to `DecisionProfile` and invoked that package. Current API code maps request schemas to Advisor v3 services.
 4. The LLM must not calculate the ranking.
 5. Do not persist `Decision Score` as a permanent property of a vehicle. It is contextual to a decision session/profile.
 6. `Decision Confidence` must remain separate from `Decision Score`.
@@ -56,7 +62,9 @@ Minimum platform endpoints:
 - `GET /api/v1/health`
 - `GET /api/v1/version`
 
-Health should confirm the API process is alive; version should return backend and Decision Engine versions.
+Health should confirm the API process is alive; the current API response carries
+Advisor v3 module versions. The old Decision Engine version field below is
+historical.
 
 **Acceptance:** service starts locally with one documented command and OpenAPI is reachable.
 
@@ -81,7 +89,7 @@ Do not use unrestricted `*` in production configuration unless explicitly approv
 
 ---
 
-# Sprint B: Advisor integration
+# Sprint B: Advisor integration, historical plan
 
 ## B1. Package/import the engine
 
@@ -130,7 +138,7 @@ Garage object should use millimetres internally:
 
 Validate ranges and reject impossible values with meaningful 4xx responses.
 
-## B4. Decision endpoint — MVP priority
+## B4. Decision endpoint: MVP priority
 
 Implement:
 
@@ -140,7 +148,7 @@ Input: structured Decision Profile.
 
 Flow:
 1. validate request;
-2. map DTO → `DecisionProfile`;
+2. map the request to the current Advisor v3 schema;
 3. load eligible vehicle catalog;
 4. call Advisor v3;
 5. generate a decision/session id;
@@ -464,7 +472,7 @@ At minimum test:
 - deterministic repeatability for same engine/data/profile.
 
 ## I3. Golden fixtures
-Create golden JSON fixtures for 3–5 known profiles so frontend and backend can verify contract stability.
+Create golden JSON fixtures for 3 to 5 known profiles so frontend and backend can verify contract stability.
 
 ## I4. Contract tests
 Validate actual API responses against OpenAPI/Pydantic schema used by frontend.

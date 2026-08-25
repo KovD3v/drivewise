@@ -3,7 +3,7 @@
 ## Runtime boundary
 
 Advisor v3 is the only ranking runtime. `POST /advisor/recommendations` and
-Guided Decision previews call `apps/api/app/services/advisor/scoring.py`.
+Guided Decision previews call [`scoring.py`](../apps/api/app/services/advisor/scoring.py).
 The scorer reads reviewed catalog offers and exact vehicle variants, applies
 constraints and module assessments, and returns a deterministic ranking.
 
@@ -18,7 +18,7 @@ exists. The active runtime and its current inputs are listed below.
 | Area | Runs now | Current input or fallback | Replacement boundary |
 | --- | --- | --- | --- |
 | Ranking | Yes, `advisor-v3.0` | Reviewed Italian offers, exact specs, profile, provenance | Keep the scoring and response contract stable |
-| Safety | Yes, `safety-v1` | Knowledge Profile ratings and features with provenance | Replace the catalog assessment input, not pillar composition |
+| Safety | Yes, `safety-v1` | Curated Knowledge Profile ratings. ADAS/features remain in `decision_context` but are not scored | Replace the rating input, not pillar composition |
 | Reliability | Adapter only, `reliability-v1` | `insufficient_data` without an explicit assessment | Produce a versioned assessment for the exact generation/spec |
 | Known issues | Adapter only, `known-issues-v1` | `insufficient_data` without issue records | Produce applicability-first issue records |
 | Official recalls | Adapter only, `recalls-v1` | `insufficient_data` without official records | Produce campaign identity, status, and applicability |
@@ -49,13 +49,55 @@ the user reorders priorities.
 
 Available pillar weights are renormalized when a pillar is unavailable. At
 least Economics and Practicality must be calculable for a structural result.
-Penalties are applied to Structural Fit before the 65/35 composition and are
-capped so the result cannot become negative.
+For available pillar set `A`, the scorer uses:
+
+```text
+normalized_pillar_weight(p) = pillar_weight(p) / sum(pillar_weight(a) for a in A)
+Structural Fit = sum(pillar_score(p) × normalized_pillar_weight(p) for p in A)
+```
+
+The same rule applies inside each pillar. If `C` is the set of available
+subfactors, the subfactor score is:
+
+```text
+pillar_score = sum(subfactor_score(c) × subfactor_weight(c) for c in C)
+               / sum(subfactor_weight(c) for c in C)
+```
+
+The implementation is [`_compose_pillars`](../apps/api/app/services/advisor/scoring.py#L825).
+It records missing subfactors instead of replacing them with zero. The
+implementation is [`_structural_fit`](../apps/api/app/services/advisor/scoring.py#L850).
+It subtracts the known-issues penalty first, then the recall penalty, then
+clamps the result to `[0, 100]`:
+
+```text
+unclamped_structural = weighted_pillars - known_issues_penalty - recall_penalty
+Structural Fit = min(100, max(0, unclamped_structural))
+```
 
 Preference Fit maps the first three ordered priorities to direct metrics with
-weights 50%, 30%, and 20%. Missing preference metrics are renormalized across
-the available priorities and lower confidence. The scorer never invents a
-neutral value for missing data.
+weights 50%, 30%, and 20%. For available priority values `P`, the weights are
+renormalized in the same way:
+
+```text
+Preference Fit = sum(metric_value(i) × preference_weight(i) for i in P)
+                 / sum(preference_weight(i) for i in P)
+```
+
+Missing preference metrics lower confidence. If no mapped metric is available,
+Preference Fit is `null` and the scorer never invents a neutral value. The
+implementation is [`_preference_fit`](../apps/api/app/services/advisor/scoring.py#L865).
+
+The complete score is calculated only when Preference Fit exists:
+
+```text
+Decision Score = round(0.65 × Structural Fit + 0.35 × Preference Fit, 1)
+```
+
+The implementation is [`_score_candidate`](../apps/api/app/services/advisor/scoring.py#L495). If the score cannot be completed, v3 sets
+`decision_status=insufficient_data` and `decision_score=null`. The legacy
+`score` field contains `round(Structural Fit, 1)` for ordering and old clients.
+It is not presented as a complete Decision Score.
 
 The pillar component contracts are:
 
@@ -65,6 +107,22 @@ The pillar component contracts are:
 - Driving: comfort 48%, sport 22%, travel 30%.
 - Technology: calibrated technology input when available.
 - Powertrain Fit: the versioned powertrain assessment.
+
+Decision Confidence uses the bounded weighted sum in
+[`confidence.py`](../apps/api/app/services/advisor/confidence.py):
+
+```text
+Decision Confidence = clamp(
+    0.45 × profile_completeness
+  + 0.35 × evidence_completeness
+  + 0.20 × ranking_stability,
+  0, 100
+)
+```
+
+The result is rounded to one decimal place. The three inputs are percentages,
+not probabilities. Ranking stability is the bounded score gap between the top
+two candidates in a condition group.
 
 ## Status and compatibility
 
@@ -117,6 +175,19 @@ The energy formula is:
 consumption × rate × annual_km ÷ 100
 ```
 
+The scorer turns the annual TCO amount into its Economics metric in
+[`_tco_assessment`](../apps/api/app/services/advisor/scoring.py#L886). It uses
+the request budget in euro:
+
+```text
+target_eur = max(3500, 0.22 × budget_max_eur)
+ratio = annual_tco_eur / target_eur
+
+TCO fit = 100                         when ratio <= 0.85
+          95                          when 0.85 < ratio <= 1.00
+          max(0, 95 - (ratio - 1)×42) when ratio > 1.00
+```
+
 The current fixed inputs are the versioned MIMIT and ARERA rates in
 `apps/api/app/services/advisor/energy_prices.py`: petrol and hybrid
 EUR 1.91662/L, diesel EUR 2.04276/L, LPG EUR 0.77695/L, and electricity EUR
@@ -131,25 +202,105 @@ estimate provider or its input data. Consumers continue to read the same
 `ModuleAssessment` value, details, assumptions, version, and missing-data
 fields. Financing is not part of this contract.
 
+## Metric fit equations
+
+The v3 pillar inputs use these deterministic metric functions from
+[`scoring.py`](../apps/api/app/services/advisor/scoring.py). Scores are on a
+`0..100` scale. Prices and TCO amounts are euro, running cost is euro per
+100 km, liquid consumption is litres per 100 km, electric consumption is kWh
+per 100 km, range is km, seats are a count, and cargo is litres.
+
+Price fit uses `ratio = offer_price_eur / budget_max_eur`:
+
+```text
+100                                      when ratio <= 0.75
+100 - ((ratio - 0.75) / 0.25) × 30       when 0.75 < ratio <= 1.00
+max(0, 70 - ((ratio - 1.00) / 0.10)×70)  when ratio > 1.00
+```
+
+Running-cost fit is a descending linear score between EUR 5 and EUR 15 per
+100 km:
+
+```text
+100                         when cost_eur_100km <= 5
+0                           when cost_eur_100km >= 15
+(15 - cost_eur_100km)/10×100 otherwise
+```
+
+Use-case fit looks up the body score in the primary-use matrix, then applies
+the fuel and body preferences:
+
+```text
+use_case_fit = 0.60 × body_use_matrix_score
+             + 0.20 × fuel_preference_score
+             + 0.20 × body_preference_score
+```
+
+Each preference score is `100` when absent or matching and `0` when the
+request specifies a different value. Space fit uses four seats for city,
+highway, and new-driver use, five seats for family and work, and the cargo
+bands in the code. If `required_seats` is the target and `cargo_score` is the
+ascending linear score in the selected band:
+
+```text
+seat_score = min(seats / required_seats × 100, 100)
+space_fit = 0.40 × seat_score + 0.60 × cargo_score
+```
+
+Liquid efficiency uses a descending linear score from 4 to 8 L/100 km.
+Electric efficiency uses the average of a descending 14 to 24 kWh/100 km score
+and an ascending 150 to 500 km WLTP range score. Family fit uses
+`min(100, cargo_litres / target_litres × 100)` where
+`target_litres = min(550, 250 + 75 × children_count)`. Garage fit is `100` when
+all five measured margins are non-negative and `0` when any margin is
+negative. Missing measurements return `insufficient_data`.
+
 ## Specialist input contracts
 
-Every specialist input must identify the exact vehicle applicability, carry a
-version, and include evidence. Missing or ambiguous applicability is visible in
-the module result and lowers confidence.
+The current adapters are narrow. They validate the values they consume, but
+they do not enforce the full future-provider contract below. A producer that
+supplies production data must add exact identity, applicability, version, and
+evidence before its output is treated as sourced.
+
+Current behavior is specific to each adapter:
+
+- [`safety.py`](../apps/api/app/services/advisor/safety.py) reads only curated
+  `decision_context.safety.ratings`. It validates percentage values in `0..100`
+  and star values in `0..5`, then averages percentages or converts stars to a
+  percentage. It does not validate source metadata, identity, or observation
+  dates. ADAS and other features remain in context for a future producer and
+  do not contribute to `safety-v1` today.
+- [`reliability.py`](../apps/api/app/services/advisor/reliability.py) accepts
+  an explicit numeric `decision_context.reliability_assessment.value`, clamps
+  it to `0..100`, and uses the supplied version, details, evidence, and missing
+  data when present. Version and evidence are optional in this adapter, and
+  the default is `reliability-v1`.
+- [`vehicle_dna.py`](../apps/api/app/services/advisor/vehicle_dna.py) accepts
+  explicit numeric factor values in `decision_context.vehicle_dna`, clamps
+  each to `0..100`, and accepts optional version, details, and evidence. The
+  default version is `vehicle-dna-v1`; feature evidence alone does not create a
+  factor score.
+- Known-issue and recall adapters apply the applicability and status values
+  supplied in context. They do not fetch registries or verify an external
+  source record.
+
+The following are future producer contracts and replacement boundaries:
 
 | Module | Input contract | Identity and applicability keys | Evidence and status requirements |
 | --- | --- | --- | --- |
-| Safety Assessment | Ratings and curated safety/ADAS features | Exact variant/spec, assessment system, assessment year, market | Source and observed date on each record; `safety-v1` returns `available` when ratings/features exist and `insufficient_data` otherwise |
-| Reliability Assessment | Normalized score, confidence, missing data, details | Generation, exact variant/spec, powertrain where relevant | Dated observations, sample and time window when statistical, source and version; otherwise `insufficient_data` |
+| Safety Assessment | Curated ratings for the exact variant/spec | Exact variant/spec, assessment system, assessment year, market | Future producer supplies source, observed date, version, and applicability; current `safety-v1` validates rating ranges only and returns `insufficient_data` without ratings |
+| Reliability Assessment | Normalized score, confidence, missing data, details | Generation, exact variant/spec, powertrain where relevant | Future producer supplies dated observations, sample and time window when statistical, source and version; current adapter accepts an explicit numeric value |
 | Known Issues Registry | Issue severity/frequency, repair range, applicability | Generation, variant/spec, engine, transmission, production-year bounds | Evidence and observed date; ambiguous applicability is a warning, confirmed issues use capped `known-issues-v1` penalty |
 | Official Recall Resolver | Campaign records, status, applicability | Exact vehicle/spec plus campaign identity and market | Official source, campaign date and observed date; `open`, `resolved`, or `unknown` status; unknown applicability is not guessed |
-| Vehicle DNA Calibration | Comfort, family, sport, travel, and technology values | Exact generation/spec and calibration scope | Versioned rubric, calibration set, feature evidence, and source; feature count alone is not a score |
+| Vehicle DNA Calibration | Comfort, family, sport, travel, and technology values | Exact generation/spec and calibration scope | Future producer supplies a versioned rubric, calibration set, feature evidence, and source; current adapter accepts explicit numeric factors with optional version/evidence |
 | TCO Data Provider | Energy, insurance, tax, maintenance, tyres, depreciation amounts | Market, currency, annual usage, offer/spec, valuation date | Source, observed date, assumptions, and provider version |
 | Valuation Provider | Current value and residual value | Exact variant, condition, mileage, market, valuation date | Source, observed date, sample/method, assumptions, and provider version |
 | Garage Dimension Provider | Length, body width, height, folded-mirror width | Exact spec and measurement semantics | Source, observed date, units, and whether folded width is measured or inferred |
 
-The current adapters accept explicit `decision_context` assessments. They do
-not fetch a provider or turn a missing record into a neutral score.
+The replacement boundary is the module input, not the scorer. A future producer
+writes the validated assessment into the corresponding `decision_context`
+field, keeps the module version and evidence, and leaves the scoring formulas
+unchanged. Until then, missing data remains `insufficient_data`.
 
 ## Audit and persistence
 
