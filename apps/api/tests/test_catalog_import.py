@@ -85,6 +85,24 @@ def test_catalog_json_schema_accepts_enriched_fixture():
     ).validate(instance)
 
 
+def test_catalog_primary_provenance_requires_https_and_accepts_phev(tmp_path):
+    raw_payload = json.loads(FIXTURE_PATH.read_text())
+    raw_payload["vehicles"][0]["source_url"] = "http://example.test/catalog/metro"
+    _assert_rejected_by_catalog_validators(raw_payload, tmp_path)
+
+    phev_payload = json.loads(FIXTURE_PATH.read_text())
+    phev_payload["variants"][0]["fuel_type"] = "plug_in_hybrid_petrol"
+    path = tmp_path / "phev-catalog.json"
+    path.write_text(json.dumps(phev_payload))
+    payload = load_catalog(path)
+    assert payload.variants[0].fuel_type == "plug_in_hybrid_petrol"
+
+    from jsonschema import Draft202012Validator
+
+    schema = json.loads((ROOT / "docs/catalog-v1.schema.json").read_text())
+    Draft202012Validator(schema).validate(phev_payload)
+
+
 def _assert_rejected_by_catalog_validators(raw_payload, tmp_path):
     from jsonschema import Draft202012Validator
     from jsonschema.exceptions import ValidationError as JsonSchemaValidationError

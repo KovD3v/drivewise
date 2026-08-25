@@ -292,7 +292,7 @@ def _extract_contextual_answer(
 
     if expected_question_id in GARAGE_DIMENSION_FIELDS:
         millimetres = _standalone_millimetres(normalized)
-        if millimetres is None:
+        if millimetres is None or millimetres <= 0:
             return
         _set_garage_fact(
             profile,
@@ -628,6 +628,16 @@ def _standalone_millimetres(normalized: str) -> int | None:
     if number is None:
         return None
     return number * 10 if unit == "cm" else number
+
+
+def is_non_positive_garage_dimension(message: str) -> bool:
+    normalized = _normalize(message)
+    return bool(
+        re.fullmatch(
+            r"\s*(?:circa\s+)?0+(?:[.,]0+)?\s*(?:mm|cm|m)?\s*",
+            normalized,
+        )
+    )
 
 
 def _parse_number(raw_value: str) -> int | None:

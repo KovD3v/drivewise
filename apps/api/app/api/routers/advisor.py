@@ -84,6 +84,7 @@ def create_recommendations(
         assumptions=assumptions,
         excluded_counts_by_reason=result.excluded_counts_by_reason,
         groups=result.groups,
+        insufficient_data_counts_by_reason=result.insufficient_data_counts_by_reason,
     )
 
 

@@ -38,6 +38,7 @@ CatalogFuelType = Literal[
     "mild_hybrid_petrol",
     "petrol",
     "petrol_lpg",
+    "plug_in_hybrid_petrol",
 ]
 CatalogBodyStyle = Literal[
     "city_car",
@@ -164,7 +165,7 @@ class ProvenanceClaim(StrictModel):
     @field_validator("source_url")
     @classmethod
     def validate_source_url(cls, value: str) -> str:
-        return _validate_url(value)
+        return _validate_https_url(value)
 
     @field_validator("observed_at")
     @classmethod
@@ -194,7 +195,7 @@ class ProvenancedRecord(StrictModel):
     @field_validator("source_url")
     @classmethod
     def validate_source_url(cls, value: str) -> str:
-        return _validate_url(value)
+        return _validate_https_url(value)
 
     @field_validator("observed_at")
     @classmethod
@@ -1588,6 +1589,13 @@ def _validate_url(value: str) -> str:
     parsed = urlparse(normalized)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("URL must be an absolute http(s) URL")
+    return normalized
+
+
+def _validate_https_url(value: str) -> str:
+    normalized = _validate_url(value)
+    if not normalized.startswith("https://"):
+        raise ValueError("primary source URL must use https")
     return normalized
 
 

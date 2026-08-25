@@ -545,6 +545,31 @@ def test_phev_is_not_excluded_as_unsupported():
     assert "unsupported_phev" not in result.excluded_counts_by_reason
 
 
+def test_incomplete_phev_reaches_powertrain_fit_as_insufficient_data():
+    phev = candidate(
+        500,
+        fuel_type="plug_in_hybrid_petrol",
+        consumption=None,
+        electric_consumption=None,
+        ev_range=None,
+    )
+    result = score_recommendations(
+        AdvisorRecommendationRequest(
+            budget_max_eur=30_000,
+            primary_use="city",
+            priorities=["efficiency_range"],
+        ),
+        [phev],
+        as_of=AS_OF,
+    )
+
+    assert result.items
+    assert result.excluded_counts_by_reason == {}
+    item = result.items[0]
+    assert item.decision_status == "insufficient_data"
+    assert "vehicle.consumption_l_100km" in item.missing_factors
+
+
 def test_highway_ev_under_250_km_is_not_excluded_for_range():
     ev = candidate(
         498,

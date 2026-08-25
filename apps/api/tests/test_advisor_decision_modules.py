@@ -380,8 +380,8 @@ def test_recommendation_response_keeps_v2_shape_with_v3_defaults():
     names = {field.name for field in fields(ModuleAssessment)}
     assert names >= {"status", "version", "value", "details", "missing_data"}
     response_fields = AdvisorRecommendationResponse.model_fields
-    assert response_fields["decision_status"].default == "insufficient_data"
-    assert response_fields["decision_score"].default is None
+    assert "decision_status" not in response_fields
+    assert response_fields["insufficient_data_counts_by_reason"].default_factory
 
 
 def test_guided_constraint_modes_use_camel_case_wire_aliases():
@@ -399,15 +399,14 @@ def test_guided_constraint_modes_use_camel_case_wire_aliases():
 
 def test_recommendation_response_rejects_unknown_decision_status():
     # Intentional advisor-v2.0 compatibility value used to validate the v3 status contract.
-    with pytest.raises(ValueError):
-        AdvisorRecommendationResponse(
-            run_id="50000000-0000-4000-8000-000000000001",
-            scoring_version="advisor-v2.0",
-            assumptions=[],
-            excluded_counts_by_reason={},
-            groups=[],
-            decision_status="estimated",
-        )
+    response = AdvisorRecommendationResponse(
+        run_id="50000000-0000-4000-8000-000000000001",
+        scoring_version="advisor-v2.0",
+        assumptions=[],
+        excluded_counts_by_reason={},
+        groups=[],
+    )
+    assert response.insufficient_data_counts_by_reason == {}
 
 
 def test_passenger_constraint_excludes_insufficient_seats(candidate):

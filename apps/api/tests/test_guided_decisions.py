@@ -29,12 +29,15 @@ from app.schemas.guided_decisions import (
     GuidedDecisionRecord,
 )
 from app.services.guided_decisions.engine import process_guided_decision_turn
+from app.services.guided_decisions.engine import _garage_compatibility
 from app.services.guided_decisions.interpreter import extract_profile_updates
 from app.services.guided_decisions.questions import next_question
 from app.services.guided_decisions.garage import (
     VehicleDimensions,
     evaluate_garage_compatibility,
 )
+from app.schemas.advisor import AdvisorRecommendationRequest
+from app.services.advisor.scoring import score_recommendations
 from test_advisor_scoring import candidate as scoring_candidate
 
 
@@ -345,6 +348,45 @@ def test_garage_compatibility_reports_tight_and_incompatible_geometry():
     assert incompatible.margins.door_width_mm == -50
 
 
+def test_garage_compatibility_reads_repository_decision_context_dimensions():
+    candidate = scoring_candidate(701)
+    candidate["decision_context"] = {
+        "dimensions": {
+            "length_mm": 4_200,
+            "body_width_mm": 1_800,
+            "height_mm": 1_600,
+            "width_mirrors_folded_mm": 1_700,
+        }
+    }
+    profile = _complete_garage_profile(
+        useful_length_mm=4_900,
+        useful_width_mm=2_300,
+        useful_height_mm=2_100,
+        door_width_mm=2_050,
+        door_height_mm=2_000,
+    )
+    result = score_recommendations(
+        AdvisorRecommendationRequest(
+            budget_max_eur=30_000,
+            primary_use="city",
+            annual_km=15_000,
+            garage={
+                "useful_length_mm": 4_900,
+                "useful_width_mm": 2_300,
+                "useful_height_mm": 2_100,
+                "door_width_mm": 2_050,
+                "door_height_mm": 2_000,
+            },
+        ),
+        [candidate],
+        as_of=AS_OF,
+    )
+
+    checks = _garage_compatibility(profile, result.groups, [candidate])
+    assert checks[0].missing_data == []
+    assert checks[0].status in {"comfortable", "tight"}
+
+
 class InMemoryGuidedDecisionsRepository:
     def __init__(self) -> None:
         self.record = None
@@ -456,6 +498,36 @@ def test_guided_decision_rejects_unsupported_market(guided_client):
         json={"message": "Cerco un'auto", "market": "US"},
     )
     assert response.status_code == 422
+
+
+def test_guided_turn_rejects_zero_garage_dimension_with_typed_warning(guided_client):
+    client, _repository = guided_client
+    created = client.post(
+        "/guided-decisions",
+        json={
+            "message": (
+                "SUV nuovo per la famiglia, budget 35.000 euro, "
+                "15.000 km all'anno e ho un garage"
+            )
+        },
+    )
+    decision_id = created.json()["decisionId"]
+    version = 1
+    for answer in ("2500", "2300", "4900", "benzina", "2200", "prezzo"):
+        updated = client.post(
+            f"/guided-decisions/{decision_id}/turns",
+            json={"message": answer, "expectedProfileVersion": version},
+        )
+        assert updated.status_code == 200
+        version += 1
+
+    response = client.post(
+        f"/guided-decisions/{decision_id}/turns",
+        json={"message": "0", "expectedProfileVersion": version},
+    )
+    assert response.status_code == 200
+    assert "garage_dimension_must_be_positive" in response.json()["warnings"]
+    assert response.json()["decisionProfile"]["garage"].get("usefulHeightMm") is None
 
 
 @pytest.mark.skipif(

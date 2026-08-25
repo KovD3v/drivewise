@@ -22,7 +22,10 @@ from app.services.guided_decisions.garage import (
     VehicleDimensions,
     evaluate_garage_compatibility,
 )
-from app.services.guided_decisions.interpreter import extract_profile_updates
+from app.services.guided_decisions.interpreter import (
+    extract_profile_updates,
+    is_non_positive_garage_dimension,
+)
 from app.services.guided_decisions.questions import (
     missing_information,
     next_question,
@@ -78,7 +81,14 @@ def process_guided_decision_turn(
         next_question=question,
         preview_ranking=preview_ranking,
         garage_compatibility=garage_compatibility,
-        warnings=_warnings(updated_fields),
+        warnings=_warnings(
+            updated_fields,
+            invalid_garage_dimension=(
+                previous_question is not None
+                and previous_question.id.startswith("garage.")
+                and is_non_positive_garage_dimension(message)
+            ),
+        ),
     )
     return GuidedDecisionEngineResult(profile=profile, response=response)
 
@@ -185,15 +195,17 @@ def _garage_compatibility(
     if profile.parking is None or profile.parking.value != "garage":
         return []
 
-    dimensions_by_spec = {
-        candidate["spec"]["id"]: VehicleDimensions(
-            length_mm=candidate["spec"].get("length_mm"),
-            body_width_mm=candidate["spec"].get("body_width_mm"),
-            height_mm=candidate["spec"].get("height_mm"),
-            entry_width_mm=candidate["spec"].get("width_mirrors_folded_mm"),
+    dimensions_by_spec = {}
+    for candidate in candidates:
+        dimensions = (candidate.get("decision_context") or {}).get(
+            "dimensions"
+        ) or {}
+        dimensions_by_spec[candidate["spec"]["id"]] = VehicleDimensions(
+            length_mm=dimensions.get("length_mm"),
+            body_width_mm=dimensions.get("body_width_mm"),
+            height_mm=dimensions.get("height_mm"),
+            entry_width_mm=dimensions.get("width_mirrors_folded_mm"),
         )
-        for candidate in candidates
-    }
     checks: list[GarageCompatibility] = []
     for group in groups:
         for item in group.items:
@@ -265,7 +277,11 @@ def _profile_summary(profile: DecisionProfile, updated_fields: list[str]) -> str
     return ", ".join(parts)
 
 
-def _warnings(updated_fields: list[str]) -> list[str]:
+def _warnings(
+    updated_fields: list[str], *, invalid_garage_dimension: bool = False
+) -> list[str]:
+    if invalid_garage_dimension:
+        return ["garage_dimension_must_be_positive"]
     if updated_fields:
         return []
     return [

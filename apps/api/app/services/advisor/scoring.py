@@ -207,6 +207,15 @@ class AdvisorScoringResult:
     def items(self) -> list[AdvisorRecommendationItem]:
         return [item for group in self.groups for item in group.items]
 
+    @property
+    def insufficient_data_counts_by_reason(self) -> dict[str, int]:
+        counts = Counter(
+            reason
+            for item in self.items
+            for reason in set(item.missing_factors) | set(item.warnings)
+        )
+        return dict(sorted(counts.items()))
+
 
 def build_assumptions(request: AdvisorRecommendationRequest) -> list[str]:
     assert request.annual_km is not None
@@ -224,6 +233,7 @@ def build_assumptions(request: AdvisorRecommendationRequest) -> list[str]:
             "The running_cost component covers energy only; maintenance, tax, "
             "insurance, depreciation, and financing are excluded."
         ),
+        "Only the first three ordered priorities contribute to Preference Fit; extra priorities remain accepted for compatibility.",
         *ENERGY_ASSUMPTIONS,
     ]
 
@@ -348,6 +358,7 @@ def _expand_exact_pairs(
                         "repository_eligible",
                         False,
                     ),
+                    "decision_context": candidate.get("decision_context", {}),
                 }
             )
     return pairs
@@ -439,7 +450,10 @@ def _exclusion_reason(
         ev_range = _positive_number(spec.get("wltp_range_km"))
         if ev_range is None:
             return "missing_ev_range"
-    elif _positive_number(spec.get("consumption_l_100km")) is None:
+    elif (
+        fuel_type != "plug_in_hybrid_petrol"
+        and _positive_number(spec.get("consumption_l_100km")) is None
+    ):
         return "missing_liquid_consumption"
 
     if not _has_spec_provenance(candidate, spec):
@@ -452,12 +466,13 @@ def _is_reviewed(candidate: dict[str, Any], offer: dict[str, Any]) -> bool:
     source = candidate.get("source") or {}
     if source.get("ranking_permission") != "permitted":
         return False
+    if not _is_https_url(offer.get("source_url")):
+        return False
     if candidate.get("reviewed") is True:
         return True
     import_status = candidate.get("import_status")
     return (
-        _nonblank(offer.get("source_url"))
-        and _nonblank(source.get("name"))
+        _nonblank(source.get("name"))
         and _nonblank(source.get("license"))
         and import_status == "completed"
     )
@@ -477,6 +492,16 @@ def _has_spec_provenance(
         required_metrics.update(
             {"energy_consumption_kwh_100km", "wltp_range_km"}
         )
+    elif spec.get("fuel_type") == "plug_in_hybrid_petrol":
+        required_metrics.update(
+            metric
+            for metric in (
+                "consumption_l_100km",
+                "energy_consumption_kwh_100km",
+                "wltp_range_km",
+            )
+            if spec.get(metric) is not None
+        )
     else:
         required_metrics.add("consumption_l_100km")
 
@@ -486,7 +511,7 @@ def _has_spec_provenance(
         if isinstance(entry, dict)
         and entry.get("metric") in required_metrics
         and _nonblank(entry.get("source_name"))
-        and _nonblank(entry.get("source_url"))
+        and _is_https_url(entry.get("source_url"))
         and entry.get("observed_at") is not None
     }
     return required_metrics <= covered_metrics
@@ -521,19 +546,27 @@ def _score_candidate(
     energy_consumption = (
         electric_consumption if fuel_type == "electric" else consumption
     )
-    assert energy_consumption is not None
-    cost_100km = energy_consumption * energy_rate
-    assert request.annual_km is not None
-    annual_energy_cost = cost_100km * request.annual_km / 100
+    cost_100km = (
+        energy_consumption * energy_rate if energy_consumption is not None else None
+    )
+    annual_energy_cost = (
+        cost_100km * request.annual_km / 100
+        if cost_100km is not None and request.annual_km is not None
+        else None
+    )
 
-    raw_scores: dict[AdvisorScoreComponent, float] = {
+    raw_scores: dict[AdvisorScoreComponent, float | None] = {
         "price_fit": _price_score(price, request.budget_max_eur),
         "use_case_fit": _use_case_score(
             request,
             body_style=body_style,
             fuel_type=fuel_type,
         ),
-        "running_cost": _descending_linear_score(cost_100km, 5.0, 15.0),
+        "running_cost": (
+            _descending_linear_score(cost_100km, 5.0, 15.0)
+            if cost_100km is not None
+            else None
+        ),
         "space": _space_score(
             request.primary_use,
             seats=seats,
@@ -547,13 +580,20 @@ def _score_candidate(
         ),
     }
     component_scores = {
-        component: round(score, 2) for component, score in raw_scores.items()
+        component: None if score is None else round(score, 2)
+        for component, score in raw_scores.items()
     }
     assessments = _assess_candidate(request, candidate, as_of, garage_assessment)
     factors = {
         "price_fit": _available(raw_scores["price_fit"]),
         "tco": _tco_assessment(assessments["tco"], request.budget_max_eur),
-        "running_cost": _available(raw_scores["running_cost"]),
+        "running_cost": _available(raw_scores["running_cost"])
+        if raw_scores["running_cost"] is not None
+        else ModuleAssessment(
+            status="insufficient_data",
+            version="scoring-v3",
+            missing_data=("vehicle.consumption_l_100km",),
+        ),
         "category_fit": _available(
             BODY_USE_MATRIX["city" if request.primary_use == "new_driver" else request.primary_use].get(body_style, 0.0)
         ),
@@ -571,8 +611,27 @@ def _score_candidate(
     pillar_scores, pillar_missing = _compose_pillars(factors)
     structural = _structural_fit(pillar_scores, pillar_missing, assessments)
     preference, preference_missing = _preference_fit(request, factors)
+    assessment_missing = [
+        missing
+        for assessment in assessments.values()
+        for missing in assessment.missing_data
+        if missing not in {"known_issues", "recalls"}
+    ]
     missing_factors = list(
-        dict.fromkeys(pillar_missing + preference_missing + list(constraint_missing))
+        dict.fromkeys(
+            pillar_missing
+            + preference_missing
+            + list(constraint_missing)
+            + assessment_missing
+        )
+    )
+    warnings = list(
+        dict.fromkeys(
+            missing
+            for name in ("known_issues", "recalls")
+            for missing in assessments[name].missing_data
+            if missing not in {"known_issues", "recalls"}
+        )
     )
     constraint_insufficient = bool(constraint_missing)
     decision_status = (
@@ -607,8 +666,12 @@ def _score_candidate(
         "fuel_type": fuel_type,
         "seats": int(seats),
         "cargo_volume_liters": round(cargo, 2),
-        "energy_cost_eur_100km": round(cost_100km, 2),
-        "annual_energy_cost_eur": round(annual_energy_cost, 2),
+        "energy_cost_eur_100km": (
+            None if cost_100km is None else round(cost_100km, 2)
+        ),
+        "annual_energy_cost_eur": (
+            None if annual_energy_cost is None else round(annual_energy_cost, 2)
+        ),
         "energy_assumption_version": ENERGY_ASSUMPTION_VERSION,
         "energy_rate": round(energy_rate, 5),
         "energy_rate_metric": energy_rate_metric,
@@ -701,6 +764,7 @@ def _score_candidate(
         penalties=penalties,
         strengths=strengths,
         missing_factors=missing_factors,
+        warnings=warnings,
         module_versions=module_versions,
         assumptions=assumptions,
         score_composition=score_composition,
@@ -937,9 +1001,14 @@ def _profile_completeness(request: AdvisorRecommendationRequest) -> float:
 
 def _evidence_completeness(assessments: dict[str, ModuleAssessment]) -> float:
     values = [
-        100.0 if item.status == "available" else 70.0 if item.status == "estimated" else 0.0
-        for name, item in assessments.items()
-        if name not in {"known_issues", "recalls"}
+        70.0
+        if item.missing_data
+        else 100.0
+        if item.status == "available"
+        else 70.0
+        if item.status == "estimated"
+        else 0.0
+        for item in assessments.values()
     ]
     return round(sum(values) / len(values), 1) if values else 0.0
 
@@ -1013,14 +1082,16 @@ def _efficiency_score(
     consumption: float | None,
     electric_consumption: float | None,
     ev_range: float | None,
-) -> float:
-    if fuel_type != "electric":
-        assert consumption is not None
-        return _descending_linear_score(consumption, 4.0, 8.0)
-    assert electric_consumption is not None and ev_range is not None
-    efficiency = _descending_linear_score(electric_consumption, 14.0, 24.0)
-    range_score = _ascending_linear_score(ev_range, 150.0, 500.0)
-    return (efficiency + range_score) / 2
+) -> float | None:
+    if fuel_type == "electric":
+        if electric_consumption is None or ev_range is None:
+            return None
+        efficiency = _descending_linear_score(electric_consumption, 14.0, 24.0)
+        range_score = _ascending_linear_score(ev_range, 150.0, 500.0)
+        return (efficiency + range_score) / 2
+    if consumption is None:
+        return None
+    return _descending_linear_score(consumption, 4.0, 8.0)
 
 
 def _descending_linear_score(value: float, best: float, worst: float) -> float:
@@ -1048,7 +1119,7 @@ def _energy_rate(fuel_type: str) -> tuple[float, str]:
 def _build_factors(
     *,
     request: AdvisorRecommendationRequest,
-    component_scores: dict[AdvisorScoreComponent, float],
+    component_scores: dict[AdvisorScoreComponent, float | None],
     weights: dict[AdvisorScoreComponent, float],
     evidence: dict[str, Any],
 ) -> tuple[list[AdvisorFactor], list[AdvisorFactor]]:
@@ -1090,6 +1161,8 @@ def _build_factors(
     tradeoffs: list[AdvisorFactor] = []
     for component in BASE_WEIGHTS:
         component_score = component_scores[component]
+        if component_score is None:
+            continue
         contribution = round(weights[component] * component_score / 100, 2)
         metric, value, threshold = factor_metrics[component]
         if component_score >= 80:
@@ -1149,7 +1222,7 @@ def _build_factors(
 
 def _efficiency_factor_metric(
     evidence: dict[str, Any],
-) -> tuple[str, float, float]:
+) -> tuple[str, float | None, float]:
     if "energy_consumption_kwh_100km" in evidence:
         return (
             "energy_consumption_kwh_100km",
@@ -1158,7 +1231,7 @@ def _efficiency_factor_metric(
         )
     return (
         "consumption_l_100km",
-        evidence["consumption_l_100km"],
+        evidence.get("consumption_l_100km"),
         4.0,
     )
 
@@ -1271,6 +1344,10 @@ def _is_phev(fuel_type: str) -> bool:
 
 def _nonblank(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _is_https_url(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().startswith("https://")
 
 
 def _number(value: Any) -> float | None:

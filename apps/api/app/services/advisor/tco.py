@@ -63,7 +63,8 @@ def estimate_tco(
             / Decimal("100")
         )
 
-    power_kw = spec.get("power_kw")
+    powertrain = (candidate.get("decision_context") or {}).get("powertrain") or {}
+    power_kw = powertrain.get("power_kw", spec.get("power_kw"))
     if fuel_type == "electric":
         annual["tax"] = Decimal("0.00")
     elif power_kw is None:
@@ -145,4 +146,5 @@ def _assumptions() -> tuple[str, ...]:
         "maintenance-v1 formula: EUR 420 city car or EUR 520 other body + EUR 70 per age year + EUR 2.50 per 1,000 km; electric base EUR 340.",
         "Tyres: city_car/small_hatchback EUR 180; hatchback/sedan/wagon EUR 240; crossover/SUV/MPV/van EUR 300.",
         "Depreciation formula: 9.333% of offer price annually (28% over three years).",
+        "PHEV energy uses the liquid-fuel consumption and rate only; electric share and charging context remain in powertrain-fit-v1.",
     )

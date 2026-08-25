@@ -158,6 +158,34 @@ def test_garage_assessment_runs_once_and_failure_is_provisional(monkeypatch):
     assert "module_error:RuntimeError" in item.evidence["missing_data"]
 
 
+def test_unknown_specialist_applicability_is_missing_data_and_lowers_confidence():
+    unknown = complete_candidate(801)
+    unknown["decision_context"]["known_issues"] = [
+        {"applicability": "unknown"}
+    ]
+    unknown["decision_context"]["recalls"] = [
+        {"applicability": "unknown", "status": "open"}
+    ]
+    confirmed = complete_candidate(802)
+    confirmed["decision_context"]["known_issues"] = [
+        {"applicability": "not_applicable"}
+    ]
+    confirmed["decision_context"]["recalls"] = [
+        {"applicability": "not_applicable", "status": "closed"}
+    ]
+
+    unknown_item = score_one(unknown, priorities=["price"])
+    confirmed_item = score_one(confirmed, priorities=["price"])
+
+    assert "issue_applicability" in unknown_item.missing_factors
+    assert "recall_applicability" in unknown_item.missing_factors
+    assert "issue_applicability" in unknown_item.warnings
+    assert "recall_applicability" in unknown_item.warnings
+    assert unknown_item.decision_confidence < confirmed_item.decision_confidence
+    assert unknown_item.penalties == []
+    assert confirmed_item.warnings == []
+
+
 def test_ranking_stability_has_no_invented_single_or_tie_signal():
     one = score_one(complete_candidate(), priorities=["price"])
     assert one.evidence["ranking_stability"] == 0

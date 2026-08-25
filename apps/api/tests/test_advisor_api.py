@@ -22,6 +22,7 @@ from app.services.advisor.scoring import (
     build_assumptions,
     score_recommendations,
 )
+from app.services.advisor.tco import estimate_tco
 
 
 AS_OF = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
@@ -428,7 +429,27 @@ def test_candidate_maps_source_aware_decision_context():
         "listing_source_license": "Synthetic test data",
         "listing_source_ranking_permission": "permitted",
         "import_status": "completed",
-        "spec_provenance": [],
+        "spec_provenance": [
+            {
+                "source_name": "Reviewed catalog",
+                "source_url": "https://example.test/specs/panda",
+                "observed_at": "2026-07-14T00:00:00Z",
+                "metadata": {
+                    "supported_metrics": [
+                        "body_style",
+                        "fuel_type",
+                        "seats",
+                        "cargo_volume_liters",
+                        "consumption_l_100km",
+                        "length_mm",
+                        "width_mm",
+                        "height_mm",
+                        "curb_weight_kg",
+                        "power_kw",
+                    ]
+                },
+            }
+        ],
     }
     candidate = AdvisorRepository(RecordingConnection([row])).list_candidates(
         as_of=AS_OF
@@ -436,6 +457,20 @@ def test_candidate_maps_source_aware_decision_context():
     context = candidate["decision_context"]
     assert context["dimensions"]["length_mm"] == 4189
     assert context["powertrain"]["power_kw"] == 96.0
+    assert {
+        entry["metric"]
+        for entry in candidate["provenance"]
+    } >= {"length_mm", "width_mm", "height_mm", "curb_weight_kg", "power_kw"}
+    tco = estimate_tco(
+        AdvisorRecommendationRequest(
+            budget_max_eur=20_000,
+            primary_use="city",
+            annual_km=10_000,
+        ),
+        candidate,
+        as_of=AS_OF,
+    )
+    assert tco.details["annual_eur"]["tax"] == 247.68
     assert context["safety"]["ratings"][0]["overall_stars"] == 5
     assert context["safety"]["ratings"][0]["source_url"].startswith("https://")
     assert context["safety"]["features"][0]["category"] == "adas"
@@ -451,10 +486,36 @@ def test_candidate_maps_source_aware_decision_context():
         as_of=AS_OF
     )[0]
     empty_context = empty_candidate["decision_context"]
+    assert empty_context["dimensions"]["length_mm"] is None
+    assert empty_context["powertrain"]["power_kw"] is None
     assert empty_context["maintenance"] == []
     assert empty_context["safety"]["ratings"] == []
     assert empty_context["safety"]["features"] == []
     assert empty_context["technology_comfort"] == []
+
+
+def test_post_advisor_response_aggregates_item_missing_data_without_dead_item_fields(
+    client,
+    fake_repository,
+):
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["price"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "decision_status" not in payload
+    expected = {}
+    for group in payload["groups"]:
+        for item in group["items"]:
+            for reason in set(item["missing_factors"]) | set(item["warnings"]):
+                expected[reason] = expected.get(reason, 0) + 1
+    assert payload["insufficient_data_counts_by_reason"] == expected
 
 
 def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
@@ -506,9 +567,42 @@ def test_candidate_query_recognizes_phev_without_removing_source_gates():
     AdvisorRepository(conn).list_candidates(as_of=AS_OF)
     sql = conn.calls[0][0]
     assert "'plug_in_hybrid_petrol'" in sql
+    metrics_gate = sql[sql.index("AND (\n                (\n                  lower(s.fuel_type)") :]
+    assert "OR lower(s.fuel_type) = 'plug_in_hybrid_petrol'" in metrics_gate
     assert "unsupported_phev" not in sql
     assert "ranking_permission = 'permitted'" in sql
     assert "import_run.status = 'completed'" in sql
+
+
+def test_post_advisor_keeps_incomplete_phev_as_provisional_item(
+    client,
+    fake_repository,
+):
+    phev = exact_pair(condition="new", listing_suffix=11, mileage=None)
+    phev["vehicle"]["fuel_type"] = "plug_in_hybrid_petrol"
+    phev["spec"]["fuel_type"] = "plug_in_hybrid_petrol"
+    phev["spec"]["consumption_l_100km"] = None
+    phev["provenance"] = [
+        entry
+        for entry in phev["provenance"]
+        if entry["metric"] != "consumption_l_100km"
+    ]
+    fake_repository.list_candidates = lambda *, as_of: [phev]
+
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["efficiency_range"],
+        },
+    )
+
+    assert response.status_code == 200
+    item = response.json()["groups"][0]["items"][0]
+    assert item["selected_spec"]["fuel_type"] == "plug_in_hybrid_petrol"
+    assert item["decision_status"] == "insufficient_data"
+    assert "vehicle.consumption_l_100km" in item["missing_factors"]
 
 
 def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():

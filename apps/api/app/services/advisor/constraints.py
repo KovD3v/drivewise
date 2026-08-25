@@ -47,7 +47,10 @@ def evaluate_constraints(
         tradeoffs.append("above_budget")
 
     mileage = _number(offer.get("mileage"))
-    if request.max_mileage is not None:
+    if request.max_mileage is not None and offer.get("condition") in {
+        "used",
+        "certified",
+    }:
         if mileage is None:
             missing.append("offer.mileage")
         elif mileage > request.max_mileage:

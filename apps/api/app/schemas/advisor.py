@@ -242,6 +242,13 @@ class AdvisorOffer(BaseModel):
     valid_until: datetime | None = None
     is_active: bool
 
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
+
 
 class AdvisorSelectedSpec(VehicleSpec):
     variant_key: str
@@ -269,6 +276,13 @@ class AdvisorMetricProvenance(BaseModel):
     source_url: str
     observed_at: date | datetime
 
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
+
 
 class AdvisorRecommendationItem(BaseModel):
     vehicle: AdvisorVehicleSummary
@@ -284,10 +298,11 @@ class AdvisorRecommendationItem(BaseModel):
     penalties: list[str] = Field(default_factory=list)
     strengths: list[str] = Field(default_factory=list)
     missing_factors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
     module_versions: dict[str, str] = Field(default_factory=dict)
     assumptions: list[str] = Field(default_factory=list)
     score_composition: dict[str, Any] = Field(default_factory=dict)
-    component_scores: dict[AdvisorScoreComponent, float]
+    component_scores: dict[AdvisorScoreComponent, float | None]
     positive_factors: list[AdvisorFactor]
     tradeoffs: list[AdvisorFactor]
     evidence: dict[str, Any]
@@ -305,14 +320,4 @@ class AdvisorRecommendationResponse(BaseModel):
     assumptions: list[str]
     excluded_counts_by_reason: dict[str, int]
     groups: list[AdvisorRecommendationGroup]
-    decision_status: Literal["complete", "insufficient_data"] = "insufficient_data"
-    decision_score: float | None = None
-    decision_confidence: float | None = None
-    structural_fit: float | None = None
-    preference_fit: float | None = None
-    pillar_scores: dict[str, float] = Field(default_factory=dict)
-    penalties: list[str] = Field(default_factory=list)
-    strengths: list[str] = Field(default_factory=list)
-    missing_factors: list[str] = Field(default_factory=list)
-    module_versions: dict[str, str] = Field(default_factory=dict)
-    score_composition: dict[str, Any] = Field(default_factory=dict)
+    insufficient_data_counts_by_reason: dict[str, int] = Field(default_factory=dict)

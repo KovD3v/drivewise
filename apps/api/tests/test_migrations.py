@@ -56,6 +56,7 @@ def test_migration_files_are_ordered():
         "0004_curated_catalog.sql",
         "0005_vehicle_knowledge_profile.sql",
         "0006_guided_decisions.sql",
+        "0007_https_primary_provenance.sql",
     ]
 
 
@@ -173,6 +174,14 @@ def test_vehicle_knowledge_profile_migration_is_relational_and_constrained():
     assert "(payload_kg IS NULL OR payload_kg >= 0)" not in sql
     assert sql.count("source_url LIKE 'https://%'") == 4
     assert "ON DELETE CASCADE" in sql
+
+
+def test_https_primary_provenance_migration_preflights_and_constrains_rows():
+    migration = (MIGRATIONS_PATH / "0007_https_primary_provenance.sql").read_text()
+    assert "contains a non-HTTPS source_url" in migration
+    assert "vehicle_provenance_source_https_check" in migration
+    assert "vehicle_spec_provenance_source_https_check" in migration
+    assert "listings_source_https_check" in migration
 
 
 @pytest.mark.skipif(
@@ -338,6 +347,26 @@ def test_migrations_apply_to_configured_test_database():
             WHERE id = '10000000-0000-4000-8000-000000000001'
             """
         ).fetchone()
+        with pytest.raises(psycopg.errors.CheckViolation):
+            with conn.transaction():
+                conn.execute(
+                    """
+                    INSERT INTO vehicle_spec_provenance (
+                      id, spec_id, source_id, source_url, observed_at,
+                      record_observed_at, content_hash
+                    )
+                    VALUES (
+                      %s,
+                      '20000000-0000-4000-8000-000000000001',
+                      '10000000-0000-4000-8000-000000000001',
+                      'http://example.test/legacy-spec',
+                      '2026-07-16T00:00:00Z',
+                      '2026-07-16T00:00:00Z',
+                      'http-regression'
+                    )
+                    """,
+                    (uuid4(),),
+                )
         with pytest.raises(psycopg.errors.ForeignKeyViolation):
             with conn.transaction():
                 conn.execute(
