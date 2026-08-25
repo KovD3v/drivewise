@@ -23,3 +23,12 @@
 - Files: advisor router/repository/scoring compatibility label; Guided schema, engine, interpreter, questions; API and Guided tests; this report.
 - Implementation commit before report refresh: `00ee25c` (`feat(api): expose and persist Advisor v3`).
 - Self-review: no migration, ranking path, provider, dependency, or frontend change. DB round-trip remains unverified until `TEST_DATABASE_URL` is configured.
+
+## Fix Round 1
+
+- RED: five regressions failed for provisional confidence (`KeyError: provisional`), Italian negation, contextual constraint options, empty-run module versions, and missing persisted `score_composition`/`strengths`.
+- GREEN: the focused command above now reports `116 passed, 5 skipped`; Ruff reports `All checks passed!`; `git diff --check` is clean.
+- Provisional confidence uses the best available v3 item confidence divided by 100 and bounded; blocked/inventory/ready signals remain unchanged. API create and turn regressions both retain non-empty provisional results.
+- Explicit negations produce `automatic_required=False`, keep transmission soft, and map `non ho figli` to `children_count=0` and `family=False`; unknown phrases remain unchanged. Contextual constraint answers consume budget/category/fuel/cambio/garage options directly as hard modes.
+- `ACTIVE_MODULE_VERSIONS` is exported from scoring constants and merged with observed item versions, so empty runs retain configured versions. JSONB now persists `score_composition` and `strengths`.
+- Fix commit: `44e22994faa22dc914c9bb0581b82e6a3322a311` (`fix(api): harden Advisor v3 Guided integration`).
