@@ -2,17 +2,33 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    field_validator,
+    model_validator,
+)
 
 from app.schemas.vehicles import VehicleSpec, VehicleSummary
 
 
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
+ConstraintMode = Literal["hard", "soft"]
 AdvisorPriority = Literal[
     "price",
+    "budget",
     "efficiency_range",
     "space",
     "running_cost",
+    "family",
+    "reliability",
+    "safety",
+    "comfort",
+    "performance",
+    "technology",
+    "powertrain_fit",
 ]
 AdvisorCondition = Literal["any", "new", "used"]
 AdvisorOfferCondition = Literal["new", "used", "certified"]
@@ -24,6 +40,7 @@ AdvisorFuelType = Literal[
     "mild_hybrid_petrol",
     "petrol",
     "petrol_lpg",
+    "plug_in_hybrid_petrol",
 ]
 AdvisorBodyStyle = Literal[
     "city_car",
@@ -60,14 +77,42 @@ NextAction = Literal[
 ]
 
 
+class AdvisorConstraintModes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    budget: ConstraintMode = "soft"
+    body_style: ConstraintMode = Field(default="soft", alias="bodyStyle")
+    fuel_type: ConstraintMode = Field(default="soft", alias="fuelType")
+    transmission: ConstraintMode = "soft"
+    garage: ConstraintMode = "soft"
+
+
+class AdvisorGarageDimensions(BaseModel):
+    useful_length_mm: int = Field(gt=0)
+    useful_width_mm: int = Field(gt=0)
+    useful_height_mm: int = Field(gt=0)
+    door_width_mm: int = Field(gt=0)
+    door_height_mm: int = Field(gt=0)
+
+
 class AdvisorRecommendationRequest(BaseModel):
     _annual_km_was_defaulted: bool = PrivateAttr(default=False)
 
     budget_min_eur: float | None = Field(default=None, ge=0)
     budget_max_eur: float = Field(gt=0)
     primary_use: PrimaryUse
+    usage: list[PrimaryUse] | None = None
+    children_count: int | None = Field(default=None, ge=0)
+    passengers_usual: int | None = Field(default=None, ge=1)
+    garage: AdvisorGarageDimensions | None = None
+    automatic_required: bool | None = None
+    constraint_modes: AdvisorConstraintModes = Field(
+        default_factory=AdvisorConstraintModes
+    )
     condition: AdvisorCondition = "any"
     annual_km: int | None = Field(default=None, gt=0)
+    # Reliable charging access: True, no reliable access: False, unknown: None.
+    charging_context: bool | None = None
     preferred_fuel_type: AdvisorFuelType | None = None
     preferred_body_style: AdvisorBodyStyle | None = None
     max_mileage: int | None = Field(default=None, ge=0)
@@ -89,6 +134,8 @@ class AdvisorRecommendationRequest(BaseModel):
                 "highway": 18_000,
                 "work": 18_000,
             }[self.primary_use]
+        if self.usage is None:
+            self.usage = [self.primary_use]
         return self
 
     @property
@@ -103,6 +150,16 @@ class AdvisorRecommendationRequest(BaseModel):
     ) -> list[AdvisorPriority]:
         if len(value) != len(set(value)):
             raise ValueError("priorities must not contain duplicates")
+        return value
+
+    @field_validator("usage")
+    @classmethod
+    def reject_duplicate_usage(
+        cls,
+        value: list[PrimaryUse] | None,
+    ) -> list[PrimaryUse] | None:
+        if value is not None and len(value) != len(set(value)):
+            raise ValueError("usage must not contain duplicates")
         return value
 
 
@@ -185,6 +242,13 @@ class AdvisorOffer(BaseModel):
     valid_until: datetime | None = None
     is_active: bool
 
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
+
 
 class AdvisorSelectedSpec(VehicleSpec):
     variant_key: str
@@ -212,13 +276,33 @@ class AdvisorMetricProvenance(BaseModel):
     source_url: str
     observed_at: date | datetime
 
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
+
 
 class AdvisorRecommendationItem(BaseModel):
     vehicle: AdvisorVehicleSummary
     selected_spec: AdvisorSelectedSpec
     offer: AdvisorOffer
     score: float
-    component_scores: dict[AdvisorScoreComponent, float]
+    decision_status: Literal["complete", "insufficient_data"] = "insufficient_data"
+    decision_score: float | None = None
+    decision_confidence: float | None = None
+    structural_fit: float | None = None
+    preference_fit: float | None = None
+    pillar_scores: dict[str, float] = Field(default_factory=dict)
+    penalties: list[str] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    missing_factors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    module_versions: dict[str, str] = Field(default_factory=dict)
+    assumptions: list[str] = Field(default_factory=list)
+    score_composition: dict[str, Any] = Field(default_factory=dict)
+    component_scores: dict[AdvisorScoreComponent, float | None]
     positive_factors: list[AdvisorFactor]
     tradeoffs: list[AdvisorFactor]
     evidence: dict[str, Any]
@@ -236,3 +320,4 @@ class AdvisorRecommendationResponse(BaseModel):
     assumptions: list[str]
     excluded_counts_by_reason: dict[str, int]
     groups: list[AdvisorRecommendationGroup]
+    insufficient_data_counts_by_reason: dict[str, int] = Field(default_factory=dict)

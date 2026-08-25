@@ -22,6 +22,7 @@ from app.services.advisor.scoring import (
     build_assumptions,
     score_recommendations,
 )
+from app.services.advisor.tco import estimate_tco
 
 
 AS_OF = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
@@ -193,6 +194,18 @@ def test_post_advisor_v2_returns_frontend_shape_and_persists_run_context(
     )
     first_item = payload["groups"][0]["items"][0]
     assert first_item["selected_spec"]["id"] == str(SPEC_ID)
+    assert not {
+        "identity",
+        "dimensions",
+        "powertrain",
+        "transmission_details",
+        "performance",
+        "official_efficiency",
+        "maintenance_schedule",
+        "safety",
+        "technology_comfort",
+        "media",
+    }.intersection(first_item["selected_spec"])
     assert set(first_item["component_scores"]) == {
         "price_fit",
         "use_case_fit",
@@ -222,7 +235,7 @@ def test_post_advisor_v2_returns_frontend_shape_and_persists_run_context(
     assert fake_repository.completed_run_id == RUN_ID
 
 
-def test_post_advisor_rejects_retired_priorities(client):
+def test_post_advisor_accepts_v3_priorities_and_rejects_unknown(client):
     response = client.post(
         "/advisor/recommendations",
         json={
@@ -231,7 +244,82 @@ def test_post_advisor_rejects_retired_priorities(client):
             "priorities": ["safety"],
         },
     )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    invalid = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["not_a_priority"],
+        },
+    )
+    assert invalid.status_code == 422
+
+
+def test_post_advisor_persists_v3_breakdown_and_active_versions(
+    client,
+    fake_repository,
+):
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["safety"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["scoring_version"] == "advisor-v3.0"
+    item = payload["groups"][0]["items"][0]
+    assert item["structural_fit"] is not None
+    assert item["decision_confidence"] is not None
+    assert item["module_versions"]
+    assert item["evidence"]["legacy_compatibility"]["label"] == (
+        "v2_normalized_weights"
+    )
+    assert fake_repository.run_payload["active_versions"]["scoring"] == "advisor-v3.0"
+    stored_item = fake_repository.saved_groups[1][0].items[0]
+    assert stored_item.score_composition
+
+
+
+def test_post_advisor_empty_run_keeps_configured_active_versions(
+    client,
+    fake_repository,
+):
+    fake_repository.list_candidates = lambda *, as_of: []
+    fake_repository.count_excluded_candidates = lambda *, as_of: {
+        "stale_offer": 2
+    }
+
+    response = client.post(
+        "/advisor/recommendations",
+        json={"budget_max_eur": 20_000, "primary_use": "city"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["groups"] == [{"condition": "new", "items": []}, {"condition": "used", "items": []}]
+    active_modules = fake_repository.run_payload["active_versions"]["modules"]
+    assert active_modules["tco"] == "tco-v1"
+    assert active_modules["family_fit"] == "family-fit-v1"
+    assert active_modules["garage_fit"] == "garage-fit-v1"
+
+
+def test_post_advisor_does_not_complete_run_when_item_write_fails(
+    fake_repository,
+):
+    def fail_save(*_args):
+        raise RuntimeError("item write failed")
+
+    fake_repository.save_items = fail_save
+    with pytest.raises(RuntimeError, match="item write failed"):
+        TestClient(app).post(
+            "/advisor/recommendations",
+            json={"budget_max_eur": 20_000, "primary_use": "city"},
+        )
+    assert fake_repository.completed_run_id is None
 
 
 class RecordingResult:
@@ -243,12 +331,13 @@ class RecordingResult:
 
 
 class RecordingConnection:
-    def __init__(self) -> None:
+    def __init__(self, rows=None) -> None:
         self.calls: list[tuple[str, tuple[Any, ...] | None]] = []
+        self.rows = rows or []
 
     def execute(self, sql, params=None):
         self.calls.append((sql, params))
-        return RecordingResult()
+        return RecordingResult(self.rows)
 
 
 def test_model_analysis_repository_uses_broad_exact_spec_query():
@@ -262,6 +351,258 @@ def test_model_analysis_repository_uses_broad_exact_spec_query():
     assert "l.spec_id = s.id" in sql
     assert "l.last_seen_at >=" not in sql
     assert "import_run.status = 'completed'" not in sql
+
+
+def test_candidate_maps_source_aware_decision_context():
+    row = {
+        "vehicle_id": VEHICLE_ID,
+        "canonical_key": "it-fiat-panda-2026",
+        "model_family_key": "it-fiat-panda",
+        "make": "Fiat",
+        "model": "Panda",
+        "model_year": 2026,
+        "vehicle_body_style": "city_car",
+        "vehicle_fuel_type": "mild_hybrid_petrol",
+        "market": "IT",
+        "base_price_eur": 18_000,
+        "spec_id": SPEC_ID,
+        "variant_key": "it-fiat-panda-2026-city",
+        "is_default": True,
+        "trim": "City",
+        "spec_body_style": "city_car",
+        "spec_fuel_type": "mild_hybrid_petrol",
+        "list_price_eur": 18_000,
+        "drivetrain": "fwd",
+        "transmission": "manual",
+        "engine": "1.0 mild hybrid",
+        "horsepower": 70,
+        "battery_kwh": None,
+        "energy_consumption_kwh_100km": None,
+        "consumption_l_100km": 5.0,
+        "wltp_range_km": None,
+        "co2_g_km": 110,
+        "euro_emission_standard": "Euro 6e",
+        "seats": 4,
+        "cargo_volume_liters": 225,
+        "generation_name": "Fourth generation",
+        "restyling_label": "2024 update",
+        "category": "city_car",
+        "length_mm": 4189,
+        "width_mm": 1859,
+        "height_mm": 1551,
+        "curb_weight_kg": 1055,
+        "engine_code": "GSE-T3",
+        "power_kw": 96.0,
+        "transmission_type": "manual",
+        "acceleration_0_100_s": 10.5,
+        "top_speed_kmh": 180,
+        "braking_100_0_m": 38.0,
+        "maintenance_items": [],
+        "safety_ratings": [
+            {
+                "overall_stars": 5,
+                "source_url": "https://example.test/safety/panda",
+            }
+        ],
+        "safety_features": [
+            {
+                "category": "adas",
+                "name": "Autonomous emergency braking",
+                "source_url": "https://example.test/adas/panda",
+            }
+        ],
+        "technology_comfort_features": [],
+        "listing_id": UUID("30000000-0000-4000-8000-000000000001"),
+        "source_id": SOURCE_ID,
+        "listing_ref": "panda-new-1",
+        "title": "Fiat Panda new",
+        "price_eur": 17_500,
+        "mileage": None,
+        "condition": "new",
+        "location_region": "Piemonte",
+        "source_url": "https://example.test/offers/1",
+        "listed_at": "2026-07-10",
+        "last_seen_at": "2026-07-15T10:00:00Z",
+        "valid_until": "2026-08-15T00:00:00Z",
+        "is_active": True,
+        "listing_source_name": "Reviewed catalog",
+        "listing_source_license": "Synthetic test data",
+        "listing_source_ranking_permission": "permitted",
+        "import_status": "completed",
+        "spec_provenance": [
+            {
+                "source_name": "Reviewed catalog",
+                "source_url": "https://example.test/specs/panda",
+                "observed_at": "2026-07-14T00:00:00Z",
+                "metadata": {
+                    "supported_metrics": [
+                        "body_style",
+                        "fuel_type",
+                        "seats",
+                        "cargo_volume_liters",
+                        "consumption_l_100km",
+                        "length_mm",
+                        "width_mm",
+                        "height_mm",
+                        "curb_weight_kg",
+                        "power_kw",
+                    ]
+                },
+            }
+        ],
+    }
+    candidate = AdvisorRepository(RecordingConnection([row])).list_candidates(
+        as_of=AS_OF
+    )[0]
+    context = candidate["decision_context"]
+    assert context["dimensions"]["length_mm"] == 4189
+    assert context["powertrain"]["power_kw"] == 96.0
+    assert {
+        entry["metric"]
+        for entry in candidate["provenance"]
+    } >= {"length_mm", "width_mm", "height_mm", "curb_weight_kg", "power_kw"}
+    tco = estimate_tco(
+        AdvisorRecommendationRequest(
+            budget_max_eur=20_000,
+            primary_use="city",
+            annual_km=10_000,
+        ),
+        candidate,
+        as_of=AS_OF,
+    )
+    assert tco.details["annual_eur"]["tax"] == 247.68
+    assert context["safety"]["ratings"][0]["overall_stars"] == 5
+    assert context["safety"]["ratings"][0]["source_url"].startswith("https://")
+    assert context["safety"]["features"][0]["category"] == "adas"
+
+    row.update(
+        maintenance_items=None,
+        safety_ratings=None,
+        safety_features=None,
+        technology_comfort_features=None,
+        spec_provenance=None,
+    )
+    empty_candidate = AdvisorRepository(RecordingConnection([row])).list_candidates(
+        as_of=AS_OF
+    )[0]
+    empty_context = empty_candidate["decision_context"]
+    assert empty_context["dimensions"]["length_mm"] is None
+    assert empty_context["powertrain"]["power_kw"] is None
+    assert empty_context["maintenance"] == []
+    assert empty_context["safety"]["ratings"] == []
+    assert empty_context["safety"]["features"] == []
+    assert empty_context["technology_comfort"] == []
+
+
+def test_post_advisor_response_aggregates_item_missing_data_without_dead_item_fields(
+    client,
+    fake_repository,
+):
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["price"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "decision_status" not in payload
+    expected = {}
+    for group in payload["groups"]:
+        for item in group["items"]:
+            for reason in set(item["missing_factors"]) | set(item["warnings"]):
+                expected[reason] = expected.get(reason, 0) + 1
+    assert payload["insufficient_data_counts_by_reason"] == expected
+
+
+def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
+    conn = RecordingConnection()
+    AdvisorRepository(conn).list_candidates(as_of=AS_OF)
+    sql = conn.calls[0][0]
+
+    def aggregate_fragment(alias):
+        end = sql.index(f") AS {alias}") + len(f") AS {alias}")
+        start = sql.rfind("COALESCE(", 0, end)
+        return sql[start:end]
+
+    aggregates = (
+        ("spec_provenance", "vehicle_spec_provenance", "provenance"),
+        ("maintenance_items", "vehicle_maintenance_items", "item"),
+        ("safety_ratings", "vehicle_safety_ratings", "rating"),
+        ("safety_features", "vehicle_features", "feature"),
+        (
+            "technology_comfort_features",
+            "vehicle_features",
+            "feature",
+        ),
+    )
+    for alias, child_table, child_alias in aggregates:
+        fragment = aggregate_fragment(alias)
+        assert child_table in fragment
+        assert f"WHERE {child_alias}.spec_id = s.id" in fragment
+        assert f"{child_alias}_source.ranking_permission = 'permitted'" in fragment
+        assert "'[]'::jsonb" in fragment
+        assert f") AS {alias}" in fragment
+    assert "feature.category IN ('adas', 'safety')" in aggregate_fragment(
+        "safety_features"
+    )
+    assert "feature.category IN ('technology', 'comfort')" in aggregate_fragment(
+        "technology_comfort_features"
+    )
+    outer_query = sql[sql.index("FROM listings AS l") :]
+    for child_table in (
+        "vehicle_spec_provenance",
+        "vehicle_maintenance_items",
+        "vehicle_safety_ratings",
+        "vehicle_features",
+    ):
+        assert f"JOIN {child_table}" not in outer_query
+
+
+def test_candidate_query_recognizes_phev_without_removing_source_gates():
+    conn = RecordingConnection()
+    AdvisorRepository(conn).list_candidates(as_of=AS_OF)
+    sql = conn.calls[0][0]
+    assert "'plug_in_hybrid_petrol'" in sql
+    metrics_gate = sql[sql.index("AND (\n                (\n                  lower(s.fuel_type)") :]
+    assert "OR lower(s.fuel_type) = 'plug_in_hybrid_petrol'" in metrics_gate
+    assert "unsupported_phev" not in sql
+    assert "ranking_permission = 'permitted'" in sql
+    assert "import_run.status = 'completed'" in sql
+
+
+def test_post_advisor_keeps_incomplete_phev_as_provisional_item(
+    client,
+    fake_repository,
+):
+    phev = exact_pair(condition="new", listing_suffix=11, mileage=None)
+    phev["vehicle"]["fuel_type"] = "plug_in_hybrid_petrol"
+    phev["spec"]["fuel_type"] = "plug_in_hybrid_petrol"
+    phev["spec"]["consumption_l_100km"] = None
+    phev["provenance"] = [
+        entry
+        for entry in phev["provenance"]
+        if entry["metric"] != "consumption_l_100km"
+    ]
+    fake_repository.list_candidates = lambda *, as_of: [phev]
+
+    response = client.post(
+        "/advisor/recommendations",
+        json={
+            "budget_max_eur": 20_000,
+            "primary_use": "city",
+            "priorities": ["efficiency_range"],
+        },
+    )
+
+    assert response.status_code == 200
+    item = response.json()["groups"][0]["items"][0]
+    assert item["selected_spec"]["fuel_type"] == "plug_in_hybrid_petrol"
+    assert item["decision_status"] == "insufficient_data"
+    assert "vehicle.consumption_l_100km" in item["missing_factors"]
 
 
 def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():
@@ -316,6 +657,9 @@ def test_repository_persists_run_and_each_condition_item_with_v2_breakdown():
     assert all(params[4] == SPEC_ID for _, params in item_calls)
     assert all(params[9] == SCORING_VERSION for _, params in item_calls)
     assert all(isinstance(params[10], Jsonb) for _, params in item_calls)
+    breakdown = item_calls[0][1][10].obj
+    assert breakdown["score_composition"]
+    assert breakdown["strengths"]
 
 
 @pytest.mark.skipif(

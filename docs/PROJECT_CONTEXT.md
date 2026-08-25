@@ -1,19 +1,19 @@
-# DriveWise — Project Context
+# DriveWise project context
 
-_Last updated: 2026-08-12_
+_Last updated: 2026-08-25_
 
 ## Product vision
 DriveWise is a vehicle Decision Intelligence product. It helps a person choose the right vehicle for their real context rather than returning a generic recommendation or a list of listings. The initial MVP focuses on cars, with the architecture designed to extend later to motorcycles and scooters.
 
-The core product promise is: **DriveWise does not decide by conversational intuition alone. It builds a structured Decision Profile, evaluates vehicles through a deterministic Decision Engine, exposes trade-offs and confidence, and uses AI primarily to interpret requests and explain results.**
+The core product promise is: **DriveWise does not decide by conversational intuition alone. It builds a structured Decision Profile, evaluates vehicles through deterministic Advisor v3, exposes trade-offs and confidence, and uses AI primarily to interpret requests and explain results.**
 
 ## Experience
 The public Landing is intentionally separate from the Web App. The Landing explains why DriveWise is different from a generic AI. The Web App starts at `/app/start` and implements an adaptive guided choice. It must never feel like a generic chatbot or a fixed questionnaire.
 
 The user can write freely. DriveWise extracts structured facts, updates `DriveWise conosce già...`, asks one high-value question at a time, shows Profile Completion and Decision Confidence separately, and eventually generates a Decision Report. Vehicle detail pages explain why a vehicle fits the user and include Vehicle DNA, known issues, recalls, maintenance, TCO, depreciation, real consumption, trade-offs, alternatives and Garage Fit.
 
-## Decision Engine v1.0
-The MVP scoring engine is deterministic Python code. Frozen MVP composition:
+## Advisor v3
+The ranking runtime is deterministic Python code in the API. Its composition is:
 - 65% Structural Fit
 - 35% Preference Fit
 
@@ -33,9 +33,9 @@ Decision Score and Decision Confidence are different concepts.
 The current dataset is synthetic/mock and exists to stabilize contracts and UI. It contains five differentiated vehicles and fields for technical data, Vehicle DNA, known issues, recalls, maintenance, TCO, depreciation, Garage Fit, strengths and trade-offs. It must not be presented as production-grade automotive truth.
 
 ## Architecture direction
-Lovable/React is the presentation layer. Python remains the source of truth for the Decision Engine. The intended integration is:
+Lovable/React is the presentation layer. `apps/api/app/services/advisor/` is the source of truth for ranking. The intended integration is:
 
-`Lovable frontend -> REST API -> Python backend/FastAPI -> Decision Engine -> Dataset/DB`
+`Lovable frontend -> REST API -> Python backend/FastAPI -> Advisor v3 -> Dataset/DB`
 
 Do not duplicate the scoring algorithm in TypeScript. The frontend consumes API payloads.
 
@@ -69,8 +69,8 @@ Do not duplicate the scoring algorithm in TypeScript. The frontend consumes API 
 - Decision Report: mock UI exists.
 - Vehicle detail: rich UI exists, including Garage Fit redesign.
 - Dataset v0.2: synthetic development dataset.
-- Decision Engine v1.0: frozen MVP architecture and calibrated against 12 synthetic profiles.
-- Backend/API integration: next major technical milestone.
+- Advisor v3: integrated in API and Guided Decision, calibrated against historical synthetic profiles.
+- Specialist data providers and reviewed catalog coverage: next major technical milestone.
 
 ## Ownership split
 - Product/UX/Decision model: Andrea.
@@ -82,7 +82,7 @@ Read, in order:
 2. `docs/CURRENT_STATUS.md`
 3. `docs/DECISIONS.md`
 4. `docs/TOMMASO_TASKS.md`
-5. Decision Engine README/frozen package
+5. `docs/advisor-v3.md`
 6. `docs/api-contract.md` and `docs/architecture.md`
 
 Then continue from the first item under **Next actions** in `CURRENT_STATUS.md`.

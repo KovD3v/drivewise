@@ -53,6 +53,19 @@ class AdvisorRepository:
               s.euro_emission_standard,
               s.seats,
               s.cargo_volume_liters,
+              s.generation_name,
+              s.restyling_label,
+              s.category,
+              s.length_mm,
+              s.width_mm,
+              s.height_mm,
+              s.curb_weight_kg,
+              s.engine_code,
+              s.power_kw,
+              s.transmission_type,
+              s.acceleration_0_100_s,
+              s.top_speed_kmh,
+              s.braking_100_0_m,
               l.id AS listing_id,
               l.source_id,
               l.listing_ref,
@@ -90,6 +103,102 @@ class AdvisorRepository:
                 ),
                 '[]'::jsonb
               ) AS spec_provenance
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', item.id,
+                      'operation_code', item.operation_code,
+                      'title', item.title,
+                      'interval_km', item.interval_km,
+                      'interval_months', item.interval_months,
+                      'notes', item.notes,
+                      'source_id', item.source_id,
+                      'source_name', item_source.name,
+                      'source_url', item.source_url,
+                      'observed_at', item.observed_at
+                    ) ORDER BY item.operation_code, item.id
+                  )
+                  FROM vehicle_maintenance_items AS item
+                  JOIN sources AS item_source ON item_source.id = item.source_id
+                  WHERE item.spec_id = s.id
+                    AND item_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS maintenance_items
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', rating.id,
+                      'assessment_system', rating.assessment_system,
+                      'assessment_year', rating.assessment_year,
+                      'overall_stars', rating.overall_stars,
+                      'adult_occupant_percent', rating.adult_occupant_percent,
+                      'child_occupant_percent', rating.child_occupant_percent,
+                      'vulnerable_road_users_percent', rating.vulnerable_road_users_percent,
+                      'safety_assist_percent', rating.safety_assist_percent,
+                      'source_id', rating.source_id,
+                      'source_name', rating_source.name,
+                      'source_url', rating.source_url,
+                      'observed_at', rating.observed_at
+                    ) ORDER BY rating.assessment_year DESC, rating.id
+                  )
+                  FROM vehicle_safety_ratings AS rating
+                  JOIN sources AS rating_source ON rating_source.id = rating.source_id
+                  WHERE rating.spec_id = s.id
+                    AND rating_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS safety_ratings
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', feature.id,
+                      'feature_key', feature.feature_key,
+                      'category', feature.category,
+                      'name', feature.name,
+                      'availability', feature.availability,
+                      'notes', feature.notes,
+                      'source_id', feature.source_id,
+                      'source_name', feature_source.name,
+                      'source_url', feature.source_url,
+                      'observed_at', feature.observed_at
+                    ) ORDER BY feature.feature_key, feature.id
+                  )
+                  FROM vehicle_features AS feature
+                  JOIN sources AS feature_source ON feature_source.id = feature.source_id
+                  WHERE feature.spec_id = s.id
+                    AND feature.category IN ('adas', 'safety')
+                    AND feature_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS safety_features
+              ,COALESCE(
+                (
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', feature.id,
+                      'feature_key', feature.feature_key,
+                      'category', feature.category,
+                      'name', feature.name,
+                      'availability', feature.availability,
+                      'notes', feature.notes,
+                      'source_id', feature.source_id,
+                      'source_name', feature_source.name,
+                      'source_url', feature.source_url,
+                      'observed_at', feature.observed_at
+                    ) ORDER BY feature.category, feature.feature_key, feature.id
+                  )
+                  FROM vehicle_features AS feature
+                  JOIN sources AS feature_source ON feature_source.id = feature.source_id
+                  WHERE feature.spec_id = s.id
+                    AND feature.category IN ('technology', 'comfort')
+                    AND feature_source.ranking_permission = 'permitted'
+                ),
+                '[]'::jsonb
+              ) AS technology_comfort_features
             FROM listings AS l
             JOIN vehicles AS v
               ON v.id = l.vehicle_id
@@ -167,8 +276,10 @@ class AdvisorRepository:
                       ) ? 'wltp_range_km'
                   )
                 )
+                OR s.fuel_type = 'plug_in_hybrid_petrol'
                 OR (
                   s.fuel_type <> 'electric'
+                  AND s.fuel_type <> 'plug_in_hybrid_petrol'
                   AND EXISTS (
                     SELECT 1
                     FROM vehicle_spec_provenance AS liquid_provenance
@@ -194,8 +305,6 @@ class AdvisorRepository:
               AND nullif(trim(s.variant_key), '') IS NOT NULL
               AND nullif(trim(s.body_style), '') IS NOT NULL
               AND nullif(trim(s.fuel_type), '') IS NOT NULL
-              AND lower(replace(s.fuel_type, '-', '_')) NOT LIKE '%%plug%%'
-              AND lower(s.fuel_type) <> 'phev'
               AND s.fuel_type IN (
                 'diesel',
                 'electric',
@@ -203,7 +312,8 @@ class AdvisorRepository:
                 'hybrid_petrol',
                 'mild_hybrid_petrol',
                 'petrol',
-                'petrol_lpg'
+                'petrol_lpg',
+                'plug_in_hybrid_petrol'
               )
               AND s.body_style IN (
                 'city_car',
@@ -224,8 +334,10 @@ class AdvisorRepository:
                   AND s.energy_consumption_kwh_100km IS NOT NULL
                   AND s.wltp_range_km IS NOT NULL
                 )
+                OR lower(s.fuel_type) = 'plug_in_hybrid_petrol'
                 OR (
                   lower(s.fuel_type) <> 'electric'
+                  AND lower(s.fuel_type) <> 'plug_in_hybrid_petrol'
                   AND s.consumption_l_100km IS NOT NULL
                 )
               )
@@ -284,9 +396,6 @@ class AdvisorRepository:
                   THEN 'missing_body_style'
                 WHEN nullif(trim(s.fuel_type), '') IS NULL
                   THEN 'missing_fuel_type'
-                WHEN lower(replace(s.fuel_type, '-', '_')) LIKE '%%plug%%'
-                  OR lower(s.fuel_type) = 'phev'
-                  THEN 'unsupported_phev'
                 WHEN s.fuel_type NOT IN (
                   'diesel',
                   'electric',
@@ -294,7 +403,8 @@ class AdvisorRepository:
                   'hybrid_petrol',
                   'mild_hybrid_petrol',
                   'petrol',
-                  'petrol_lpg'
+                  'petrol_lpg',
+                  'plug_in_hybrid_petrol'
                 )
                   THEN 'unsupported_fuel_type'
                 WHEN s.body_style NOT IN (
@@ -320,6 +430,7 @@ class AdvisorRepository:
                   AND s.wltp_range_km IS NULL
                   THEN 'missing_ev_range'
                 WHEN lower(s.fuel_type) <> 'electric'
+                  AND lower(s.fuel_type) <> 'plug_in_hybrid_petrol'
                   AND s.consumption_l_100km IS NULL
                   THEN 'missing_liquid_consumption'
                 WHEN EXISTS (
@@ -379,6 +490,7 @@ class AdvisorRepository:
                   )
                 ) OR (
                   s.fuel_type <> 'electric'
+                  AND s.fuel_type <> 'plug_in_hybrid_petrol'
                   AND NOT EXISTS (
                     SELECT 1
                     FROM vehicle_spec_provenance AS liquid_provenance
@@ -545,6 +657,29 @@ class AdvisorRepository:
         for condition_group, rank, item in ranked_items:
             breakdown = {
                 "condition_group": condition_group,
+                "decision_status": item.decision_status,
+                "decision_score": item.decision_score,
+                "decision_confidence": item.decision_confidence,
+                "confidence_components": {
+                    key: item.evidence.get(key)
+                    for key in (
+                        "profile_completeness",
+                        "evidence_completeness",
+                        "ranking_stability",
+                        "ranking_comparison",
+                    )
+                    if key in item.evidence
+                },
+                "structural_fit": item.structural_fit,
+                "preference_fit": item.preference_fit,
+                "pillar_scores": item.pillar_scores,
+                "penalties": item.penalties,
+                "missing_factors": item.missing_factors,
+                "warnings": item.warnings,
+                "module_versions": item.module_versions,
+                "assumptions": item.assumptions,
+                "strengths": item.strengths,
+                "score_composition": item.score_composition,
                 "component_scores": item.component_scores,
                 "positive_factors": [
                     factor.model_dump(mode="json") for factor in item.positive_factors
@@ -553,7 +688,15 @@ class AdvisorRepository:
                     factor.model_dump(mode="json") for factor in item.tradeoffs
                 ],
                 "evidence": item.evidence,
+                "provenance": [
+                    entry.model_dump(mode="json") for entry in item.provenance
+                ],
             }
+            if "normalized_weights" in item.evidence:
+                breakdown["legacy_compatibility"] = {
+                    "label": "v2_normalized_weights",
+                    "normalized_weights": item.evidence["normalized_weights"],
+                }
             rationale = " ".join(
                 factor.message
                 for factor in [*item.positive_factors, *item.tradeoffs]
@@ -603,6 +746,16 @@ class AdvisorRepository:
 
 
 def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
+    trusted_dimensions = {
+        metric: _trusted_metric(row, metric, row[column])
+        for metric, column in (
+            ("length_mm", "length_mm"),
+            ("width_mm", "width_mm"),
+            ("height_mm", "height_mm"),
+            ("curb_weight_kg", "curb_weight_kg"),
+            ("power_kw", "power_kw"),
+        )
+    }
     spec = {
         "id": row["spec_id"],
         "variant_key": row["variant_key"],
@@ -625,6 +778,11 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "euro_emission_standard": row["euro_emission_standard"],
         "seats": row["seats"],
         "cargo_volume_liters": row["cargo_volume_liters"],
+        "length_mm": trusted_dimensions["length_mm"],
+        "width_mm": trusted_dimensions["width_mm"],
+        "height_mm": trusted_dimensions["height_mm"],
+        "curb_weight_kg": trusted_dimensions["curb_weight_kg"],
+        "power_kw": trusted_dimensions["power_kw"],
     }
     offer = {
         "id": row["listing_id"],
@@ -643,7 +801,7 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "valid_until": row["valid_until"],
         "is_active": row["is_active"],
     }
-    return {
+    candidate = {
         "vehicle": _model_analysis_vehicle(row),
         "spec": spec,
         "offer": offer,
@@ -657,6 +815,38 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "repository_eligible": True,
         "provenance": _metric_provenance(row, spec, offer),
     }
+    candidate["decision_context"] = {
+        "identity": {
+            "generation_name": row["generation_name"],
+            "restyling_label": row["restyling_label"],
+            "category": row["category"],
+        },
+        "dimensions": {
+            "length_mm": trusted_dimensions["length_mm"],
+            "body_width_mm": trusted_dimensions["width_mm"],
+            "height_mm": trusted_dimensions["height_mm"],
+            "width_mirrors_folded_mm": None,
+            "curb_weight_kg": trusted_dimensions["curb_weight_kg"],
+        },
+        "powertrain": {
+            "engine_code": row["engine_code"],
+            "power_kw": trusted_dimensions["power_kw"],
+            "fuel_type": row["spec_fuel_type"],
+            "transmission_type": row["transmission_type"],
+        },
+        "performance": {
+            "acceleration_0_100_s": row["acceleration_0_100_s"],
+            "top_speed_kmh": row["top_speed_kmh"],
+            "braking_100_0_m": row["braking_100_0_m"],
+        },
+        "maintenance": row["maintenance_items"] or [],
+        "safety": {
+            "ratings": row["safety_ratings"] or [],
+            "features": row["safety_features"] or [],
+        },
+        "technology_comfort": row["technology_comfort_features"] or [],
+    }
+    return candidate
 
 
 def _model_analysis_vehicle(row: dict[str, Any]) -> dict[str, Any]:
@@ -751,8 +941,13 @@ def _metric_provenance(
         "consumption_l_100km",
         "energy_consumption_kwh_100km",
         "wltp_range_km",
+        "length_mm",
+        "width_mm",
+        "height_mm",
+        "curb_weight_kg",
+        "power_kw",
     )
-    for source in row["spec_provenance"]:
+    for source in row["spec_provenance"] or []:
         metadata = source.get("metadata") or {}
         supported_metrics = set(
             metadata.get("supported_metrics") or metadata.get("metrics") or []
@@ -769,6 +964,24 @@ def _metric_provenance(
                 }
             )
     return provenance
+
+
+def _trusted_metric(
+    row: dict[str, Any],
+    metric: str,
+    value: Any,
+) -> Any:
+    if value is None:
+        return None
+    for source in row.get("spec_provenance") or []:
+        source_url = source.get("source_url")
+        metadata = source.get("metadata") or {}
+        supported_metrics = set(
+            metadata.get("supported_metrics") or metadata.get("metrics") or []
+        )
+        if metric in supported_metrics and isinstance(source_url, str) and source_url.startswith("https://"):
+            return value
+    return None
 
 
 def _ranked_items(

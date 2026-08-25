@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db.pool import DatabaseConfigurationError, DatabaseConnectionPool
 from app.repositories.advisor import AdvisorRepository
 from app.repositories.documents import DocumentsRepository
+from app.repositories.guided_decisions import GuidedDecisionsRepository
 from app.repositories.listings import ListingsRepository
 from app.repositories.vehicles import VehiclesRepository
 
@@ -61,3 +62,9 @@ def get_advisor_repository(
     conn: Annotated[psycopg.Connection, Depends(get_connection)],
 ) -> AdvisorRepository:
     return AdvisorRepository(conn)
+
+
+def get_guided_decisions_repository(
+    conn: Annotated[psycopg.Connection, Depends(get_connection)],
+) -> GuidedDecisionsRepository:
+    return GuidedDecisionsRepository(conn)

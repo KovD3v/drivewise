@@ -17,6 +17,22 @@ from app.schemas.advisor import (
     AdvisorSelectedSpec,
     AdvisorVehicleSummary,
 )
+from app.services.advisor.confidence import CONFIDENCE_VERSION, decision_confidence
+from app.services.advisor.constraints import evaluate_constraints
+from app.services.advisor.decision import ModuleAssessment
+from app.services.advisor.garage import (
+    FAMILY_FIT_VERSION,
+    GARAGE_FIT_VERSION,
+    family_fit,
+    garage_fit,
+)
+from app.services.advisor.issues import ISSUES_VERSION, known_issue_penalty
+from app.services.advisor.powertrain import POWERTRAIN_FIT_VERSION, powertrain_fit
+from app.services.advisor.recalls import RECALLS_VERSION, recall_penalty
+from app.services.advisor.reliability import RELIABILITY_VERSION, assess_reliability
+from app.services.advisor.safety import SAFETY_VERSION, assess_safety
+from app.services.advisor.tco import TCO_VERSION, estimate_tco
+from app.services.advisor.vehicle_dna import DNA_VERSION, assess_vehicle_dna
 from app.services.advisor.energy_prices import (
     ARERA_SOURCE_NAME,
     ARERA_SOURCE_URL,
@@ -30,9 +46,64 @@ from app.services.advisor.energy_prices import (
 )
 
 
-SCORING_VERSION = "advisor-v2.0"
+SCORING_VERSION = "advisor-v3.0"
 FRESHNESS_DAYS = 30
 MAX_ITEMS_PER_GROUP = 5
+
+ACTIVE_MODULE_VERSIONS = {
+    "scoring": SCORING_VERSION,
+    "decision_confidence": CONFIDENCE_VERSION,
+    "tco": TCO_VERSION,
+    "usage_fit": "usage-fit-v1",
+    "family_fit": FAMILY_FIT_VERSION,
+    "garage_fit": GARAGE_FIT_VERSION,
+    "reliability": RELIABILITY_VERSION,
+    "safety": SAFETY_VERSION,
+    "comfort": DNA_VERSION,
+    "sport": DNA_VERSION,
+    "travel": DNA_VERSION,
+    "technology": DNA_VERSION,
+    "powertrain_fit": POWERTRAIN_FIT_VERSION,
+    "known_issues": ISSUES_VERSION,
+    "recalls": RECALLS_VERSION,
+}
+
+PILLAR_WEIGHTS = {
+    "economics": 0.266667,
+    "practicality": 0.177778,
+    "reliability_safety": 0.222222,
+    "driving": 0.111111,
+    "technology": 0.111111,
+    "powertrain_fit": 0.111111,
+}
+PREFERENCE_WEIGHTS = (0.50, 0.30, 0.20)
+PILLAR_COMPONENTS = {
+    "economics": {"price_fit": 0.45, "tco": 0.40, "running_cost": 0.15},
+    "practicality": {
+        "category_fit": 0.22,
+        "usage_fit": 0.33,
+        "family_fit": 0.25,
+        "garage_fit": 0.20,
+    },
+    "reliability_safety": {"reliability": 0.58, "safety": 0.42},
+    "driving": {"comfort": 0.48, "sport": 0.22, "travel": 0.30},
+    "technology": {"technology": 1.0},
+    "powertrain_fit": {"powertrain_fit": 1.0},
+}
+PRIORITY_METRIC = {
+    "price": "price_fit",
+    "budget": "price_fit",
+    "running_cost": "tco",
+    "space": "family_fit",
+    "family": "family_fit",
+    "reliability": "reliability",
+    "safety": "safety",
+    "comfort": "comfort",
+    "performance": "sport",
+    "technology": "technology",
+    "efficiency_range": "powertrain_fit",
+    "powertrain_fit": "powertrain_fit",
+}
 
 BASE_WEIGHTS: dict[AdvisorScoreComponent, float] = {
     "price_fit": 30.0,
@@ -136,6 +207,15 @@ class AdvisorScoringResult:
     def items(self) -> list[AdvisorRecommendationItem]:
         return [item for group in self.groups for item in group.items]
 
+    @property
+    def insufficient_data_counts_by_reason(self) -> dict[str, int]:
+        counts = Counter(
+            reason
+            for item in self.items
+            for reason in set(item.missing_factors) | set(item.warnings)
+        )
+        return dict(sorted(counts.items()))
+
 
 def build_assumptions(request: AdvisorRecommendationRequest) -> list[str]:
     assert request.annual_km is not None
@@ -153,6 +233,7 @@ def build_assumptions(request: AdvisorRecommendationRequest) -> list[str]:
             "The running_cost component covers energy only; maintenance, tax, "
             "insurance, depreciation, and financing are excluded."
         ),
+        "Only the first three ordered priorities contribute to Preference Fit; extra priorities remain accepted for compatibility.",
         *ENERGY_ASSUMPTIONS,
     ]
 
@@ -178,7 +259,29 @@ def score_recommendations(
             excluded[reason] += 1
             continue
 
-        item = _score_candidate(request, candidate, weights)
+        garage_assessment = (
+            _safe_assessment("garage-fit-v1", lambda: garage_fit(request, candidate))
+            if request.garage is not None
+            else None
+        )
+        constraint_evaluation = evaluate_constraints(
+            request,
+            candidate,
+            garage_assessment=garage_assessment,
+        )
+        if constraint_evaluation.status == "excluded":
+            excluded[constraint_evaluation.reasons[0]] += 1
+            continue
+
+        item = _score_candidate(
+            request,
+            candidate,
+            weights,
+            evaluation_time,
+            garage_assessment=garage_assessment,
+            constraint_tradeoffs=constraint_evaluation.soft_tradeoffs,
+            constraint_missing=constraint_evaluation.missing_data,
+        )
         group_name = "new" if item.offer.condition == "new" else "used"
         scored_by_group[group_name].append(item)
 
@@ -187,7 +290,8 @@ def score_recommendations(
     )
     groups: list[AdvisorRecommendationGroup] = []
     for group_name in requested_groups:
-        ranked = sorted(scored_by_group[group_name], key=_stable_rank_key)
+        ranked = _with_ranking_confidence(scored_by_group[group_name])
+        ranked.sort(key=_stable_rank_key)
         selected: list[AdvisorRecommendationItem] = []
         seen_families: set[str] = set()
         for item in ranked:
@@ -254,6 +358,7 @@ def _expand_exact_pairs(
                         "repository_eligible",
                         False,
                     ),
+                    "decision_context": candidate.get("decision_context", {}),
                 }
             )
     return pairs
@@ -330,8 +435,6 @@ def _exclusion_reason(
     fuel_type = spec.get("fuel_type")
     if not _nonblank(fuel_type):
         return "missing_fuel_type"
-    if _is_phev(str(fuel_type)):
-        return "unsupported_phev"
     if fuel_type not in LIQUID_ENERGY_PRICES_EUR_PER_LITER and fuel_type != "electric":
         return "unsupported_fuel_type"
     if body_style not in BODY_USE_MATRIX["city"]:
@@ -347,9 +450,10 @@ def _exclusion_reason(
         ev_range = _positive_number(spec.get("wltp_range_km"))
         if ev_range is None:
             return "missing_ev_range"
-        if request.primary_use == "highway" and ev_range < 250:
-            return "insufficient_highway_ev_range"
-    elif _positive_number(spec.get("consumption_l_100km")) is None:
+    elif (
+        fuel_type != "plug_in_hybrid_petrol"
+        and _positive_number(spec.get("consumption_l_100km")) is None
+    ):
         return "missing_liquid_consumption"
 
     if not _has_spec_provenance(candidate, spec):
@@ -362,12 +466,13 @@ def _is_reviewed(candidate: dict[str, Any], offer: dict[str, Any]) -> bool:
     source = candidate.get("source") or {}
     if source.get("ranking_permission") != "permitted":
         return False
+    if not _is_https_url(offer.get("source_url")):
+        return False
     if candidate.get("reviewed") is True:
         return True
     import_status = candidate.get("import_status")
     return (
-        _nonblank(offer.get("source_url"))
-        and _nonblank(source.get("name"))
+        _nonblank(source.get("name"))
         and _nonblank(source.get("license"))
         and import_status == "completed"
     )
@@ -387,6 +492,16 @@ def _has_spec_provenance(
         required_metrics.update(
             {"energy_consumption_kwh_100km", "wltp_range_km"}
         )
+    elif spec.get("fuel_type") == "plug_in_hybrid_petrol":
+        required_metrics.update(
+            metric
+            for metric in (
+                "consumption_l_100km",
+                "energy_consumption_kwh_100km",
+                "wltp_range_km",
+            )
+            if spec.get(metric) is not None
+        )
     else:
         required_metrics.add("consumption_l_100km")
 
@@ -396,7 +511,7 @@ def _has_spec_provenance(
         if isinstance(entry, dict)
         and entry.get("metric") in required_metrics
         and _nonblank(entry.get("source_name"))
-        and _nonblank(entry.get("source_url"))
+        and _is_https_url(entry.get("source_url"))
         and entry.get("observed_at") is not None
     }
     return required_metrics <= covered_metrics
@@ -406,6 +521,11 @@ def _score_candidate(
     request: AdvisorRecommendationRequest,
     candidate: dict[str, Any],
     weights: dict[AdvisorScoreComponent, float],
+    as_of: datetime,
+    *,
+    garage_assessment: ModuleAssessment | None = None,
+    constraint_tradeoffs: tuple[str, ...] = (),
+    constraint_missing: tuple[str, ...] = (),
 ) -> AdvisorRecommendationItem:
     vehicle_data = candidate["vehicle"]
     spec_data = candidate["spec"]
@@ -426,19 +546,27 @@ def _score_candidate(
     energy_consumption = (
         electric_consumption if fuel_type == "electric" else consumption
     )
-    assert energy_consumption is not None
-    cost_100km = energy_consumption * energy_rate
-    assert request.annual_km is not None
-    annual_energy_cost = cost_100km * request.annual_km / 100
+    cost_100km = (
+        energy_consumption * energy_rate if energy_consumption is not None else None
+    )
+    annual_energy_cost = (
+        cost_100km * request.annual_km / 100
+        if cost_100km is not None and request.annual_km is not None
+        else None
+    )
 
-    raw_scores: dict[AdvisorScoreComponent, float] = {
+    raw_scores: dict[AdvisorScoreComponent, float | None] = {
         "price_fit": _price_score(price, request.budget_max_eur),
         "use_case_fit": _use_case_score(
             request,
             body_style=body_style,
             fuel_type=fuel_type,
         ),
-        "running_cost": _descending_linear_score(cost_100km, 5.0, 15.0),
+        "running_cost": (
+            _descending_linear_score(cost_100km, 5.0, 15.0)
+            if cost_100km is not None
+            else None
+        ),
         "space": _space_score(
             request.primary_use,
             seats=seats,
@@ -452,11 +580,77 @@ def _score_candidate(
         ),
     }
     component_scores = {
-        component: round(score, 2) for component, score in raw_scores.items()
+        component: None if score is None else round(score, 2)
+        for component, score in raw_scores.items()
     }
-    final_score = round(
-        sum(raw_scores[name] * weights[name] / 100 for name in BASE_WEIGHTS),
-        2,
+    assessments = _assess_candidate(request, candidate, as_of, garage_assessment)
+    factors = {
+        "price_fit": _available(raw_scores["price_fit"]),
+        "tco": _tco_assessment(assessments["tco"], request.budget_max_eur),
+        "running_cost": _available(raw_scores["running_cost"])
+        if raw_scores["running_cost"] is not None
+        else ModuleAssessment(
+            status="insufficient_data",
+            version="scoring-v3",
+            missing_data=("vehicle.consumption_l_100km",),
+        ),
+        "category_fit": _available(
+            BODY_USE_MATRIX["city" if request.primary_use == "new_driver" else request.primary_use].get(body_style, 0.0)
+        ),
+        "usage_fit": assessments["usage_fit"],
+        "family_fit": assessments["family_fit"],
+        "garage_fit": assessments["garage_fit"],
+        "reliability": assessments["reliability"],
+        "safety": assessments["safety"],
+        "comfort": assessments["comfort"],
+        "sport": assessments["sport"],
+        "travel": assessments["travel"],
+        "technology": assessments["technology"],
+        "powertrain_fit": assessments["powertrain_fit"],
+    }
+    pillar_scores, pillar_missing = _compose_pillars(factors)
+    structural = _structural_fit(pillar_scores, pillar_missing, assessments)
+    preference, preference_missing = _preference_fit(request, factors)
+    assessment_missing = [
+        missing
+        for assessment in assessments.values()
+        for missing in assessment.missing_data
+        if missing not in {"known_issues", "recalls"}
+    ]
+    missing_factors = list(
+        dict.fromkeys(
+            pillar_missing
+            + preference_missing
+            + list(constraint_missing)
+            + assessment_missing
+        )
+    )
+    warnings = list(
+        dict.fromkeys(
+            missing
+            for name in ("known_issues", "recalls")
+            for missing in assessments[name].missing_data
+            if missing not in {"known_issues", "recalls"}
+        )
+    )
+    constraint_insufficient = bool(constraint_missing)
+    decision_status = (
+        "complete"
+        if preference is not None and not constraint_insufficient
+        else "insufficient_data"
+    )
+    decision_score = (
+        round(structural * 0.65 + preference * 0.35, 1)
+        if preference is not None and not constraint_insufficient
+        else None
+    )
+    final_score = decision_score if decision_score is not None else round(structural, 1)
+    profile_completeness = _profile_completeness(request)
+    evidence_completeness = _evidence_completeness(assessments)
+    confidence = decision_confidence(
+        profile_completeness=profile_completeness,
+        evidence_completeness=evidence_completeness,
+        ranking_stability=0,
     )
 
     budget_overrun = max(0.0, price - request.budget_max_eur)
@@ -472,14 +666,28 @@ def _score_candidate(
         "fuel_type": fuel_type,
         "seats": int(seats),
         "cargo_volume_liters": round(cargo, 2),
-        "energy_cost_eur_100km": round(cost_100km, 2),
-        "annual_energy_cost_eur": round(annual_energy_cost, 2),
+        "energy_cost_eur_100km": (
+            None if cost_100km is None else round(cost_100km, 2)
+        ),
+        "annual_energy_cost_eur": (
+            None if annual_energy_cost is None else round(annual_energy_cost, 2)
+        ),
         "energy_assumption_version": ENERGY_ASSUMPTION_VERSION,
         "energy_rate": round(energy_rate, 5),
         "energy_rate_metric": energy_rate_metric,
         "normalized_weights": {
             component: round(weight, 6) for component, weight in weights.items()
         },
+        "legacy_compatibility": {
+            "label": "v2_normalized_weights",
+            "note": "Retained for clients that still inspect the v2 component weights; v3 ranking uses pillar and preference composition.",
+        },
+        "assessments": {
+            name: _assessment_payload(value)
+            for name, value in assessments.items()
+        },
+        "profile_completeness": profile_completeness,
+        "evidence_completeness": evidence_completeness,
     }
     if request.budget_min_eur is not None:
         evidence["budget_min_eur"] = request.budget_min_eur
@@ -501,12 +709,65 @@ def _score_candidate(
         weights=weights,
         evidence=evidence,
     )
+    tradeoffs.extend(
+        AdvisorFactor(
+            component="use_case_fit",
+            message=f"Trade-off soft: {tradeoff}.",
+            metric="constraint",
+            value=tradeoff,
+            contribution=0,
+        )
+        for tradeoff in constraint_tradeoffs
+    )
 
+    penalties = []
+    if assessments["known_issues"].value:
+        penalties.append(f"known_issue_penalty:{assessments['known_issues'].value:g}")
+    if assessments["recalls"].value:
+        penalties.append(f"recall_penalty:{assessments['recalls'].value:g}")
+    strengths = [name for name, value in pillar_scores.items() if value >= 80]
+    module_versions = {
+        name: assessment.version for name, assessment in assessments.items()
+    }
+    assumptions = list(
+        dict.fromkeys(
+            assumption
+            for assessment in assessments.values()
+            for assumption in assessment.assumptions
+        )
+    )
+    evidence["missing_data"] = list(
+        dict.fromkeys(
+            missing
+            for assessment in assessments.values()
+            for missing in assessment.missing_data
+        )
+    )
+    score_composition = {
+        "structural_fit_weight": 65,
+        "preference_fit_weight": 35,
+        "pillar_weights": PILLAR_WEIGHTS,
+        "pillar_components": PILLAR_COMPONENTS,
+        "preference_weights": PREFERENCE_WEIGHTS,
+    }
     return AdvisorRecommendationItem(
         vehicle=AdvisorVehicleSummary.model_validate(vehicle_data),
         selected_spec=AdvisorSelectedSpec.model_validate(spec_data),
         offer=AdvisorOffer.model_validate(offer_data),
         score=final_score,
+        decision_status=decision_status,
+        decision_score=decision_score,
+        decision_confidence=confidence.value,
+        structural_fit=round(structural, 1),
+        preference_fit=None if preference is None else round(preference, 1),
+        pillar_scores={key: round(value, 1) for key, value in pillar_scores.items()},
+        penalties=penalties,
+        strengths=strengths,
+        missing_factors=missing_factors,
+        warnings=warnings,
+        module_versions=module_versions,
+        assumptions=assumptions,
+        score_composition=score_composition,
         component_scores=component_scores,
         positive_factors=positive_factors,
         tradeoffs=tradeoffs,
@@ -515,11 +776,250 @@ def _score_candidate(
     )
 
 
+def _assess_candidate(
+    request: AdvisorRecommendationRequest,
+    candidate: dict[str, Any],
+    as_of: datetime,
+    garage_assessment: ModuleAssessment | None = None,
+) -> dict[str, ModuleAssessment]:
+    context = candidate.get("decision_context") or {}
+    try:
+        dna = assess_vehicle_dna(candidate)
+    except Exception as error:  # pragma: no cover - exercised by integration fault tests
+        dna = {
+            name: ModuleAssessment(
+                status="insufficient_data",
+                version="vehicle-dna-v1",
+                missing_data=(f"module_error:{type(error).__name__}",),
+            )
+            for name in ("comfort", "sport", "travel", "technology")
+        }
+    usage_values: list[float] = []
+    usage_map = {
+        "city": "comfort",
+        "new_driver": "comfort",
+        "family": "comfort",
+        "highway": "travel",
+        "work": "technology",
+    }
+    for usage in request.usage or [request.primary_use]:
+        supplied_usage = (context.get("vehicle_dna") or {}).get(usage)
+        if isinstance(supplied_usage, dict) and supplied_usage.get("value") is not None:
+            assessment = _available(float(supplied_usage["value"]))
+        else:
+            assessment = dna.get(usage_map.get(usage, "travel"))
+        if assessment and assessment.value is not None:
+            usage_values.append(assessment.value)
+    usage_assessment = (
+        _available(sum(usage_values) / len(usage_values))
+        if usage_values
+        else ModuleAssessment(
+            status="insufficient_data",
+            version="usage-fit-v1",
+            missing_data=("vehicle_dna_usage",),
+        )
+    )
+    result: dict[str, ModuleAssessment] = {
+        "tco": _safe_assessment(
+            "tco-v1", lambda: estimate_tco(request, candidate, as_of=as_of)
+        ),
+        "usage_fit": usage_assessment,
+        "family_fit": _safe_assessment(
+            "family-fit-v1",
+            lambda: family_fit(
+                children_count=request.children_count,
+                passengers_usual=request.passengers_usual,
+                candidate=candidate,
+            ),
+        ),
+        "garage_fit": (
+            garage_assessment
+            if garage_assessment is not None
+            else ModuleAssessment(
+                status="insufficient_data",
+                version="garage-fit-v1",
+                missing_data=("request.garage",),
+            )
+        ),
+        "reliability": _safe_assessment(
+            "reliability-v1", lambda: assess_reliability(candidate)
+        ),
+        "safety": _safe_assessment("safety-v1", lambda: assess_safety(candidate)),
+        "comfort": _safe_assessment(
+            "vehicle-dna-v1", lambda: dna["comfort"]
+        ),
+        "sport": _safe_assessment("vehicle-dna-v1", lambda: dna["sport"]),
+        "travel": _safe_assessment("vehicle-dna-v1", lambda: dna["travel"]),
+        "technology": _safe_assessment(
+            "vehicle-dna-v1", lambda: dna["technology"]
+        ),
+        "powertrain_fit": _safe_assessment(
+            "powertrain-fit-v1", lambda: powertrain_fit(request, candidate)
+        ),
+        "known_issues": _safe_assessment(
+            "known-issues-v1",
+            lambda: known_issue_penalty(
+                candidate, context.get("known_issues") or candidate.get("known_issues") or []
+            ),
+        ),
+        "recalls": _safe_assessment(
+            "recalls-v1",
+            lambda: recall_penalty(
+                candidate, context.get("recalls") or candidate.get("recalls") or []
+            ),
+        ),
+    }
+    return result
+
+
+def _safe_assessment(
+    version: str,
+    operation,
+) -> ModuleAssessment:
+    try:
+        return operation()
+    except Exception as error:  # pragma: no cover - exercised by integration fault tests
+        return ModuleAssessment(
+            status="insufficient_data",
+            version=version,
+            missing_data=(f"module_error:{type(error).__name__}",),
+        )
+
+
+def _compose_pillars(
+    factors: dict[str, ModuleAssessment],
+) -> tuple[dict[str, float], list[str]]:
+    scores: dict[str, float] = {}
+    missing: list[str] = []
+    for pillar, components in PILLAR_COMPONENTS.items():
+        available = {
+            name: weight
+            for name, weight in components.items()
+            if factors[name].value is not None
+        }
+        if not available:
+            missing.append(pillar)
+            continue
+        total = sum(available.values())
+        scores[pillar] = sum(
+            factors[name].value * weight / total
+            for name, weight in available.items()
+            if factors[name].value is not None
+        )
+        for name in set(components) - set(available):
+            missing.append(name)
+    return scores, missing
+
+
+def _structural_fit(
+    pillar_scores: dict[str, float],
+    missing: list[str],
+    assessments: dict[str, ModuleAssessment],
+) -> float:
+    if "economics" not in pillar_scores or "practicality" not in pillar_scores:
+        return 0.0
+    available = {name: weight for name, weight in PILLAR_WEIGHTS.items() if name in pillar_scores}
+    total = sum(available.values())
+    value = sum(pillar_scores[name] * weight / total for name, weight in available.items())
+    value -= float(assessments["known_issues"].value or 0)
+    value -= float(assessments["recalls"].value or 0)
+    return max(0.0, min(100.0, value))
+
+
+def _preference_fit(
+    request: AdvisorRecommendationRequest,
+    factors: dict[str, ModuleAssessment],
+) -> tuple[float | None, list[str]]:
+    if not request.priorities:
+        return None, ["preferences"]
+    values: list[tuple[float, float]] = []
+    missing: list[str] = []
+    for priority, weight in zip(request.priorities[:3], PREFERENCE_WEIGHTS):
+        metric = PRIORITY_METRIC[priority]
+        assessment = factors.get(metric)
+        if assessment is None or assessment.value is None:
+            missing.append(metric)
+            continue
+        values.append((assessment.value, weight))
+    if not values:
+        return None, missing or ["preferences"]
+    total = sum(weight for _, weight in values)
+    return sum(value * weight for value, weight in values) / total, missing
+
+
+def _tco_assessment(
+    assessment: ModuleAssessment,
+    budget_max_eur: float,
+) -> ModuleAssessment:
+    if assessment.value is None:
+        return assessment
+    annual = float(assessment.value)
+    # Same bounded annual-cost target as the v1 scorer; lower cost is better.
+    target = max(3500.0, 0.22 * budget_max_eur)
+    ratio = annual / target
+    value = 100.0 if ratio <= 0.85 else 95.0 if ratio <= 1 else max(0.0, 95 - (ratio - 1) * 42)
+    return ModuleAssessment(
+        status=assessment.status,
+        version=assessment.version,
+        value=value,
+        details={**assessment.details, "fit_score": value},
+        assumptions=assessment.assumptions,
+        evidence=assessment.evidence,
+        missing_data=assessment.missing_data,
+    )
+
+
+def _available(value: float) -> ModuleAssessment:
+    return ModuleAssessment(status="available", version="scoring-v3", value=max(0.0, min(100.0, value)))
+
+
+def _assessment_payload(assessment: ModuleAssessment) -> dict[str, Any]:
+    return {
+        "status": assessment.status,
+        "version": assessment.version,
+        "value": assessment.value,
+        "details": assessment.details,
+        "assumptions": list(assessment.assumptions),
+        "evidence": list(assessment.evidence),
+        "missing_data": list(assessment.missing_data),
+    }
+
+
+def _profile_completeness(request: AdvisorRecommendationRequest) -> float:
+    values = [
+        request.budget_max_eur is not None,
+        request.primary_use is not None,
+        bool(request.usage),
+        bool(request.priorities),
+        request.annual_km is not None and not request.annual_km_was_defaulted,
+        request.garage is not None,
+        request.children_count is not None,
+        request.passengers_usual is not None,
+    ]
+    return round(sum(values) / len(values) * 100, 1)
+
+
+def _evidence_completeness(assessments: dict[str, ModuleAssessment]) -> float:
+    values = [
+        70.0
+        if item.missing_data
+        else 100.0
+        if item.status == "available"
+        else 70.0
+        if item.status == "estimated"
+        else 0.0
+        for item in assessments.values()
+    ]
+    return round(sum(values) / len(values), 1) if values else 0.0
+
+
 def _normalized_weights(
     request: AdvisorRecommendationRequest,
 ) -> dict[AdvisorScoreComponent, float]:
     selected_components = {
-        PRIORITY_COMPONENT[priority] for priority in request.priorities
+        PRIORITY_COMPONENT[priority]
+        for priority in request.priorities
+        if priority in PRIORITY_COMPONENT
     }
     adjusted = {
         component: weight * (1.5 if component in selected_components else 1.0)
@@ -582,14 +1082,16 @@ def _efficiency_score(
     consumption: float | None,
     electric_consumption: float | None,
     ev_range: float | None,
-) -> float:
-    if fuel_type != "electric":
-        assert consumption is not None
-        return _descending_linear_score(consumption, 4.0, 8.0)
-    assert electric_consumption is not None and ev_range is not None
-    efficiency = _descending_linear_score(electric_consumption, 14.0, 24.0)
-    range_score = _ascending_linear_score(ev_range, 150.0, 500.0)
-    return (efficiency + range_score) / 2
+) -> float | None:
+    if fuel_type == "electric":
+        if electric_consumption is None or ev_range is None:
+            return None
+        efficiency = _descending_linear_score(electric_consumption, 14.0, 24.0)
+        range_score = _ascending_linear_score(ev_range, 150.0, 500.0)
+        return (efficiency + range_score) / 2
+    if consumption is None:
+        return None
+    return _descending_linear_score(consumption, 4.0, 8.0)
 
 
 def _descending_linear_score(value: float, best: float, worst: float) -> float:
@@ -617,7 +1119,7 @@ def _energy_rate(fuel_type: str) -> tuple[float, str]:
 def _build_factors(
     *,
     request: AdvisorRecommendationRequest,
-    component_scores: dict[AdvisorScoreComponent, float],
+    component_scores: dict[AdvisorScoreComponent, float | None],
     weights: dict[AdvisorScoreComponent, float],
     evidence: dict[str, Any],
 ) -> tuple[list[AdvisorFactor], list[AdvisorFactor]]:
@@ -659,6 +1161,8 @@ def _build_factors(
     tradeoffs: list[AdvisorFactor] = []
     for component in BASE_WEIGHTS:
         component_score = component_scores[component]
+        if component_score is None:
+            continue
         contribution = round(weights[component] * component_score / 100, 2)
         metric, value, threshold = factor_metrics[component]
         if component_score >= 80:
@@ -718,7 +1222,7 @@ def _build_factors(
 
 def _efficiency_factor_metric(
     evidence: dict[str, Any],
-) -> tuple[str, float, float]:
+) -> tuple[str, float | None, float]:
     if "energy_consumption_kwh_100km" in evidence:
         return (
             "energy_consumption_kwh_100km",
@@ -727,7 +1231,7 @@ def _efficiency_factor_metric(
         )
     return (
         "consumption_l_100km",
-        evidence["consumption_l_100km"],
+        evidence.get("consumption_l_100km"),
         4.0,
     )
 
@@ -784,13 +1288,53 @@ def _build_provenance(
 
 
 def _stable_rank_key(item: AdvisorRecommendationItem) -> tuple[Any, ...]:
+    mileage = item.offer.mileage
     return (
+        0 if item.decision_status == "complete" else 1,
         -item.score,
+        -(item.decision_confidence or 0.0),
         item.offer.price_eur,
-        item.vehicle.make.casefold(),
-        item.vehicle.model.casefold(),
+        mileage is None,
+        mileage if mileage is not None else 0,
+        item.offer.listing_ref,
         str(item.offer.id),
     )
+
+
+def _with_ranking_confidence(
+    items: list[AdvisorRecommendationItem],
+) -> list[AdvisorRecommendationItem]:
+    comparison = "none" if len(items) < 2 else "within_group_gap"
+    if len(items) < 2:
+        stability = 0.0
+    else:
+        scores = sorted((item.score for item in items), reverse=True)
+        stability = max(0.0, min(100.0, scores[0] - scores[1]))
+    result: list[AdvisorRecommendationItem] = []
+    for item in items:
+        profile = _number(item.evidence.get("profile_completeness"))
+        evidence = _number(item.evidence.get("evidence_completeness"))
+        if profile is None:
+            profile = 0.0
+        if evidence is None:
+            evidence = 0.0
+        confidence = decision_confidence(
+            profile_completeness=profile,
+            evidence_completeness=evidence,
+            ranking_stability=stability,
+        )
+        evidence_data = dict(item.evidence)
+        evidence_data["ranking_stability"] = stability
+        evidence_data["ranking_comparison"] = comparison
+        result.append(
+            item.model_copy(
+                update={
+                    "decision_confidence": confidence.value,
+                    "evidence": evidence_data,
+                }
+            )
+        )
+    return result
 
 
 def _is_phev(fuel_type: str) -> bool:
@@ -800,6 +1344,10 @@ def _is_phev(fuel_type: str) -> bool:
 
 def _nonblank(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _is_https_url(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().startswith("https://")
 
 
 def _number(value: Any) -> float | None:
