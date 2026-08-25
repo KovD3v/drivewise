@@ -8,6 +8,7 @@ import type {
 import { renderWithRouter } from '../test/renderWithRouter'
 import { AdvisorPage } from './Advisor'
 
+// Intentional advisor-v2.0 compatibility fixture: this view still renders the legacy contract.
 const recommendationResponse: AdvisorRecommendationResponse = {
   run_id: '50000000-0000-4000-8000-000000000001',
   scoring_version: 'advisor-v2.0',

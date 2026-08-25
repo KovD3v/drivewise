@@ -35,7 +35,7 @@ ALTER TABLE vehicle_specs
   ADD CONSTRAINT vehicle_specs_weights_check CHECK (
     (curb_weight_kg IS NULL OR curb_weight_kg > 0)
     AND (gross_weight_kg IS NULL OR gross_weight_kg > 0)
-    AND (payload_kg IS NULL OR payload_kg >= 0)
+    AND (payload_kg IS NULL OR payload_kg > 0)
   ),
   ADD CONSTRAINT vehicle_specs_powertrain_profile_check CHECK (
     (displacement_cc IS NULL OR displacement_cc > 0)

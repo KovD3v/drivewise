@@ -169,6 +169,8 @@ def test_vehicle_knowledge_profile_migration_is_relational_and_constrained():
     assert "vehicle_features_availability_check" in sql
     assert "vehicle_media_assets_type_check" in sql
     assert "vehicle_media_assets_https_check" in sql
+    assert "(payload_kg IS NULL OR payload_kg > 0)" in sql
+    assert "(payload_kg IS NULL OR payload_kg >= 0)" not in sql
     assert sql.count("source_url LIKE 'https://%'") == 4
     assert "ON DELETE CASCADE" in sql
 

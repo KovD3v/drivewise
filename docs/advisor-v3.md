@@ -159,10 +159,11 @@ excludes the candidate; a soft incompatible garage is a trade-off.
 plug-in hybrid, electric, and LPG. It uses annual distance and city/highway
 usage thresholds. The notable thresholds are 15,000 km for the city baseline,
 25,000 km for high-distance petrol adjustment, 30,000 km for long-distance
-adjustment, 22,000 km for the diesel highway adjustment, and 250 km WLTP as an
-EV highway reference. PHEVs also require consumption, electric range, and a
-charging context. Recognized powertrains are assessed or marked insufficient,
-not rejected by the old allowlist.
+adjustment, 22,000 km for the diesel highway adjustment, and 250 km WLTP as the
+emitted EV highway reference; active continuous scoring centers on 350 km.
+PHEVs also require consumption, electric range, and a charging context.
+Recognized powertrains are assessed or marked insufficient, not rejected by the
+old allowlist.
 
 ## TCO assumptions
 

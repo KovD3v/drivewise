@@ -169,6 +169,52 @@ def test_tco_omits_missing_non_energy_component(candidate):
     assert "tax" not in result.details["annual_eur"]
 
 
+def test_tco_caps_insurance_for_expensive_offer(candidate):
+    candidate["offer"]["price_eur"] = 200_000
+
+    annual = estimate_tco(v3_request(), candidate, as_of=AS_OF).details["annual_eur"]
+
+    assert annual["insurance"] == 1_600.0
+
+
+def test_tco_electric_branch_has_zero_tax(candidate):
+    candidate["spec"].update(
+        fuel_type="electric",
+        energy_consumption_kwh_100km=18,
+        wltp_range_km=350,
+        power_kw=200,
+    )
+
+    result = estimate_tco(v3_request(), candidate, as_of=AS_OF)
+
+    assert result.status == "estimated"
+    assert result.details["annual_eur"]["tax"] == 0.0
+
+
+@pytest.mark.parametrize(
+    ("power_kw", "expected"),
+    [(100, 258.0), (101, 261.87)],
+)
+def test_tco_tax_branches_at_100_kw(power_kw, expected, candidate):
+    candidate["spec"]["power_kw"] = power_kw
+
+    annual = estimate_tco(v3_request(), candidate, as_of=AS_OF).details["annual_eur"]
+
+    assert annual["tax"] == expected
+
+
+@pytest.mark.parametrize(
+    ("body_style", "expected"),
+    [("city_car", 180.0), ("hatchback", 240.0), ("suv", 300.0)],
+)
+def test_tco_tyres_follow_body_style_bands(body_style, expected, candidate):
+    candidate["spec"]["body_style"] = body_style
+
+    annual = estimate_tco(v3_request(), candidate, as_of=AS_OF).details["annual_eur"]
+
+    assert annual["tyres"] == expected
+
+
 def test_tco_rounds_components_and_total_to_decimal_cents(candidate):
     candidate["offer"]["price_eur"] = 19_999.99
     candidate["spec"]["consumption_l_100km"] = 5.123
@@ -209,6 +255,75 @@ def test_tco_assumptions_name_energy_formula_rates_and_version(candidate):
     for fuel_type, rate in LIQUID_ENERGY_PRICES_EUR_PER_LITER.items():
         assert f"{fuel_type} EUR {rate:.5f}/L" in text
     assert f"electricity EUR {ELECTRICITY_PRICE_EUR_PER_KWH:.5f}/kWh" in text
+
+
+@pytest.mark.parametrize(
+    ("annual_km", "expected"),
+    [(21_999, 85.0), (22_000, 93.0)],
+)
+def test_diesel_highway_adjustment_has_exact_boundary(annual_km, expected, candidate):
+    candidate["spec"]["fuel_type"] = "diesel"
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=30_000,
+        primary_use="highway",
+        annual_km=annual_km,
+    )
+
+    result = powertrain_fit(request, candidate)
+
+    assert result.status == "available"
+    assert result.value == expected
+
+
+@pytest.mark.parametrize(
+    ("wltp_range_km", "expected"),
+    [(250, 75.0), (350, 76.0), (450, 76.0)],
+)
+def test_ev_highway_scoring_uses_250_reference_and_350_center(
+    wltp_range_km, expected, candidate
+):
+    candidate["spec"].update(
+        fuel_type="electric",
+        energy_consumption_kwh_100km=18,
+        wltp_range_km=wltp_range_km,
+    )
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=30_000,
+        primary_use="highway",
+        annual_km=15_000,
+    )
+
+    result = powertrain_fit(request, candidate)
+
+    assert result.status == "available"
+    assert result.details["ev_highway_range_threshold_km"] == 250
+    assert result.value == expected
+
+
+@pytest.mark.parametrize(
+    ("fuel_type", "usage", "annual_km", "expected"),
+    [
+        ("petrol", ["city"], 14_999, 85.0),
+        ("petrol", ["city"], 15_000, 78.0),
+        ("petrol", ["city"], 25_001, 70.0),
+        ("full_hybrid_petrol", ["highway"], 30_000, 86.0),
+        ("full_hybrid_petrol", ["highway"], 30_001, 82.0),
+    ],
+)
+def test_powertrain_distance_adjustments_have_exact_boundaries(
+    fuel_type, usage, annual_km, expected, candidate
+):
+    candidate["spec"]["fuel_type"] = fuel_type
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=30_000,
+        primary_use=usage[0],
+        annual_km=annual_km,
+    )
+
+    result = powertrain_fit(request, candidate)
+
+    assert result.status == "available"
+    assert result.value == expected
 
 
 def test_v2_request_defaults_to_single_usage_and_soft_preferences():
@@ -283,6 +398,7 @@ def test_guided_constraint_modes_use_camel_case_wire_aliases():
 
 
 def test_recommendation_response_rejects_unknown_decision_status():
+    # Intentional advisor-v2.0 compatibility value used to validate the v3 status contract.
     with pytest.raises(ValueError):
         AdvisorRecommendationResponse(
             run_id="50000000-0000-4000-8000-000000000001",
