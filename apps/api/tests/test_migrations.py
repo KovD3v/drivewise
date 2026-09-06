@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -11,6 +12,7 @@ from app.repositories.documents import DocumentsRepository
 from app.repositories.filters import DocumentFilters, ListingFilters, VehicleFilters
 from app.repositories.listings import ListingsRepository
 from app.repositories.vehicles import VehiclesRepository
+from app.ingestion.catalog import import_catalog, load_catalog
 from app.schemas.advisor import AdvisorRecommendationRequest
 from app.services.advisor.scoring import build_recommendations
 from app.db.migrations import MIGRATIONS_PATH, apply_migrations, iter_migration_files
@@ -27,7 +29,14 @@ REQUIRED_TABLES = {
     "import_runs",
     "vehicle_provenance",
     "vehicle_spec_provenance",
+    "vehicle_maintenance_items",
+    "vehicle_safety_ratings",
+    "vehicle_features",
+    "vehicle_media_assets",
 }
+
+ROOT = Path(__file__).resolve().parents[3]
+CATALOG_FIXTURE_PATH = ROOT / "data/fixtures/catalog/catalog-v1.synthetic.json"
 
 
 def read_migration_sql() -> str:
@@ -43,6 +52,7 @@ def test_migration_files_are_ordered():
         "0002_create_mvp_schema.sql",
         "0003_seed_initial_vehicles.sql",
         "0004_curated_catalog.sql",
+        "0005_vehicle_knowledge_profile.sql",
     ]
 
 
@@ -128,6 +138,36 @@ def test_curated_catalog_migration_preserves_legacy_rows_conservatively():
     assert "recommendation_items_listing_identity_fkey" in sql
     assert "assumptions jsonb" in sql
     assert "exclusion_counts jsonb" in sql
+
+
+def test_vehicle_knowledge_profile_migration_is_relational_and_constrained():
+    sql = (MIGRATIONS_PATH / "0005_vehicle_knowledge_profile.sql").read_text()
+
+    for column in [
+        "generation_name text",
+        "engine_code text",
+        "length_mm integer",
+        "power_kw numeric(7, 2)",
+        "acceleration_0_100_s numeric(5, 2)",
+        "homologation_cycle text",
+    ]:
+        assert column in sql
+
+    for table in [
+        "vehicle_maintenance_items",
+        "vehicle_safety_ratings",
+        "vehicle_features",
+        "vehicle_media_assets",
+    ]:
+        assert f"CREATE TABLE IF NOT EXISTS {table}" in sql
+
+    assert "vehicle_maintenance_interval_check" in sql
+    assert "vehicle_features_category_check" in sql
+    assert "vehicle_features_availability_check" in sql
+    assert "vehicle_media_assets_type_check" in sql
+    assert "vehicle_media_assets_https_check" in sql
+    assert sql.count("source_url LIKE 'https://%'") == 4
+    assert "ON DELETE CASCADE" in sql
 
 
 @pytest.mark.skipif(
@@ -399,3 +439,78 @@ def test_migrations_apply_to_configured_test_database():
     assert saved_items["count"] == len(items)
     assert [vehicle["make"] for vehicle in non_default_match] == ["Fiat"]
     assert non_default_match[0]["fuel_type"] == "mild_hybrid_petrol"
+
+
+@pytest.mark.skipif(
+    not os.getenv("TEST_DATABASE_URL"),
+    reason="TEST_DATABASE_URL is not configured",
+)
+def test_vehicle_repository_returns_imported_knowledge_profile():
+    import psycopg
+
+    database_url = os.environ["TEST_DATABASE_URL"]
+    schema_name = f"vehicle_profile_{uuid4().hex}"
+
+    with psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+        autocommit=True,
+    ) as conn:
+        conn.execute(
+            sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema_name))
+        )
+        try:
+            conn.execute(
+                sql.SQL("SET search_path TO {}, public").format(
+                    sql.Identifier(schema_name)
+                )
+            )
+            for migration in iter_migration_files():
+                conn.execute(migration.read_text())
+            import_catalog(
+                conn,
+                load_catalog(CATALOG_FIXTURE_PATH),
+                file_name="pytest-vehicle-knowledge-profile.json",
+            )
+            enriched_vehicle_id = conn.execute(
+                """
+                SELECT id
+                FROM vehicles
+                WHERE canonical_key = 'it-acme-metro-2026'
+                """
+            ).fetchone()["id"]
+
+            vehicle = VehiclesRepository(conn).get_vehicle(enriched_vehicle_id)
+        finally:
+            conn.execute("SET search_path TO public")
+            conn.execute(
+                sql.SQL("DROP SCHEMA {} CASCADE").format(
+                    sql.Identifier(schema_name)
+                )
+            )
+
+    assert vehicle is not None
+    profile_spec = next(
+        spec
+        for spec in vehicle["specs"]
+        if spec["variant_key"] == "it-acme-metro-2026-petrol"
+    )
+    assert profile_spec["identity"]["generation_name"] == "Second generation"
+    assert profile_spec["dimensions"]["curb_weight_kg"] == 1120
+    assert profile_spec["powertrain"]["engine_code"] == "SYN-T10"
+    assert profile_spec["performance"]["power_to_weight_kw_per_t"] == 66.07
+    assert profile_spec["maintenance_schedule"][0]["operation_code"] == "engine-oil"
+    assert profile_spec["safety"]["ratings"][0]["overall_stars"] == 5
+    assert profile_spec["safety"]["adas"][0]["feature_key"] == (
+        "adaptive-cruise-control"
+    )
+    assert profile_spec["safety"]["equipment"][0]["feature_key"] == "six-airbags"
+    assert {item["category"] for item in profile_spec["technology_comfort"]} == {
+        "technology",
+        "comfort",
+    }
+    assert {item["asset_type"] for item in profile_spec["media"]} == {
+        "photo",
+        "brochure",
+        "manual",
+    }
