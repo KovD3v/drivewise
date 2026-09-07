@@ -3,10 +3,12 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from app.schemas.advisor import AdvisorConstraintModes
 from app.schemas.guided_decisions import DecisionFact, DecisionProfile
+from app.services.guided_decisions.questions import QUESTION_DEFINITIONS
 
 
 BODY_STYLE_TERMS = {
@@ -73,6 +75,14 @@ def extract_profile_updates(
     updated_profile = profile.model_copy(deep=True)
     updated_fields: list[str] = []
     normalized = _normalize(message)
+
+    if expected_question_id == "constraint_modes":
+        _extract_contextual_answer(
+            normalized, updated_profile, expected_question_id=expected_question_id,
+            captured_at=captured_at, updated_fields=updated_fields,
+        )
+        if updated_fields:
+            return updated_profile, _deduplicate(updated_fields)
 
     category = _first_matching_value(normalized, BODY_STYLE_TERMS)
     if category is not None:
@@ -283,11 +293,20 @@ def _extract_contextual_answer(
         return
 
     if expected_question_id == "constraint_modes":
-        _apply_constraint_modes(
-            profile,
-            _constraint_mode_options(normalized),
-            updated_fields=updated_fields,
+        no_constraints = normalized in {
+            "nessuno", "nessun vincolo", "nessun vincolo obbligatorio",
+            "nessuna preferenza obbligatoria", "tutti morbidi", "none",
+        }
+        changes = (
+            {name: "soft" for name in AdvisorConstraintModes.model_fields}
+            if no_constraints else _constraint_mode_options(normalized)
         )
+        if changes:
+            _apply_constraint_modes(profile, changes, updated_fields=updated_fields)
+            _set_fact(
+                profile, "constraint_modes_confirmed", True, captured_at,
+                confidence=0.99, updated_fields=updated_fields,
+            )
         return
 
     if expected_question_id in GARAGE_DIMENSION_FIELDS:
@@ -303,35 +322,46 @@ def _extract_contextual_answer(
         )
         return
 
-    number = _standalone_number(normalized)
+    definition = next(
+        (item for item in QUESTION_DEFINITIONS if item.key == expected_question_id),
+        None,
+    )
+    if definition is None:
+        return
+    question = definition.question
+    constraints = question.constraints
+    value = None
+    if question.type == "number":
+        value = _standalone_number(normalized)
+        if expected_question_id in {"children_count", "passengers_usual"}:
+            value = _count_value(normalized)
+        if value is not None and constraints is not None:
+            if constraints.minimum is not None and value < constraints.minimum:
+                return
+            if constraints.maximum is not None and value > constraints.maximum:
+                return
+    elif question.type == "boolean":
+        value = _yes_no(normalized)
+    elif constraints is not None and question.type == "single_select":
+        if normalized in constraints.options:
+            value = normalized
+        elif expected_question_id == "parking":
+            yes_no = _yes_no(normalized)
+            if yes_no is not None:
+                value = "garage" if yes_no else "none"
+    elif constraints is not None and question.type == "multi_select":
+        options = [option for option in constraints.options if _contains_term(normalized, option)]
+        if options:
+            value = options
 
-    if expected_question_id == "annual_km" and number is not None:
+    if value is not None:
         _set_fact(
-            profile,
-            "annual_km",
-            int(number),
-            captured_at,
-            confidence=0.96,
-            updated_fields=updated_fields,
+            profile, expected_question_id, value, captured_at,
+            confidence=0.96, updated_fields=updated_fields,
         )
-    elif expected_question_id == "budget_eur" and number is not None:
-        _set_fact(
-            profile,
-            "budget_eur",
-            float(number),
-            captured_at,
-            confidence=0.96,
-            updated_fields=updated_fields,
-        )
-    elif expected_question_id == "parking":
-        yes_no = _yes_no(normalized)
-        if yes_no is not None:
-            _set_fact(
-                profile,
-                "parking",
-                "garage" if yes_no else "none",
-                captured_at,
-                confidence=0.96,
+        if expected_question_id == "automatic_required":
+            _apply_constraint_modes(
+                profile, {"transmission": "hard" if value else "soft"},
                 updated_fields=updated_fields,
             )
 
@@ -431,6 +461,7 @@ def _extract_primary_use(normalized: str) -> str | None:
 
 
 _ITALIAN_COUNTS = {
+    "zero": 0,
     "uno": 1,
     "una": 1,
     "due": 2,
@@ -467,6 +498,8 @@ def _count_value(value: str) -> int | None:
 
 def _extract_usage(normalized: str) -> list[str]:
     terms = (
+        ("famiglia", "family"),
+        ("familiare", "family"),
         ("citta", "city"),
         ("urbano", "city"),
         ("autostrada", "highway"),
@@ -649,6 +682,12 @@ def _parse_number(raw_value: str) -> int | None:
     elif value.endswith("k"):
         multiplier = 1_000
         value = value.removesuffix("k")
+
+    if multiplier == 1_000:
+        value = value.replace(" ", "").replace("'", "").replace(",", ".")
+        if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value):
+            return None
+        return int(Decimal(value) * multiplier)
 
     digits = re.sub(r"[^0-9]", "", value)
     if not digits:

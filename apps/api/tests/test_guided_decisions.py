@@ -603,6 +603,30 @@ def test_guided_decision_repository_persists_and_updates_profile_versions():
             assert updated.profile_version == 2
             assert updated.decision_profile.annual_km.value == 15_000
             assert turn_versions == [1, 2]
+
+            confirmed = process_guided_decision_turn(
+                decision_id=DECISION_ID,
+                profile_version=3,
+                current_profile=_complete_guided_profile(),
+                message="nessuno",
+                advisor_repository=advisor_repository,
+                as_of=AS_OF,
+            )
+            repository.update(
+                response=confirmed.response,
+                previous_profile_version=2,
+                user_message="nessuno",
+            )
+            conn.commit()
+            restored = repository.get(DECISION_ID).decision_profile
+            assert restored.constraint_modes_confirmed.value is True
+            assert next_question(restored) is None
+            snapshot = conn.execute(
+                "SELECT profile_snapshot FROM guided_decision_turns "
+                "WHERE decision_id = %s AND profile_version = 3",
+                (DECISION_ID,),
+            ).fetchone()["profile_snapshot"]
+            assert snapshot["constraint_modes_confirmed"]["value"] is True
         finally:
             conn.rollback()
             conn.execute("SET search_path TO public")

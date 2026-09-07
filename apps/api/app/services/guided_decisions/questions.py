@@ -244,10 +244,13 @@ QUESTION_DEFINITIONS = (
             label="Quali preferenze vuoi trattare come vincoli rigidi?",
             reason="Separare vincoli rigidi e preferenze morbide rende il ranking trasparente.",
             constraints=QuestionConstraints(
-                options=["budget", "body_style", "fuel_type", "transmission", "garage"]
+                options=["budget", "body_style", "fuel_type", "transmission", "garage", "none"]
             ),
         ),
-        is_answered=lambda profile: any(
+        is_answered=lambda profile: (
+            profile.constraint_modes_confirmed is not None
+            and profile.constraint_modes_confirmed.value
+        ) or any(
             value == "hard"
             for value in profile.constraint_modes.model_dump().values()
         ),
@@ -394,7 +397,7 @@ def _fact_for_key(profile: DecisionProfile, key: str):
     if key.startswith("garage."):
         return getattr(profile.garage, key.split(".", maxsplit=1)[1])
     if key == "constraint_modes":
-        return None
+        return profile.constraint_modes_confirmed
     return getattr(profile, key)
 
 

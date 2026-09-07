@@ -475,6 +475,42 @@ def test_candidate_maps_source_aware_decision_context():
     assert context["safety"]["ratings"][0]["source_url"].startswith("https://")
     assert context["safety"]["features"][0]["category"] == "adas"
 
+    from app.services.advisor.constraints import evaluate_constraints
+
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=20_000, primary_use="city", automatic_required=True,
+        constraint_modes={"transmission": "hard"},
+    )
+    assert candidate["spec"]["transmission"] == "manual"
+    assert context["powertrain"]["transmission_type"] is None
+    untrusted = evaluate_constraints(request, candidate)
+    assert untrusted.status == "insufficient_data"
+    assert "vehicle.transmission" in untrusted.missing_data
+    assert "transmission_mismatch" not in untrusted.reasons
+
+    row["spec_provenance"][0]["metadata"]["supported_metrics"].append("transmission_type")
+    trusted = AdvisorRepository(RecordingConnection([row])).list_candidates(as_of=AS_OF)[0]
+    assert evaluate_constraints(request, trusted).status == "excluded"
+    assert trusted["decision_context"]["powertrain"]["transmission_type"] == "manual"
+    assert any(entry["metric"] == "transmission_type" for entry in trusted["provenance"])
+
+    row["transmission_type"] = "automatic"
+    automatic = AdvisorRepository(RecordingConnection([row])).list_candidates(as_of=AS_OF)[0]
+    assert evaluate_constraints(request, automatic).status == "eligible"
+    ranked = score_recommendations(request, [automatic], as_of=AS_OF)
+    item = next(item for group in ranked.groups for item in group.items)
+    transmission_sources = [
+        source for source in item.model_dump(mode="json")["provenance"]
+        if source["metric"] == "transmission_type"
+    ]
+    assert transmission_sources[0]["source_url"] == "https://example.test/specs/panda"
+    row["spec_provenance"][0]["source_url"] = "http://example.test/untrusted"
+    invalid = AdvisorRepository(RecordingConnection([row])).list_candidates(as_of=AS_OF)[0]
+    assert evaluate_constraints(request, invalid).status == "insufficient_data"
+    assert not any(entry["metric"] == "transmission_type" for entry in invalid["provenance"])
+    candidate.pop("decision_context")
+    assert evaluate_constraints(request, candidate).status == "insufficient_data"
+
     row.update(
         maintenance_items=None,
         safety_ratings=None,

@@ -766,6 +766,7 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "list_price_eur": row["list_price_eur"],
         "drivetrain": row["drivetrain"],
         "transmission": row["transmission"],
+        "transmission_type": _trusted_metric(row, "transmission_type", row.get("transmission_type")),
         "engine": row["engine"],
         "horsepower": row["horsepower"],
         "battery_kwh": row["battery_kwh"],
@@ -832,7 +833,7 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
             "engine_code": row["engine_code"],
             "power_kw": trusted_dimensions["power_kw"],
             "fuel_type": row["spec_fuel_type"],
-            "transmission_type": row["transmission_type"],
+            "transmission_type": spec["transmission_type"],
         },
         "performance": {
             "acceleration_0_100_s": row["acceleration_0_100_s"],
@@ -946,6 +947,7 @@ def _metric_provenance(
         "height_mm",
         "curb_weight_kg",
         "power_kw",
+        "transmission_type",
     )
     for source in row["spec_provenance"] or []:
         metadata = source.get("metadata") or {}

@@ -311,6 +311,13 @@ writes the validated assessment into the corresponding `decision_context`
 field, keeps the module version and evidence, and leaves the scoring formulas
 unchanged. Until then, missing data remains `insufficient_data`.
 
+Transmission constraints use only `decision_context.powertrain.transmission_type`
+validated against current, ranking-permitted spec provenance with an HTTPS
+source and an explicit `transmission_type` metric claim, matching the dimension
+and power gates. Raw `spec.transmission` remains available but cannot cause a
+hard exclusion. Missing trusted transmission yields `insufficient_data`; trusted
+transmission sources appear in recommendation provenance and the saved breakdown.
+
 ## Audit and persistence
 
 Each recommendation run stores the normalized request, scoring version,

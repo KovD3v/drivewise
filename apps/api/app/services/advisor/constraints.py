@@ -76,7 +76,7 @@ def evaluate_constraints(
         else:
             tradeoffs.append("fuel_type_mismatch")
     transmission = (candidate.get("decision_context") or {}).get("powertrain", {}).get(
-        "transmission_type", spec.get("transmission")
+        "transmission_type"
     )
     if request.automatic_required and transmission is None:
         missing.append("vehicle.transmission")

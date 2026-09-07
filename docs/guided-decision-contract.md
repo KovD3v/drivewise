@@ -20,6 +20,18 @@ answers. A future LLM-backed interpreter may replace this adapter, but it must
 produce the same typed facts and must not own scoring, constraints, question
 priority, or ranking.
 
+Short answers use the active question, including numeric counts, Italian
+`si`/`sì` and `no`, and the option values exposed by single/multi-select questions.
+Abbreviated quantities parse the decimal before multiplication: `12,5k`,
+`12.5k`, and `12,5 mila` all mean `12500`.
+
+`decisionProfile.constraintModesConfirmed` is a nullable boolean fact. An
+explicit constraint selection, including `none` or `nessuno`, records `true`
+with the user's source, confidence, confirmation, and timestamp. Choosing none
+sets all constraint modes to `soft` and completes the question. The fact is
+saved in the current profile and turn snapshots; a new session starts with
+`null`. Older profiles with an existing hard mode still count as answered.
+
 ## Endpoints
 
 ### `POST /guided-decisions`

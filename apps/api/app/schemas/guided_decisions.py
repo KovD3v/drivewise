@@ -69,6 +69,7 @@ class DecisionProfile(GuidedDecisionWireModel):
     constraint_modes: AdvisorConstraintModes = Field(
         default_factory=AdvisorConstraintModes
     )
+    constraint_modes_confirmed: DecisionFact[bool] | None = None
     parking: DecisionFact[ParkingType] | None = None
     garage: GarageProfile = Field(default_factory=GarageProfile)
 
