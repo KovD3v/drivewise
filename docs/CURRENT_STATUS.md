@@ -1,6 +1,6 @@
-# DriveWise — Current Status
+# DriveWise current status
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-07_
 
 ## Overall phase
 **MVP implementation — frontend stabilization completed, backend/Decision Engine integration now the main priority.**
@@ -80,6 +80,24 @@ Planned modules include:
 - Smart Garage
 
 The information architecture has been reorganized into macro-sections rather than a flat catalog of cards. The long-term objective is to accompany the user across the whole vehicle lifecycle, not only during purchase.
+
+## Advisor v3 implementation in PR #5
+
+The API and Guided Decision previews now use the unified `advisor-v3.0`
+runtime in `apps/api/app/services/advisor/`. It owns deterministic eligibility,
+scoring, assessments, confidence, penalties, and ranking. The standalone
+`decision_engine/` runtime is retired; its calibration reports remain in
+`docs/snapshots/`.
+
+Recommendation persistence includes v3 request metadata and item breakdowns.
+TCO uses the documented `tco-v1` estimates. Reliability, known issues, recalls,
+Vehicle DNA, and valuation still require specialist inputs and return
+`insufficient_data` when those inputs are absent. See
+[`advisor-v3.md`](advisor-v3.md) for the implemented contract and limits.
+
+This integration does not complete the multi-vehicle frontend vertical slice,
+production deployment, or real-data validation described below. The backend
+audit should assess this unified runtime against those remaining requirements.
 
 ## Decision Engine
 ### Status

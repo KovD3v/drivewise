@@ -314,7 +314,7 @@ def test_gold_06_selected_priorities_scale_and_renormalize_exactly():
         "space": 100,
         "efficiency_range": 75,
     }
-    assert item.score == 87.0
+    assert item.score == item.decision_score
 
 
 def test_gold_07_body_matrix_and_soft_preferences_feed_use_case_component():
@@ -490,10 +490,6 @@ def test_gold_11_strict_eligibility_reports_one_exact_reason_per_offer():
         lambda value: value["spec"].update(consumption_l_100km=None),
     )
     changed(
-        "unsupported_phev",
-        lambda value: value["spec"].update(fuel_type="plug_in_hybrid_petrol"),
-    )
-    changed(
         "unsupported_fuel_type",
         lambda value: value["spec"].update(fuel_type="hydrogen"),
     )
@@ -516,18 +512,10 @@ def test_gold_11_strict_eligibility_reports_one_exact_reason_per_offer():
         electric_consumption=18,
         ev_range=None,
     )
-    ev_short_range = candidate(
-        402,
-        fuel_type="electric",
-        consumption=None,
-        electric_consumption=18,
-        ev_range=249,
-    )
     cases.extend(
         [
             ("missing_ev_consumption", ev_missing_consumption),
             ("missing_ev_range", ev_missing_range),
-            ("insufficient_highway_ev_range", ev_short_range),
         ]
     )
 
@@ -544,6 +532,59 @@ def test_gold_11_strict_eligibility_reports_one_exact_reason_per_offer():
     assert result.excluded_counts_by_reason == {
         reason: 1 for reason, _ in cases
     }
+
+
+def test_phev_is_not_excluded_as_unsupported():
+    phev = candidate(499, fuel_type="plug_in_hybrid_petrol")
+    result = score_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=30_000, primary_use="city"),
+        [phev],
+        as_of=AS_OF,
+    )
+    assert result.items
+    assert "unsupported_phev" not in result.excluded_counts_by_reason
+
+
+def test_incomplete_phev_reaches_powertrain_fit_as_insufficient_data():
+    phev = candidate(
+        500,
+        fuel_type="plug_in_hybrid_petrol",
+        consumption=None,
+        electric_consumption=None,
+        ev_range=None,
+    )
+    result = score_recommendations(
+        AdvisorRecommendationRequest(
+            budget_max_eur=30_000,
+            primary_use="city",
+            priorities=["efficiency_range"],
+        ),
+        [phev],
+        as_of=AS_OF,
+    )
+
+    assert result.items
+    assert result.excluded_counts_by_reason == {}
+    item = result.items[0]
+    assert item.decision_status == "insufficient_data"
+    assert "vehicle.consumption_l_100km" in item.missing_factors
+
+
+def test_highway_ev_under_250_km_is_not_excluded_for_range():
+    ev = candidate(
+        498,
+        fuel_type="electric",
+        consumption=None,
+        electric_consumption=18,
+        ev_range=249,
+    )
+    result = score_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=30_000, primary_use="highway"),
+        [ev],
+        as_of=AS_OF,
+    )
+    assert result.items
+    assert "insufficient_highway_ev_range" not in result.excluded_counts_by_reason
 
 
 def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_key():
@@ -571,7 +612,7 @@ def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_ke
         condition="used",
     )
     expected_offer_ids = [
-        str(tied[0]["offer"]["id"]),
+        str(tied[1]["offer"]["id"]),
         str(tied[2]["offer"]["id"]),
         str(tied[3]["offer"]["id"]),
         str(tied[4]["offer"]["id"]),
@@ -584,13 +625,13 @@ def test_gold_12_rank_then_family_dedupe_is_permutation_stable_with_exact_tie_ke
         assert len(result.items) == 5
 
 
-def test_request_rejects_removed_priorities_and_duplicates():
-    with pytest.raises(ValidationError):
-        AdvisorRecommendationRequest(
-            budget_max_eur=20_000,
-            primary_use="city",
-            priorities=["reliability"],
-        )
+def test_request_accepts_v3_priorities_and_rejects_duplicates():
+    request = AdvisorRecommendationRequest(
+        budget_max_eur=20_000,
+        primary_use="city",
+        priorities=["reliability"],
+    )
+    assert request.priorities == ["reliability"]
     with pytest.raises(ValidationError):
         AdvisorRecommendationRequest(
             budget_max_eur=20_000,

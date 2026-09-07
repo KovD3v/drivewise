@@ -390,7 +390,11 @@ function RunContext({ response }: { response: AdvisorRecommendationResponse }) {
     ([, count]) => count > 0,
   )
 
-  if (response.assumptions.length === 0 && exclusions.length === 0) {
+  const insufficientData = Object.entries(response.insufficient_data_counts_by_reason).filter(
+    ([, count]) => count > 0,
+  )
+
+  if (response.assumptions.length === 0 && exclusions.length === 0 && insufficientData.length === 0) {
     return null
   }
 
@@ -412,6 +416,20 @@ function RunContext({ response }: { response: AdvisorRecommendationResponse }) {
           <h3>Offerte escluse</h3>
           <dl className="compact-facts">
             {exclusions.map(([reason, count]) => (
+              <div key={reason}>
+                <dt>{humanizeKey(reason)}</dt>
+                <dd>{formatNumber(count)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
+      {insufficientData.length > 0 ? (
+        <section>
+          <h3>Dati mancanti nei risultati</h3>
+          <dl className="compact-facts">
+            {insufficientData.map(([reason, count]) => (
               <div key={reason}>
                 <dt>{humanizeKey(reason)}</dt>
                 <dd>{formatNumber(count)}</dd>
@@ -452,6 +470,9 @@ function RecommendationGroup({ group }: { group: AdvisorRecommendationGroup }) {
 }
 
 function RecommendationCard({ item }: { item: AdvisorRecommendationItem }) {
+  const provisional = item.decision_status === 'insufficient_data'
+  const displayScore = item.decision_score ?? item.score
+
   return (
     <article className="result-card">
       <div className="result-topline">
@@ -466,9 +487,17 @@ function RecommendationCard({ item }: { item: AdvisorRecommendationItem }) {
           </p>
         </div>
         <strong className="score-badge">
-          {formatScore(item.score)} <span>su 100</span>
+          <span>{provisional ? 'Structural Fit provvisorio' : 'Decision Score'}</span>{' '}
+          {formatScore(displayScore)} <span>su 100</span>
         </strong>
       </div>
+
+      {provisional ? (
+        <p className="status-message" role="status">
+          Risultato provvisorio: il punteggio usa lo Structural Fit finché non sono
+          disponibili {item.missing_factors.length > 0 ? item.missing_factors.map(humanizeKey).join(', ') : 'tutti i dati mancanti'}.
+        </p>
+      ) : null}
 
       <OfferFacts item={item} />
       <ComponentScores scores={item.component_scores} />
@@ -527,7 +556,7 @@ function OfferFacts({ item }: { item: AdvisorRecommendationItem }) {
 function ComponentScores({
   scores,
 }: {
-  scores: Record<AdvisorScoreComponent, number>
+  scores: Record<AdvisorScoreComponent, number | null>
 }) {
   return (
     <section className="component-scores" aria-label="Punteggi per componente">
@@ -535,15 +564,15 @@ function ComponentScores({
       <div className="score-list">
         {componentOrder.map((component) => {
           const score = scores[component]
-          const boundedScore = Math.min(100, Math.max(0, score))
+          const boundedScore = score === null ? undefined : Math.min(100, Math.max(0, score))
           return (
             <div className="score-row" key={component}>
               <div>
                 <span>{componentLabels[component]}</span>
-                <strong>{formatScore(score)}</strong>
+                <strong>{score === null ? 'n/d' : formatScore(score)}</strong>
               </div>
               <progress
-                aria-label={`${componentLabels[component]}: ${formatScore(score)} su 100`}
+                aria-label={`${componentLabels[component]}: ${score === null ? 'dati mancanti' : `${formatScore(score)} su 100`}`}
                 max="100"
                 value={boundedScore}
               />

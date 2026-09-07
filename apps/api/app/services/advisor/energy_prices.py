@@ -36,6 +36,7 @@ LIQUID_ENERGY_PRICES_EUR_PER_LITER: dict[str, float] = {
     "full_hybrid_petrol": 1.91662,
     "hybrid_petrol": 1.91662,
     "mild_hybrid_petrol": 1.91662,
+    "plug_in_hybrid_petrol": 1.91662,
     "diesel": 2.04276,
     "petrol_lpg": 0.77695,
 }
