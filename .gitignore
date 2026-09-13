@@ -16,6 +16,7 @@ __pycache__/
 
 .DS_Store
 node_modules
+.worktrees/
 
 # Reviewed real catalog snapshots stay local unless redistribution is cleared.
 data/private/catalog/

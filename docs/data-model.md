@@ -27,6 +27,8 @@ variants, offers, and record-level provenance without calling external services.
 - `apps/api/migrations/0003_seed_initial_vehicles.sql` inserts synthetic seed data.
 - `apps/api/migrations/0004_curated_catalog.sql` adds stable catalog identity,
   variant-linked offers, import runs, and provenance.
+- `apps/api/migrations/0005_vehicle_knowledge_profile.sql` adds optional,
+  detail-only vehicle-spec knowledge fields and relational child records.
 
 Run migrations with:
 
@@ -87,6 +89,44 @@ Key columns:
 
 Uniqueness is enforced on `variant_key`. Trim names are not identities: two
 powertrains may legitimately use the same marketing trim.
+
+The knowledge profile adds nullable detail columns without replacing the
+existing flat compatibility fields: `generation_name`, `restyling_label`,
+`category`, `doors`; `length_mm`, `width_mm`, `height_mm`, `wheelbase_mm`,
+`curb_weight_kg`, `gross_weight_kg`, `payload_kg`; `engine_code`,
+`displacement_cc`, `cylinders`, `power_kw`, `torque_nm`,
+`battery_usable_kwh`; `transmission_type`, `gear_count`, `differential_type`;
+`acceleration_0_100_s`, `top_speed_kmh`, `braking_100_0_m`; and
+`homologation_cycle`. Positive-value and valid-dimension/weight checks protect
+the applicable numeric fields. The API groups these columns into a detailed
+profile only for `GET /vehicles/{vehicle_id}`; no new vehicle identity is
+created by profile data.
+
+### Vehicle knowledge-profile child tables
+
+All child tables belong to `vehicle_specs` (`spec_id`) and cascade when that
+spec is deleted. They retain a reviewed child-level source through `source_id`,
+`source_url`, and `observed_at`, plus `created_at` and `updated_at`; source URLs
+are HTTPS and source deletion is restricted.
+
+- `vehicle_maintenance_items`: `id`, `spec_id`, `operation_code`, `title`,
+  nullable `interval_km`, `interval_months`, and `notes`, child provenance,
+  timestamps. `(spec_id, operation_code)` is unique and at least one positive
+  interval is required.
+- `vehicle_safety_ratings`: `id`, `spec_id`, `assessment_system`,
+  `assessment_year`, nullable `overall_stars`, `adult_occupant_percent`,
+  `child_occupant_percent`, `vulnerable_road_users_percent`, and
+  `safety_assist_percent`, child provenance, timestamps. Assessment years are
+  1990--2100, scores are constrained to their displayed ranges, and
+  `(spec_id, assessment_system, assessment_year)` is unique.
+- `vehicle_features`: `id`, `spec_id`, `feature_key`, `category`, `name`,
+  `availability`, nullable `notes`, child provenance, timestamps.
+  `(spec_id, feature_key)` is unique; categories are `adas`, `safety`,
+  `technology`, or `comfort`, and availability is `standard` or `optional`.
+- `vehicle_media_assets`: `id`, `spec_id`, `asset_key`, `asset_type`, `title`,
+  HTTPS `url`, nullable `mime_type` and `locale`, child provenance, timestamps.
+  `(spec_id, asset_key)` is unique and types are `photo`, `brochure`, or
+  `manual`.
 
 ### sources
 
@@ -149,6 +189,11 @@ A record can have several simultaneous current claims so different sources can
 support different fields. A new snapshot replaces the entire current claim set;
 older snapshots are rejected transactionally rather than overwriting newer
 data. Ranking queries accept only current claims from permitted sources.
+
+Profile child provenance is deliberately separate from these record-level
+claim tables. Each profile child stores the single source and observation that
+supplied it, so a schedule operation, safety assessment, feature, or media
+asset can have a different source from its parent variant.
 
 ### documents
 

@@ -193,6 +193,18 @@ def test_post_advisor_v2_returns_frontend_shape_and_persists_run_context(
     )
     first_item = payload["groups"][0]["items"][0]
     assert first_item["selected_spec"]["id"] == str(SPEC_ID)
+    assert not {
+        "identity",
+        "dimensions",
+        "powertrain",
+        "transmission_details",
+        "performance",
+        "official_efficiency",
+        "maintenance_schedule",
+        "safety",
+        "technology_comfort",
+        "media",
+    }.intersection(first_item["selected_spec"])
     assert set(first_item["component_scores"]) == {
         "price_fit",
         "use_case_fit",

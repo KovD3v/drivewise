@@ -178,7 +178,63 @@ candidate reaches the minimum confidence. `match_level` is `vehicle` or `spec`.
 
 ### GET /vehicles/{vehicle_id}
 
-Returns one vehicle with linked specs.
+Returns one vehicle with linked specs. This is the only vehicle endpoint that
+returns the additive, detail-only knowledge profile: `GET /vehicles`,
+`POST /vehicles/resolve`, listing responses, and Advisor selected specs retain
+their existing flat summary/spec contracts. Model-analysis request and response
+contracts also remain flat. Consumers must not infer that a profile field absent
+from those endpoints is missing data.
+
+All profile scalar fields are nullable and are returned as `null` when the
+catalog has no value. Profile collections are always returned: an unavailable
+collection is `[]`, and `safety` is always an object whose `ratings`, `adas`,
+and `equipment` members are arrays. `power_to_weight_kw_per_t` is derived from
+`power_kw` and `curb_weight_kg` (and is `null` unless both are available).
+
+The existing flat spec fields remain for compatibility. Each detailed spec
+adds the following groups:
+
+- `identity`: `generation_name`, `restyling_label`, `category`, `doors`
+- `dimensions`: `length_mm`, `width_mm`, `height_mm`, `wheelbase_mm`,
+  `curb_weight_kg`, `gross_weight_kg`, `payload_kg`, `seats`,
+  `cargo_volume_liters`
+- `powertrain`: `engine_description`, `engine_code`, `displacement_cc`,
+  `cylinders`, `horsepower`, `power_kw`, `torque_nm`, `fuel_type`,
+  `battery_total_kwh`, `battery_usable_kwh`, `wltp_range_km`
+- `transmission_details`: `transmission`, `transmission_type`, `gear_count`,
+  `drivetrain`, `differential_type`
+- `performance`: `acceleration_0_100_s`, `top_speed_kmh`,
+  `braking_100_0_m`, `power_to_weight_kw_per_t`
+- `official_efficiency`: `homologation_cycle`, `consumption_l_100km`,
+  `energy_consumption_kwh_100km`, `co2_g_km`, `euro_emission_standard`
+- `maintenance_schedule`, `safety`, `technology_comfort`, and `media`
+
+`maintenance_schedule` items contain `id`, `operation_code`, `title`,
+`interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings
+contain `id`, `assessment_system`, `assessment_year`, `overall_stars`,
+`adult_occupant_percent`, `child_occupant_percent`,
+`vulnerable_road_users_percent`, `safety_assist_percent`, and `provenance`.
+Features in `safety.adas`, `safety.equipment`, and `technology_comfort` contain
+`id`, `feature_key`, `category`, `name`, `availability`, `notes`, and
+`provenance`; only `adas` and `safety` categories populate the two `safety`
+arrays, while `technology` and `comfort` populate `technology_comfort`. Media
+items contain `id`, `asset_key`, `asset_type`, `title`, `url`, `mime_type`,
+`locale`, and `provenance`.
+
+Vehicle and flat-spec `provenance` arrays use record-level claims with
+`source_id`, `source_key`, `source_name`, `source_url`, `source_license`,
+`observed_at`, `record_observed_at`, `content_hash`, `is_current`, and
+`supported_metrics`. Each profile child has its own `provenance` object with
+`source_id`, `source_key`, `source_name`, `source_url`, `source_license`, and
+`observed_at`; this is the source that supplied that particular child record.
+
+The profile deliberately excludes contextual or time-series domains: insurance,
+vehicle tax, real-world consumption, reliability scores or defect probabilities,
+known defects and repair-cost estimates, recalls, parts/tyres/accessories and
+aftermarket compatibility, valuations and depreciation, fuel-cost and
+total-cost calculations, and recommendation or AI-generated interpretation.
+Those omissions are product scope, not an indication that a response was
+partially populated. The endpoint also does not fetch external sources or media.
 
 Example response:
 
@@ -195,20 +251,86 @@ Example response:
   "specs": [
     {
       "id": "20000000-0000-4000-8000-000000000001",
+      "variant_key": null,
+      "is_default": false,
       "trim": "1.0 FireFly Hybrid",
+      "body_style": "city_car",
+      "fuel_type": "mild_hybrid_petrol",
+      "list_price_eur": 15500.0,
       "drivetrain": "fwd",
       "transmission": "6-speed manual",
       "engine": "1.0L mild-hybrid petrol",
       "horsepower": 70,
       "battery_kwh": null,
+      "energy_consumption_kwh_100km": null,
       "consumption_l_100km": 5.0,
       "wltp_range_km": null,
       "co2_g_km": 113,
       "euro_emission_standard": "Euro 6e",
       "seats": 4,
-      "cargo_volume_liters": 225.0
+      "cargo_volume_liters": 225.0,
+      "provenance": [],
+      "identity": {
+        "generation_name": null,
+        "restyling_label": null,
+        "category": null,
+        "doors": null
+      },
+      "dimensions": {
+        "length_mm": null,
+        "width_mm": null,
+        "height_mm": null,
+        "wheelbase_mm": null,
+        "curb_weight_kg": null,
+        "gross_weight_kg": null,
+        "payload_kg": null,
+        "seats": 4,
+        "cargo_volume_liters": 225.0
+      },
+      "powertrain": {
+        "engine_description": "1.0L mild-hybrid petrol",
+        "engine_code": null,
+        "displacement_cc": null,
+        "cylinders": null,
+        "horsepower": 70,
+        "power_kw": null,
+        "torque_nm": null,
+        "fuel_type": "mild_hybrid_petrol",
+        "battery_total_kwh": null,
+        "battery_usable_kwh": null,
+        "wltp_range_km": null
+      },
+      "transmission_details": {
+        "transmission": "6-speed manual",
+        "transmission_type": null,
+        "gear_count": null,
+        "drivetrain": "fwd",
+        "differential_type": null
+      },
+      "performance": {
+        "acceleration_0_100_s": null,
+        "top_speed_kmh": null,
+        "braking_100_0_m": null,
+        "power_to_weight_kw_per_t": null
+      },
+      "official_efficiency": {
+        "homologation_cycle": null,
+        "consumption_l_100km": 5.0,
+        "energy_consumption_kwh_100km": null,
+        "co2_g_km": 113,
+        "euro_emission_standard": "Euro 6e"
+      },
+      "maintenance_schedule": [],
+      "safety": {
+        "ratings": [],
+        "adas": [],
+        "equipment": []
+      },
+      "technology_comfort": [],
+      "media": []
     }
-  ]
+  ],
+  "provenance": []
 }
 ```
 
