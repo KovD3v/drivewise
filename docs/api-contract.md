@@ -178,7 +178,63 @@ candidate reaches the minimum confidence. `match_level` is `vehicle` or `spec`.
 
 ### GET /vehicles/{vehicle_id}
 
-Returns one vehicle with linked specs.
+Returns one vehicle with linked specs. This is the only vehicle endpoint that
+returns the additive, detail-only knowledge profile: `GET /vehicles`,
+`POST /vehicles/resolve`, listing responses, and Advisor selected specs retain
+their existing flat summary/spec contracts. Model-analysis request and response
+contracts also remain flat. Consumers must not infer that a profile field absent
+from those endpoints is missing data.
+
+All profile scalar fields are nullable and are returned as `null` when the
+catalog has no value. Profile collections are always returned: an unavailable
+collection is `[]`, and `safety` is always an object whose `ratings`, `adas`,
+and `equipment` members are arrays. `power_to_weight_kw_per_t` is derived from
+`power_kw` and `curb_weight_kg` (and is `null` unless both are available).
+
+The existing flat spec fields remain for compatibility. Each detailed spec
+adds the following groups:
+
+- `identity`: `generation_name`, `restyling_label`, `category`, `doors`
+- `dimensions`: `length_mm`, `width_mm`, `height_mm`, `wheelbase_mm`,
+  `curb_weight_kg`, `gross_weight_kg`, `payload_kg`, `seats`,
+  `cargo_volume_liters`
+- `powertrain`: `engine_description`, `engine_code`, `displacement_cc`,
+  `cylinders`, `horsepower`, `power_kw`, `torque_nm`, `fuel_type`,
+  `battery_total_kwh`, `battery_usable_kwh`, `wltp_range_km`
+- `transmission_details`: `transmission`, `transmission_type`, `gear_count`,
+  `drivetrain`, `differential_type`
+- `performance`: `acceleration_0_100_s`, `top_speed_kmh`,
+  `braking_100_0_m`, `power_to_weight_kw_per_t`
+- `official_efficiency`: `homologation_cycle`, `consumption_l_100km`,
+  `energy_consumption_kwh_100km`, `co2_g_km`, `euro_emission_standard`
+- `maintenance_schedule`, `safety`, `technology_comfort`, and `media`
+
+`maintenance_schedule` items contain `id`, `operation_code`, `title`,
+`interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings
+contain `id`, `assessment_system`, `assessment_year`, `overall_stars`,
+`adult_occupant_percent`, `child_occupant_percent`,
+`vulnerable_road_users_percent`, `safety_assist_percent`, and `provenance`.
+Features in `safety.adas`, `safety.equipment`, and `technology_comfort` contain
+`id`, `feature_key`, `category`, `name`, `availability`, `notes`, and
+`provenance`; only `adas` and `safety` categories populate the two `safety`
+arrays, while `technology` and `comfort` populate `technology_comfort`. Media
+items contain `id`, `asset_key`, `asset_type`, `title`, `url`, `mime_type`,
+`locale`, and `provenance`.
+
+Vehicle and flat-spec `provenance` arrays use record-level claims with
+`source_id`, `source_key`, `source_name`, `source_url`, `source_license`,
+`observed_at`, `record_observed_at`, `content_hash`, `is_current`, and
+`supported_metrics`. Each profile child has its own `provenance` object with
+`source_id`, `source_key`, `source_name`, `source_url`, `source_license`, and
+`observed_at`; this is the source that supplied that particular child record.
+
+The profile deliberately excludes contextual or time-series domains: insurance,
+vehicle tax, real-world consumption, reliability scores or defect probabilities,
+known defects and repair-cost estimates, recalls, parts/tyres/accessories and
+aftermarket compatibility, valuations and depreciation, fuel-cost and
+total-cost calculations, and recommendation or AI-generated interpretation.
+Those omissions are product scope, not an indication that a response was
+partially populated. The endpoint also does not fetch external sources or media.
 
 Example response:
 
@@ -195,20 +251,86 @@ Example response:
   "specs": [
     {
       "id": "20000000-0000-4000-8000-000000000001",
+      "variant_key": null,
+      "is_default": false,
       "trim": "1.0 FireFly Hybrid",
+      "body_style": "city_car",
+      "fuel_type": "mild_hybrid_petrol",
+      "list_price_eur": 15500.0,
       "drivetrain": "fwd",
       "transmission": "6-speed manual",
       "engine": "1.0L mild-hybrid petrol",
       "horsepower": 70,
       "battery_kwh": null,
+      "energy_consumption_kwh_100km": null,
       "consumption_l_100km": 5.0,
       "wltp_range_km": null,
       "co2_g_km": 113,
       "euro_emission_standard": "Euro 6e",
       "seats": 4,
-      "cargo_volume_liters": 225.0
+      "cargo_volume_liters": 225.0,
+      "provenance": [],
+      "identity": {
+        "generation_name": null,
+        "restyling_label": null,
+        "category": null,
+        "doors": null
+      },
+      "dimensions": {
+        "length_mm": null,
+        "width_mm": null,
+        "height_mm": null,
+        "wheelbase_mm": null,
+        "curb_weight_kg": null,
+        "gross_weight_kg": null,
+        "payload_kg": null,
+        "seats": 4,
+        "cargo_volume_liters": 225.0
+      },
+      "powertrain": {
+        "engine_description": "1.0L mild-hybrid petrol",
+        "engine_code": null,
+        "displacement_cc": null,
+        "cylinders": null,
+        "horsepower": 70,
+        "power_kw": null,
+        "torque_nm": null,
+        "fuel_type": "mild_hybrid_petrol",
+        "battery_total_kwh": null,
+        "battery_usable_kwh": null,
+        "wltp_range_km": null
+      },
+      "transmission_details": {
+        "transmission": "6-speed manual",
+        "transmission_type": null,
+        "gear_count": null,
+        "drivetrain": "fwd",
+        "differential_type": null
+      },
+      "performance": {
+        "acceleration_0_100_s": null,
+        "top_speed_kmh": null,
+        "braking_100_0_m": null,
+        "power_to_weight_kw_per_t": null
+      },
+      "official_efficiency": {
+        "homologation_cycle": null,
+        "consumption_l_100km": 5.0,
+        "energy_consumption_kwh_100km": null,
+        "co2_g_km": 113,
+        "euro_emission_standard": "Euro 6e"
+      },
+      "maintenance_schedule": [],
+      "safety": {
+        "ratings": [],
+        "adas": [],
+        "equipment": []
+      },
+      "technology_comfort": [],
+      "media": []
     }
-  ]
+  ],
+  "provenance": []
 }
 ```
 
@@ -490,9 +612,12 @@ Response:
 
 ## Advisor
 
+The persisted conversational contract that incrementally builds an Advisor
+request is documented separately in `docs/guided-decision-contract.md`.
+
 ### POST /advisor/recommendations
 
-Creates a deterministic Advisor v2 run from reviewed, imported Italian catalog
+Creates a deterministic Advisor v3 run from reviewed, imported Italian catalog
 offers. It does not call an LLM, search documents, generate embeddings, or
 ingest external data.
 
@@ -538,16 +663,24 @@ omitted, it defaults to 10,000 for city/new-driver, 14,000 for family, and
 Allowed `priorities` values:
 
 - `price`
+- `budget`
 - `efficiency_range`
 - `space`
 - `running_cost`
+- `family`
+- `reliability`
+- `safety`
+- `comfort`
+- `performance`
+- `technology`
+- `powertrain_fit`
 
 Example response:
 
 ```json
 {
   "run_id": "50000000-0000-4000-8000-000000000001",
-  "scoring_version": "advisor-v2.0",
+  "scoring_version": "advisor-v3.0",
   "assumptions": [
     "Annual distance: 10000 km (default for primary_use=city); used only for the annual energy-cost estimate.",
     "The running_cost component covers energy only; maintenance, tax, insurance, depreciation, and financing are excluded.",
@@ -555,6 +688,7 @@ Example response:
     "it-energy-2026-07-16-v1: ARERA electricity reference..."
   ],
   "excluded_counts_by_reason": {"stale_offer": 2},
+  "insufficient_data_counts_by_reason": {"powertrain_fit": 1},
   "groups": [
     {
       "condition": "new",
@@ -564,6 +698,23 @@ Example response:
           "selected_spec": {"id": "...", "variant_key": "..."},
           "offer": {"id": "...", "spec_id": "...", "price_eur": 17500},
           "score": 86.42,
+          "decision_status": "complete",
+          "decision_score": 86.42,
+          "decision_confidence": 78.5,
+          "structural_fit": 88.0,
+          "preference_fit": 83.5,
+          "pillar_scores": {"economics": 90.0, "practicality": 82.0, "reliability_safety": 78.0, "driving": 80.0, "technology": 76.0, "powertrain_fit": 86.0},
+          "penalties": [],
+          "missing_factors": [],
+          "warnings": [],
+          "module_versions": {"scoring": "advisor-v3.0", "tco": "tco-v1", "powertrain_fit": "powertrain-fit-v1"},
+          "score_composition": {
+            "structural_fit_weight": 65,
+            "preference_fit_weight": 35,
+            "pillar_weights": {"economics": 0.266667, "practicality": 0.177778, "reliability_safety": 0.222222, "driving": 0.111111, "technology": 0.111111, "powertrain_fit": 0.111111},
+            "pillar_components": {"economics": {"price_fit": 0.45, "tco": 0.4, "running_cost": 0.15}, "practicality": {"category_fit": 0.22, "usage_fit": 0.33, "family_fit": 0.25, "garage_fit": 0.2}, "reliability_safety": {"reliability": 0.58, "safety": 0.42}, "driving": {"comfort": 0.48, "sport": 0.22, "travel": 0.3}, "technology": {"technology": 1.0}, "powertrain_fit": {"powertrain_fit": 1.0}},
+            "preference_weights": [0.5, 0.3, 0.2]
+          },
           "component_scores": {
             "price_fit": 89,
             "use_case_fit": 100,
@@ -593,13 +744,19 @@ Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,
 and backed by spec provenance. Price, model-family identity, body, fuel, seats,
 cargo, and powertrain consumption evidence are required. Used/certified offers
-also require mileage. PHEVs are excluded, as are highway EVs below 250 km WLTP.
-`budget_min_eur`, the 110% maximum-budget tolerance, and used `max_mileage` are
-hard constraints; fuel and body preferences are soft.
+also require mileage. Recognized powertrains are assessed or marked
+`insufficient_data`; PHEVs and highway EVs are not blanket exclusions. The
+powertrain module requires relevant consumption, range, usage, distance, and
+charging inputs. `budget_min_eur`, the 110% maximum-budget tolerance, and used
+`max_mileage` are hard constraints by default; fuel and body preferences are
+soft unless the request selects hard mode.
 
-Base component weights are price 30, use case 25, running cost 20, space 15,
-and efficiency/range 10. Each selected priority multiplies its component weight
-by 1.5, then all weights are normalized to 100. Component formulas are fixed:
+The v3 structural pillar weights are Economics 26.6667%, Practicality
+17.7778%, Reliability and Safety 22.2222%, Driving 11.1111%, Technology
+11.1111%, and Powertrain Fit 11.1111%. Available pillars are renormalized when
+data is missing. Legacy `component_scores` remain in the response for client
+compatibility. Their values are no longer the v3 ranking formula. Component
+details for the retained legacy component fields are fixed:
 
 - price is 100 through 75% of budget, falls linearly to 70 at budget, then to 0 at 110%;
 - use case is 60% body/use matrix, 20% fuel preference, and 20% body preference;
@@ -608,11 +765,21 @@ by 1.5, then all weights are normalized to 100. Component formulas are fixed:
 - liquid efficiency is linear from 100 at 4 L/100 km to 0 at 8;
 - EV efficiency/range averages the 14-24 kWh/100 km and 150-500 km curves.
 
+The complete v3 score is `65% Structural Fit + 35% Preference Fit`, with six
+pillars and ordered preference weights of `50% / 30% / 20%`. If required data
+is missing, the response reports `decision_status=insufficient_data`, a null
+`decision_score`, explicit `missing_factors`, and a provisional legacy `score`
+containing Structural Fit. See [`advisor-v3.md`](advisor-v3.md) for module
+versions, TCO assumptions, specialist prerequisites, audit fields, and the
+limits of the synthetic benchmark.
+
 Positive factors require a component score of at least 80; tradeoffs require a
 score below 70. Any soft budget overrun is always reported with exact euros and
 percentage. Offers are ranked before keeping the best offer per
-`model_family_key`; at most five are returned per group. Stable ties use score,
-price, make, model, then listing ID.
+`model_family_key`; at most five are returned per group. Complete items sort
+before insufficient-data items. Within each status, stable ties use effective
+score, confidence, price, mileage with missing last, listing reference, then
+listing ID.
 
 ### POST /advisor/model-analysis
 

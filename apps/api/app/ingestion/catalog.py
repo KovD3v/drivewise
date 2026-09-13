@@ -8,7 +8,14 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 from uuid import UUID, uuid5
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from psycopg.types.json import Jsonb
 
 
@@ -19,6 +26,10 @@ VEHICLE_NAMESPACE = UUID("e98062b5-c1e1-43bc-95d3-d5fb5ef042bc")
 VARIANT_NAMESPACE = UUID("71b24cbd-74bb-4642-8a10-529085772138")
 LISTING_NAMESPACE = UUID("a057c2aa-7b3f-4d87-91cb-b3e68318d9bf")
 PROVENANCE_NAMESPACE = UUID("90eae936-2713-4238-b508-3189252f640e")
+MAINTENANCE_ITEM_NAMESPACE = UUID("b4cbf797-413c-4ee5-b152-1e483fa73572")
+SAFETY_RATING_NAMESPACE = UUID("ac53e762-849a-49fa-9ef1-3dc003379119")
+FEATURE_NAMESPACE = UUID("422e3e4d-2895-49a5-9b3a-fc2e93c31e21")
+MEDIA_ASSET_NAMESPACE = UUID("d18a36ee-6e46-4379-90d1-93cbb1ed30b9")
 CatalogFuelType = Literal[
     "diesel",
     "electric",
@@ -27,6 +38,7 @@ CatalogFuelType = Literal[
     "mild_hybrid_petrol",
     "petrol",
     "petrol_lpg",
+    "plug_in_hybrid_petrol",
 ]
 CatalogBodyStyle = Literal[
     "city_car",
@@ -72,6 +84,36 @@ VARIANT_PROVENANCE_FIELDS = (
     "euro_emission_standard",
     "seats",
     "cargo_volume_liters",
+    "generation_name",
+    "restyling_label",
+    "category",
+    "doors",
+    "length_mm",
+    "width_mm",
+    "height_mm",
+    "wheelbase_mm",
+    "curb_weight_kg",
+    "gross_weight_kg",
+    "payload_kg",
+    "engine_code",
+    "displacement_cc",
+    "cylinders",
+    "power_kw",
+    "torque_nm",
+    "battery_usable_kwh",
+    "transmission_type",
+    "gear_count",
+    "differential_type",
+    "acceleration_0_100_s",
+    "top_speed_kmh",
+    "braking_100_0_m",
+    "homologation_cycle",
+)
+PROFILE_COLLECTION_FIELDS = (
+    "maintenance_schedule",
+    "safety_ratings",
+    "features",
+    "media",
 )
 
 
@@ -123,7 +165,7 @@ class ProvenanceClaim(StrictModel):
     @field_validator("source_url")
     @classmethod
     def validate_source_url(cls, value: str) -> str:
-        return _validate_url(value)
+        return _validate_https_url(value)
 
     @field_validator("observed_at")
     @classmethod
@@ -153,7 +195,7 @@ class ProvenancedRecord(StrictModel):
     @field_validator("source_url")
     @classmethod
     def validate_source_url(cls, value: str) -> str:
-        return _validate_url(value)
+        return _validate_https_url(value)
 
     @field_validator("observed_at")
     @classmethod
@@ -163,12 +205,95 @@ class ProvenancedRecord(StrictModel):
         return value
 
 
+class ChildSourceRecord(StrictModel):
+    source_key: str = Field(min_length=1, max_length=160)
+    source_url: str
+    observed_at: datetime
+
+    @field_validator("source_key")
+    @classmethod
+    def validate_source_key(cls, value: str) -> str:
+        return _validate_key(value, "source_key")
+
+    @field_validator("source_url")
+    @classmethod
+    def validate_source_url(cls, value: str) -> str:
+        url = _validate_url(value)
+        if not url.startswith("https://"):
+            raise ValueError("child source URL must use https")
+        return url
+
+    @field_validator("observed_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("observed_at must include a timezone")
+        return value
+
+
+class MaintenanceRecord(ChildSourceRecord):
+    operation_code: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=240)
+    interval_km: int | None = Field(default=None, strict=True, gt=0, le=2_000_000)
+    interval_months: int | None = Field(default=None, strict=True, gt=0, le=1_200)
+    notes: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def require_interval(self):
+        if self.interval_km is None and self.interval_months is None:
+            raise ValueError("maintenance item requires an interval")
+        return self
+
+
+class SafetyRatingRecord(ChildSourceRecord):
+    assessment_system: str = Field(min_length=1, max_length=80)
+    assessment_year: int = Field(strict=True, ge=1990, le=2100)
+    overall_stars: int | None = Field(default=None, strict=True, ge=0, le=5)
+    adult_occupant_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+    child_occupant_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+    vulnerable_road_users_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+    safety_assist_percent: int | None = Field(
+        default=None, strict=True, ge=0, le=100
+    )
+
+
+class FeatureRecord(ChildSourceRecord):
+    feature_key: str = Field(min_length=1, max_length=160)
+    category: Literal["adas", "safety", "technology", "comfort"]
+    name: str = Field(min_length=1, max_length=240)
+    availability: Literal["standard", "optional"]
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class MediaRecord(ChildSourceRecord):
+    asset_key: str = Field(min_length=1, max_length=160)
+    asset_type: Literal["photo", "brochure", "manual"]
+    title: str = Field(min_length=1, max_length=240)
+    url: str
+    mime_type: str | None = Field(default=None, max_length=120)
+    locale: str | None = Field(default=None, max_length=20)
+
+    @field_validator("url")
+    @classmethod
+    def require_https(cls, value: str) -> str:
+        url = _validate_url(value)
+        if not url.startswith("https://"):
+            raise ValueError("media URL must use https")
+        return url
+
+
 class VehicleRecord(ProvenancedRecord):
     canonical_key: str = Field(min_length=1, max_length=200)
     model_family_key: str = Field(min_length=1, max_length=160)
     make: str = Field(min_length=1, max_length=100)
     model: str = Field(min_length=1, max_length=120)
-    model_year: int = Field(ge=1980, le=2100)
+    model_year: int = Field(strict=True, ge=1980, le=2100)
     market: str = Field(default="IT", min_length=2, max_length=8)
     provenance_claims: list[ProvenanceClaim] = Field(default_factory=list)
 
@@ -187,22 +312,60 @@ class VariantRecord(ProvenancedRecord):
     variant_key: str = Field(min_length=1, max_length=240)
     vehicle_key: str = Field(min_length=1, max_length=200)
     trim: str = Field(min_length=1, max_length=200)
-    is_default: bool = False
+    is_default: bool = Field(default=False, strict=True)
     body_style: CatalogBodyStyle
     fuel_type: CatalogFuelType
-    list_price_eur: float | None = Field(default=None, ge=0)
+    list_price_eur: float | None = Field(default=None, strict=True, ge=0)
     drivetrain: str | None = Field(default=None, max_length=80)
     transmission: str | None = Field(default=None, max_length=120)
     engine: str | None = Field(default=None, max_length=200)
-    horsepower: int | None = Field(default=None, gt=0)
-    battery_kwh: float | None = Field(default=None, gt=0)
-    energy_consumption_kwh_100km: float | None = Field(default=None, gt=0)
-    consumption_l_100km: float | None = Field(default=None, gt=0)
-    wltp_range_km: int | None = Field(default=None, gt=0)
-    co2_g_km: int | None = Field(default=None, ge=0)
+    horsepower: int | None = Field(default=None, strict=True, gt=0)
+    battery_kwh: float | None = Field(default=None, strict=True, gt=0)
+    energy_consumption_kwh_100km: float | None = Field(
+        default=None, strict=True, gt=0
+    )
+    consumption_l_100km: float | None = Field(default=None, strict=True, gt=0)
+    wltp_range_km: int | None = Field(default=None, strict=True, gt=0)
+    co2_g_km: int | None = Field(default=None, strict=True, ge=0)
     euro_emission_standard: str | None = Field(default=None, max_length=80)
-    seats: int = Field(gt=0, le=20)
-    cargo_volume_liters: float = Field(ge=0)
+    seats: int = Field(strict=True, gt=0, le=20)
+    cargo_volume_liters: float = Field(strict=True, ge=0)
+    generation_name: str | None = Field(default=None, max_length=120)
+    restyling_label: str | None = Field(default=None, max_length=120)
+    category: str | None = Field(default=None, max_length=80)
+    doors: int | None = Field(default=None, strict=True, gt=0, le=10)
+    length_mm: int | None = Field(default=None, strict=True, gt=0, le=20_000)
+    width_mm: int | None = Field(default=None, strict=True, gt=0, le=5_000)
+    height_mm: int | None = Field(default=None, strict=True, gt=0, le=5_000)
+    wheelbase_mm: int | None = Field(default=None, strict=True, gt=0, le=12_000)
+    curb_weight_kg: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    gross_weight_kg: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    payload_kg: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    engine_code: str | None = Field(default=None, max_length=120)
+    displacement_cc: int | None = Field(
+        default=None, strict=True, gt=0, le=20_000
+    )
+    cylinders: int | None = Field(default=None, strict=True, gt=0, le=24)
+    power_kw: float | None = Field(default=None, strict=True, gt=0, le=5_000)
+    torque_nm: int | None = Field(default=None, strict=True, gt=0, le=50_000)
+    battery_usable_kwh: float | None = Field(
+        default=None, strict=True, gt=0, le=2_000
+    )
+    transmission_type: str | None = Field(default=None, max_length=80)
+    gear_count: int | None = Field(default=None, strict=True, gt=0, le=30)
+    differential_type: str | None = Field(default=None, max_length=80)
+    acceleration_0_100_s: float | None = Field(
+        default=None, strict=True, gt=0, le=120
+    )
+    top_speed_kmh: int | None = Field(default=None, strict=True, gt=0, le=600)
+    braking_100_0_m: float | None = Field(
+        default=None, strict=True, gt=0, le=200
+    )
+    homologation_cycle: str | None = Field(default=None, max_length=80)
+    maintenance_schedule: list[MaintenanceRecord] = Field(default_factory=list)
+    safety_ratings: list[SafetyRatingRecord] = Field(default_factory=list)
+    features: list[FeatureRecord] = Field(default_factory=list)
+    media: list[MediaRecord] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     provenance_claims: list[ProvenanceClaim] = Field(default_factory=list)
 
@@ -216,13 +379,13 @@ class ListingRecord(ProvenancedRecord):
     listing_ref: str = Field(min_length=1, max_length=240)
     variant_key: str = Field(min_length=1, max_length=240)
     title: str = Field(min_length=1, max_length=300)
-    price_eur: float = Field(ge=0)
-    mileage: int | None = Field(default=None, ge=0)
+    price_eur: float = Field(strict=True, ge=0)
+    mileage: int | None = Field(default=None, strict=True, ge=0)
     condition: Literal["new", "used", "certified"]
     location_region: str | None = Field(default=None, max_length=120)
     listed_at: date | None = None
     valid_until: datetime | None = None
-    is_active: bool = True
+    is_active: bool = Field(default=True, strict=True)
     raw_payload: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("variant_key")
@@ -354,6 +517,32 @@ def validate_catalog(payload: CatalogPayload) -> CatalogSummary:
             )
         variants_by_vehicle[variant.vehicle_key].append(variant)
 
+    for variant in payload.variants:
+        child_groups = [
+            ("maintenance operation_code", variant.maintenance_schedule, "operation_code"),
+            ("safety assessment", variant.safety_ratings, None),
+            ("feature_key", variant.features, "feature_key"),
+            ("media asset_key", variant.media, "asset_key"),
+        ]
+        for label, records, key_name in child_groups:
+            for record in records:
+                if record.source_key not in source_keys:
+                    raise CatalogValidationError(
+                        f"{label} references unknown source_key: {record.source_key}"
+                    )
+            if key_name is not None:
+                _require_unique(
+                    f"{variant.variant_key} {label}",
+                    [getattr(record, key_name) for record in records],
+                )
+        _require_unique(
+            f"{variant.variant_key} safety assessment",
+            [
+                f"{record.assessment_system}:{record.assessment_year}"
+                for record in variant.safety_ratings
+            ],
+        )
+
     for vehicle_key, variants in variants_by_vehicle.items():
         default_count = sum(variant.is_default for variant in variants)
         if default_count != 1:
@@ -385,7 +574,15 @@ def validate_catalog(payload: CatalogPayload) -> CatalogSummary:
 
 
 def compute_catalog_hash(payload: CatalogPayload) -> str:
-    return _content_hash(payload.model_dump(mode="json"))
+    return _content_hash(
+        {
+            "payload": payload.model_dump(mode="json"),
+            "variant_profile_collection_presence": {
+                variant.variant_key: _profile_collection_presence(variant)
+                for variant in payload.variants
+            },
+        }
+    )
 
 
 def import_catalog(
@@ -396,19 +593,21 @@ def import_catalog(
 ) -> CatalogImportResult:
     summary = validate_catalog(payload)
     dataset_hash = compute_catalog_hash(payload)
-    existing_run = conn.execute(
+    current_run = conn.execute(
         """
-        SELECT id
+        SELECT id, dataset_hash
         FROM import_runs
-        WHERE dataset_hash = %s AND status = 'completed'
-        ORDER BY completed_at DESC
+        WHERE status = 'completed'
+        ORDER BY completed_at DESC, started_at DESC, id DESC
         LIMIT 1
         """,
-        (dataset_hash,),
     ).fetchone()
-    if existing_run is not None:
+    if (
+        current_run is not None
+        and _row_value(current_run, "dataset_hash") == dataset_hash
+    ):
         return CatalogImportResult(
-            run_id=_row_value(existing_run, "id"),
+            run_id=_row_value(current_run, "id"),
             dataset_hash=dataset_hash,
             status="unchanged",
             counts=ImportCounts(
@@ -658,7 +857,12 @@ def _upsert_variants(
 
     variant_ids: dict[str, UUID] = {}
     for variant in variants:
-        content_hash = _content_hash(variant.model_dump(mode="json"))
+        content_hash = _content_hash(
+            {
+                "variant": variant.model_dump(mode="json"),
+                "profile_collection_presence": _profile_collection_presence(variant),
+            }
+        )
         existing = conn.execute(
             """
             SELECT
@@ -697,11 +901,21 @@ def _upsert_variants(
               fuel_type, list_price_eur, drivetrain, transmission, engine,
               horsepower, battery_kwh, energy_consumption_kwh_100km,
               consumption_l_100km, wltp_range_km, co2_g_km,
-              euro_emission_standard, seats, cargo_volume_liters, metadata
+              euro_emission_standard, seats, cargo_volume_liters,
+              generation_name, restyling_label, category, doors, length_mm,
+              width_mm, height_mm, wheelbase_mm, curb_weight_kg,
+              gross_weight_kg, payload_kg, engine_code, displacement_cc,
+              cylinders, power_kw, torque_nm, battery_usable_kwh,
+              transmission_type, gear_count, differential_type,
+              acceleration_0_100_s, top_speed_kmh, braking_100_0_m,
+              homologation_cycle, metadata
             )
             VALUES (
-              %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-              %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
             ON CONFLICT (variant_key) DO UPDATE SET
               vehicle_id = EXCLUDED.vehicle_id,
@@ -722,6 +936,30 @@ def _upsert_variants(
               euro_emission_standard = EXCLUDED.euro_emission_standard,
               seats = EXCLUDED.seats,
               cargo_volume_liters = EXCLUDED.cargo_volume_liters,
+              generation_name = EXCLUDED.generation_name,
+              restyling_label = EXCLUDED.restyling_label,
+              category = EXCLUDED.category,
+              doors = EXCLUDED.doors,
+              length_mm = EXCLUDED.length_mm,
+              width_mm = EXCLUDED.width_mm,
+              height_mm = EXCLUDED.height_mm,
+              wheelbase_mm = EXCLUDED.wheelbase_mm,
+              curb_weight_kg = EXCLUDED.curb_weight_kg,
+              gross_weight_kg = EXCLUDED.gross_weight_kg,
+              payload_kg = EXCLUDED.payload_kg,
+              engine_code = EXCLUDED.engine_code,
+              displacement_cc = EXCLUDED.displacement_cc,
+              cylinders = EXCLUDED.cylinders,
+              power_kw = EXCLUDED.power_kw,
+              torque_nm = EXCLUDED.torque_nm,
+              battery_usable_kwh = EXCLUDED.battery_usable_kwh,
+              transmission_type = EXCLUDED.transmission_type,
+              gear_count = EXCLUDED.gear_count,
+              differential_type = EXCLUDED.differential_type,
+              acceleration_0_100_s = EXCLUDED.acceleration_0_100_s,
+              top_speed_kmh = EXCLUDED.top_speed_kmh,
+              braking_100_0_m = EXCLUDED.braking_100_0_m,
+              homologation_cycle = EXCLUDED.homologation_cycle,
               metadata = EXCLUDED.metadata,
               updated_at = now()
             RETURNING id
@@ -747,11 +985,36 @@ def _upsert_variants(
                 variant.euro_emission_standard,
                 variant.seats,
                 variant.cargo_volume_liters,
+                variant.generation_name,
+                variant.restyling_label,
+                variant.category,
+                variant.doors,
+                variant.length_mm,
+                variant.width_mm,
+                variant.height_mm,
+                variant.wheelbase_mm,
+                variant.curb_weight_kg,
+                variant.gross_weight_kg,
+                variant.payload_kg,
+                variant.engine_code,
+                variant.displacement_cc,
+                variant.cylinders,
+                variant.power_kw,
+                variant.torque_nm,
+                variant.battery_usable_kwh,
+                variant.transmission_type,
+                variant.gear_count,
+                variant.differential_type,
+                variant.acceleration_0_100_s,
+                variant.top_speed_kmh,
+                variant.braking_100_0_m,
+                variant.homologation_cycle,
                 Jsonb(variant.metadata),
             ),
         ).fetchone()
         variant_id = _row_value(row, "id")
         variant_ids[variant.variant_key] = variant_id
+        _sync_variant_profile_children(conn, variant, variant_id, source_ids)
         _replace_provenance_set(
             conn,
             table="vehicle_spec_provenance",
@@ -764,6 +1027,231 @@ def _upsert_variants(
             source_ids=source_ids,
         )
     return variant_ids
+
+
+def _sync_variant_profile_children(
+    conn,
+    variant: VariantRecord,
+    spec_id: UUID,
+    source_ids: dict[str, UUID],
+) -> None:
+    configurations = (
+        (
+            "maintenance_schedule",
+            "vehicle_maintenance_items",
+            variant.maintenance_schedule,
+            lambda record: record.operation_code,
+            _upsert_maintenance_item,
+        ),
+        (
+            "safety_ratings",
+            "vehicle_safety_ratings",
+            variant.safety_ratings,
+            lambda record: f"{record.assessment_system}:{record.assessment_year}",
+            _upsert_safety_rating,
+        ),
+        (
+            "features",
+            "vehicle_features",
+            variant.features,
+            lambda record: record.feature_key,
+            _upsert_feature,
+        ),
+        (
+            "media",
+            "vehicle_media_assets",
+            variant.media,
+            lambda record: record.asset_key,
+            _upsert_media_asset,
+        ),
+    )
+    for field_name, table, records, _key_function, upsert in configurations:
+        if field_name not in variant.model_fields_set:
+            continue
+        retained_ids = [
+            upsert(conn, spec_id, record, source_ids[record.source_key])
+            for record in records
+        ]
+        if retained_ids:
+            conn.execute(
+                f"DELETE FROM {table} WHERE spec_id = %s AND id <> ALL(%s)",
+                (spec_id, retained_ids),
+            )
+        else:
+            conn.execute(f"DELETE FROM {table} WHERE spec_id = %s", (spec_id,))
+
+
+def _upsert_maintenance_item(
+    conn,
+    spec_id: UUID,
+    record: MaintenanceRecord,
+    source_id: UUID,
+) -> UUID:
+    item_id = uuid5(
+        MAINTENANCE_ITEM_NAMESPACE,
+        f"{spec_id}:{record.operation_code}",
+    )
+    conn.execute(
+        """
+        INSERT INTO vehicle_maintenance_items (
+          id, spec_id, operation_code, title, interval_km, interval_months,
+          notes, source_id, source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, operation_code) DO UPDATE SET
+          title = EXCLUDED.title,
+          interval_km = EXCLUDED.interval_km,
+          interval_months = EXCLUDED.interval_months,
+          notes = EXCLUDED.notes,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            item_id,
+            spec_id,
+            record.operation_code,
+            record.title,
+            record.interval_km,
+            record.interval_months,
+            record.notes,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return item_id
+
+
+def _upsert_safety_rating(
+    conn,
+    spec_id: UUID,
+    record: SafetyRatingRecord,
+    source_id: UUID,
+) -> UUID:
+    rating_id = uuid5(
+        SAFETY_RATING_NAMESPACE,
+        f"{spec_id}:{record.assessment_system}:{record.assessment_year}",
+    )
+    conn.execute(
+        """
+        INSERT INTO vehicle_safety_ratings (
+          id, spec_id, assessment_system, assessment_year, overall_stars,
+          adult_occupant_percent, child_occupant_percent,
+          vulnerable_road_users_percent, safety_assist_percent, source_id,
+          source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, assessment_system, assessment_year) DO UPDATE SET
+          overall_stars = EXCLUDED.overall_stars,
+          adult_occupant_percent = EXCLUDED.adult_occupant_percent,
+          child_occupant_percent = EXCLUDED.child_occupant_percent,
+          vulnerable_road_users_percent = EXCLUDED.vulnerable_road_users_percent,
+          safety_assist_percent = EXCLUDED.safety_assist_percent,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            rating_id,
+            spec_id,
+            record.assessment_system,
+            record.assessment_year,
+            record.overall_stars,
+            record.adult_occupant_percent,
+            record.child_occupant_percent,
+            record.vulnerable_road_users_percent,
+            record.safety_assist_percent,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return rating_id
+
+
+def _upsert_feature(
+    conn,
+    spec_id: UUID,
+    record: FeatureRecord,
+    source_id: UUID,
+) -> UUID:
+    feature_id = uuid5(FEATURE_NAMESPACE, f"{spec_id}:{record.feature_key}")
+    conn.execute(
+        """
+        INSERT INTO vehicle_features (
+          id, spec_id, feature_key, category, name, availability, notes,
+          source_id, source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, feature_key) DO UPDATE SET
+          category = EXCLUDED.category,
+          name = EXCLUDED.name,
+          availability = EXCLUDED.availability,
+          notes = EXCLUDED.notes,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            feature_id,
+            spec_id,
+            record.feature_key,
+            record.category,
+            record.name,
+            record.availability,
+            record.notes,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return feature_id
+
+
+def _upsert_media_asset(
+    conn,
+    spec_id: UUID,
+    record: MediaRecord,
+    source_id: UUID,
+) -> UUID:
+    asset_id = uuid5(MEDIA_ASSET_NAMESPACE, f"{spec_id}:{record.asset_key}")
+    conn.execute(
+        """
+        INSERT INTO vehicle_media_assets (
+          id, spec_id, asset_key, asset_type, title, url, mime_type, locale,
+          source_id, source_url, observed_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (spec_id, asset_key) DO UPDATE SET
+          asset_type = EXCLUDED.asset_type,
+          title = EXCLUDED.title,
+          url = EXCLUDED.url,
+          mime_type = EXCLUDED.mime_type,
+          locale = EXCLUDED.locale,
+          source_id = EXCLUDED.source_id,
+          source_url = EXCLUDED.source_url,
+          observed_at = EXCLUDED.observed_at,
+          updated_at = now()
+        """,
+        (
+            asset_id,
+            spec_id,
+            record.asset_key,
+            record.asset_type,
+            record.title,
+            record.url,
+            record.mime_type,
+            record.locale,
+            source_id,
+            record.source_url,
+            record.observed_at,
+        ),
+    )
+    return asset_id
 
 
 def _sync_vehicle_mirrors(
@@ -1075,6 +1563,13 @@ def _content_hash(value: Any) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _profile_collection_presence(variant: VariantRecord) -> dict[str, bool]:
+    return {
+        field_name: field_name in variant.model_fields_set
+        for field_name in PROFILE_COLLECTION_FIELDS
+    }
+
+
 def _json_default(value: Any) -> str:
     if isinstance(value, (date, datetime, UUID)):
         return value.isoformat() if not isinstance(value, UUID) else str(value)
@@ -1082,12 +1577,11 @@ def _json_default(value: Any) -> str:
 
 
 def _validate_key(value: str, field_name: str) -> str:
-    normalized = value.strip().lower()
-    if not KEY_PATTERN.fullmatch(normalized):
+    if not KEY_PATTERN.fullmatch(value):
         raise ValueError(
             f"{field_name} must contain only lowercase letters, digits, '.', '_', or '-'"
         )
-    return normalized
+    return value
 
 
 def _validate_url(value: str) -> str:
@@ -1095,6 +1589,13 @@ def _validate_url(value: str) -> str:
     parsed = urlparse(normalized)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("URL must be an absolute http(s) URL")
+    return normalized
+
+
+def _validate_https_url(value: str) -> str:
+    normalized = _validate_url(value)
+    if not normalized.startswith("https://"):
+        raise ValueError("primary source URL must use https")
     return normalized
 
 

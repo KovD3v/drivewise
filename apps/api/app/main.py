@@ -7,7 +7,14 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.dependencies import create_database_pool, get_connection
-from app.api.routers import advisor, documents, listings, search, vehicles
+from app.api.routers import (
+    advisor,
+    documents,
+    guided_decisions,
+    listings,
+    search,
+    vehicles,
+)
 from app.core.config import get_settings
 
 
@@ -36,6 +43,7 @@ app.include_router(listings.router)
 app.include_router(documents.router)
 app.include_router(search.router)
 app.include_router(advisor.router)
+app.include_router(guided_decisions.router)
 
 
 @app.get("/health")
