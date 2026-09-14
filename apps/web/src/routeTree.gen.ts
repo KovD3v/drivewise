@@ -10,24 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VehiclesRouteImport } from './routes/vehicles'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ModelAnalysisRouteImport } from './routes/model-analysis'
 import { Route as ListingsRouteImport } from './routes/listings'
 import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesVehicleIdRouteImport } from './routes/vehicles_.$vehicleId'
 import { Route as ListingsListingIdRouteImport } from './routes/listings_.$listingId'
 import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
+import { Route as AppStartRouteImport } from './routes/app.start'
+import { Route as AppReportRouteImport } from './routes/app.report'
+import { Route as AppCompareRouteImport } from './routes/app.compare'
+import { Route as AppMeIndexRouteImport } from './routes/app.me.index'
+import { Route as AppVehicleIdRouteImport } from './routes/app.vehicle.$id'
+import { Route as AppMeSlugRouteImport } from './routes/app.me.$slug'
 
 const VehiclesRoute = VehiclesRouteImport.update({
   id: '/vehicles',
   path: '/vehicles',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModelAnalysisRoute = ModelAnalysisRouteImport.update({
@@ -43,6 +62,11 @@ const ListingsRoute = ListingsRouteImport.update({
 const DocumentsRoute = DocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdvisorRoute = AdvisorRouteImport.update({
@@ -70,94 +94,187 @@ const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
   path: '/documents/$documentId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppStartRoute = AppStartRouteImport.update({
+  id: '/app/start',
+  path: '/app/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppReportRoute = AppReportRouteImport.update({
+  id: '/app/report',
+  path: '/app/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppCompareRoute = AppCompareRouteImport.update({
+  id: '/app/compare',
+  path: '/app/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppMeIndexRoute = AppMeIndexRouteImport.update({
+  id: '/app/me/',
+  path: '/app/me/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppVehicleIdRoute = AppVehicleIdRouteImport.update({
+  id: '/app/vehicle/$id',
+  path: '/app/vehicle/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppMeSlugRoute = AppMeSlugRouteImport.update({
+  id: '/app/me/$slug',
+  path: '/app/me/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
+  '/contact': typeof ContactRoute
   '/documents': typeof DocumentsRoute
   '/listings': typeof ListingsRoute
   '/model-analysis': typeof ModelAnalysisRoute
+  '/privacy': typeof PrivacyRoute
   '/search': typeof SearchRoute
+  '/terms': typeof TermsRoute
   '/vehicles': typeof VehiclesRoute
+  '/app/compare': typeof AppCompareRoute
+  '/app/report': typeof AppReportRoute
+  '/app/start': typeof AppStartRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/vehicles/$vehicleId': typeof VehiclesVehicleIdRoute
+  '/app/me/$slug': typeof AppMeSlugRoute
+  '/app/vehicle/$id': typeof AppVehicleIdRoute
+  '/app/me/': typeof AppMeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
+  '/contact': typeof ContactRoute
   '/documents': typeof DocumentsRoute
   '/listings': typeof ListingsRoute
   '/model-analysis': typeof ModelAnalysisRoute
+  '/privacy': typeof PrivacyRoute
   '/search': typeof SearchRoute
+  '/terms': typeof TermsRoute
   '/vehicles': typeof VehiclesRoute
+  '/app/compare': typeof AppCompareRoute
+  '/app/report': typeof AppReportRoute
+  '/app/start': typeof AppStartRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/vehicles/$vehicleId': typeof VehiclesVehicleIdRoute
+  '/app/me/$slug': typeof AppMeSlugRoute
+  '/app/vehicle/$id': typeof AppVehicleIdRoute
+  '/app/me': typeof AppMeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
+  '/contact': typeof ContactRoute
   '/documents': typeof DocumentsRoute
   '/listings': typeof ListingsRoute
   '/model-analysis': typeof ModelAnalysisRoute
+  '/privacy': typeof PrivacyRoute
   '/search': typeof SearchRoute
+  '/terms': typeof TermsRoute
   '/vehicles': typeof VehiclesRoute
+  '/app/compare': typeof AppCompareRoute
+  '/app/report': typeof AppReportRoute
+  '/app/start': typeof AppStartRoute
   '/documents_/$documentId': typeof DocumentsDocumentIdRoute
   '/listings_/$listingId': typeof ListingsListingIdRoute
   '/vehicles_/$vehicleId': typeof VehiclesVehicleIdRoute
+  '/app/me/$slug': typeof AppMeSlugRoute
+  '/app/vehicle/$id': typeof AppVehicleIdRoute
+  '/app/me/': typeof AppMeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/advisor'
+    | '/contact'
     | '/documents'
     | '/listings'
     | '/model-analysis'
+    | '/privacy'
     | '/search'
+    | '/terms'
     | '/vehicles'
+    | '/app/compare'
+    | '/app/report'
+    | '/app/start'
     | '/documents/$documentId'
     | '/listings/$listingId'
     | '/vehicles/$vehicleId'
+    | '/app/me/$slug'
+    | '/app/vehicle/$id'
+    | '/app/me/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/advisor'
+    | '/contact'
     | '/documents'
     | '/listings'
     | '/model-analysis'
+    | '/privacy'
     | '/search'
+    | '/terms'
     | '/vehicles'
+    | '/app/compare'
+    | '/app/report'
+    | '/app/start'
     | '/documents/$documentId'
     | '/listings/$listingId'
     | '/vehicles/$vehicleId'
+    | '/app/me/$slug'
+    | '/app/vehicle/$id'
+    | '/app/me'
   id:
     | '__root__'
     | '/'
     | '/advisor'
+    | '/contact'
     | '/documents'
     | '/listings'
     | '/model-analysis'
+    | '/privacy'
     | '/search'
+    | '/terms'
     | '/vehicles'
+    | '/app/compare'
+    | '/app/report'
+    | '/app/start'
     | '/documents_/$documentId'
     | '/listings_/$listingId'
     | '/vehicles_/$vehicleId'
+    | '/app/me/$slug'
+    | '/app/vehicle/$id'
+    | '/app/me/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdvisorRoute: typeof AdvisorRoute
+  ContactRoute: typeof ContactRoute
   DocumentsRoute: typeof DocumentsRoute
   ListingsRoute: typeof ListingsRoute
   ModelAnalysisRoute: typeof ModelAnalysisRoute
+  PrivacyRoute: typeof PrivacyRoute
   SearchRoute: typeof SearchRoute
+  TermsRoute: typeof TermsRoute
   VehiclesRoute: typeof VehiclesRoute
+  AppCompareRoute: typeof AppCompareRoute
+  AppReportRoute: typeof AppReportRoute
+  AppStartRoute: typeof AppStartRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
   ListingsListingIdRoute: typeof ListingsListingIdRoute
   VehiclesVehicleIdRoute: typeof VehiclesVehicleIdRoute
+  AppMeSlugRoute: typeof AppMeSlugRoute
+  AppVehicleIdRoute: typeof AppVehicleIdRoute
+  AppMeIndexRoute: typeof AppMeIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -169,11 +286,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VehiclesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/model-analysis': {
@@ -195,6 +326,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/advisor': {
@@ -232,20 +370,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsDocumentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/start': {
+      id: '/app/start'
+      path: '/app/start'
+      fullPath: '/app/start'
+      preLoaderRoute: typeof AppStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/report': {
+      id: '/app/report'
+      path: '/app/report'
+      fullPath: '/app/report'
+      preLoaderRoute: typeof AppReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/compare': {
+      id: '/app/compare'
+      path: '/app/compare'
+      fullPath: '/app/compare'
+      preLoaderRoute: typeof AppCompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/me/': {
+      id: '/app/me/'
+      path: '/app/me'
+      fullPath: '/app/me/'
+      preLoaderRoute: typeof AppMeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/vehicle/$id': {
+      id: '/app/vehicle/$id'
+      path: '/app/vehicle/$id'
+      fullPath: '/app/vehicle/$id'
+      preLoaderRoute: typeof AppVehicleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/me/$slug': {
+      id: '/app/me/$slug'
+      path: '/app/me/$slug'
+      fullPath: '/app/me/$slug'
+      preLoaderRoute: typeof AppMeSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdvisorRoute: AdvisorRoute,
+  ContactRoute: ContactRoute,
   DocumentsRoute: DocumentsRoute,
   ListingsRoute: ListingsRoute,
   ModelAnalysisRoute: ModelAnalysisRoute,
+  PrivacyRoute: PrivacyRoute,
   SearchRoute: SearchRoute,
+  TermsRoute: TermsRoute,
   VehiclesRoute: VehiclesRoute,
+  AppCompareRoute: AppCompareRoute,
+  AppReportRoute: AppReportRoute,
+  AppStartRoute: AppStartRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
   ListingsListingIdRoute: ListingsListingIdRoute,
   VehiclesVehicleIdRoute: VehiclesVehicleIdRoute,
+  AppMeSlugRoute: AppMeSlugRoute,
+  AppVehicleIdRoute: AppVehicleIdRoute,
+  AppMeIndexRoute: AppMeIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
