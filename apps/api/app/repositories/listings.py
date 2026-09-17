@@ -72,12 +72,14 @@ class ListingsRepository:
               v.make,
               v.model,
               v.model_year,
+              v.catalog_version, v.vehicle_type, v.generation_key, v.phase_key,
               COALESCE(spec.body_style, v.body_style) AS body_style,
               COALESCE(spec.fuel_type, v.fuel_type) AS fuel_type,
               v.market,
               COALESCE(spec.list_price_eur, v.base_price_eur) AS base_price_eur,
               spec.id AS spec_id_nested,
               spec.variant_key,
+              spec.catalog_version AS spec_catalog_version,
               spec.is_default,
               spec.trim,
               spec.body_style AS spec_body_style,
@@ -98,7 +100,7 @@ class ListingsRepository:
             FROM listings l
             JOIN vehicles v ON v.id = l.vehicle_id
             JOIN sources source ON source.id = l.source_id
-            LEFT JOIN vehicle_specs spec
+            LEFT JOIN catalog_read_specs spec
               ON spec.id = l.spec_id AND spec.vehicle_id = l.vehicle_id
             {where_sql}
             ORDER BY l.listed_at DESC NULLS LAST, l.created_at DESC
@@ -139,12 +141,14 @@ class ListingsRepository:
               v.make,
               v.model,
               v.model_year,
+              v.catalog_version, v.vehicle_type, v.generation_key, v.phase_key,
               COALESCE(spec.body_style, v.body_style) AS body_style,
               COALESCE(spec.fuel_type, v.fuel_type) AS fuel_type,
               v.market,
               COALESCE(spec.list_price_eur, v.base_price_eur) AS base_price_eur,
               spec.id AS spec_id_nested,
               spec.variant_key,
+              spec.catalog_version AS spec_catalog_version,
               spec.is_default,
               spec.trim,
               spec.body_style AS spec_body_style,
@@ -165,7 +169,7 @@ class ListingsRepository:
             FROM listings l
             JOIN vehicles v ON v.id = l.vehicle_id
             JOIN sources source ON source.id = l.source_id
-            LEFT JOIN vehicle_specs spec
+            LEFT JOIN catalog_read_specs spec
               ON spec.id = l.spec_id AND spec.vehicle_id = l.vehicle_id
             WHERE l.id = %s
             """,
@@ -207,6 +211,10 @@ class ListingsRepository:
                 "make": row["make"],
                 "model": row["model"],
                 "model_year": row["model_year"],
+                "catalog_version": row.get("catalog_version", 1),
+                "vehicle_type": row.get("vehicle_type"),
+                "generation_key": row.get("generation_key"),
+                "phase_key": row.get("phase_key"),
                 "body_style": row["body_style"],
                 "fuel_type": row["fuel_type"],
                 "market": row["market"],
@@ -221,6 +229,7 @@ class ListingsRepository:
         return {
             "id": row["spec_id_nested"],
             "variant_key": row["variant_key"],
+            "catalog_version": row.get("spec_catalog_version", 1),
             "is_default": row["is_default"],
             "trim": row["trim"],
             "body_style": row["spec_body_style"],

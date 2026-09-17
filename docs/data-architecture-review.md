@@ -6,7 +6,9 @@ Stato: proposta di evoluzione; nessuna migrazione o modifica del runtime eseguit
 Aggiornamento successivo: i primi due passi sono implementati nel
 [contratto catalog v2 e nella migrazione additiva](catalog-v2.md). Le descrizioni
 del codice e dei test sotto documentano il momento della revisione iniziale;
-backfill, pubblicazione e integrazione dei consumatori restano da realizzare.
+il seguito descritto in quel documento aggiunge staging, adozione legacy esplicita,
+pubblicazione e adeguamento dei consumatori API. Scraping e integrazione del
+Decision Engine separato restano fuori da queste PR.
 
 ## Valutazione
 

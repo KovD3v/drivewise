@@ -98,7 +98,7 @@ export function VehicleListPage({
                     {vehicle.make} {vehicle.model}
                   </h2>
                   <p>
-                    {vehicle.model_year} · {vehicle.body_style}
+                    {vehicle.model_year ?? 'Anno non disponibile'} · {vehicle.body_style}
                   </p>
                 </div>
                 <dl className="facts-grid">
@@ -148,11 +148,11 @@ function BrowseHeader({
   )
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dd>{value ?? 'Non disponibile'}</dd>
     </div>
   )
 }

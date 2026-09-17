@@ -16,7 +16,7 @@ export function VehicleDetailPage({ vehicle }: { vehicle: VehicleDetail }) {
             {vehicle.make} {vehicle.model}
           </h1>
           <p className="summary">
-            {vehicle.model_year} · {vehicle.body_style} · {vehicle.fuel_type}
+            {vehicle.model_year ?? 'Anno non disponibile'} · {vehicle.body_style} · {vehicle.fuel_type}
           </p>
         </div>
       </header>
@@ -41,7 +41,7 @@ export function VehicleDetailPage({ vehicle }: { vehicle: VehicleDetail }) {
               {vehicle.specs.map((spec) => (
                 <article className="data-card" key={spec.id}>
                   <div className="card-heading">
-                    <h3>{spec.trim}</h3>
+                    <h3>{spec.trim ?? 'Allestimento non disponibile'}</h3>
                     <p>{spec.engine ?? 'Motore non disponibile'}</p>
                   </div>
                   <dl className="facts-grid">
@@ -113,11 +113,11 @@ export function VehicleDetailPage({ vehicle }: { vehicle: VehicleDetail }) {
   )
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dd>{value ?? 'Non disponibile'}</dd>
     </div>
   )
 }
