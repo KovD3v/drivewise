@@ -74,6 +74,13 @@ Initial cache storage is planned in PostgreSQL. Redis is represented only by env
 
 ## Data Collection
 
+The proposed evolution for sourced specifications, vehicle identity and
+conflict resolution is documented in
+[the September 2026 data architecture review](data-architecture-review.md).
+The first implementation delivers an offline
+[catalog v2 contract and additive evidence storage](catalog-v2.md).
+Publication and consumer integration remain proposed work in the review.
+
 Seed data comes from SQL migrations. Local fixture ingestion reads synthetic `.md`, `.txt`, and `.json` files from `data/fixtures/ingestion` and writes normalized content into `documents` only.
 
 Firecrawl has a dry-run planner and source configuration shape, but no real crawler is active. `python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json` validates source names, types, URLs, limits, and API-key presence without HTTP requests or database writes.

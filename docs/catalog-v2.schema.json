@@ -1,0 +1,956 @@
+{
+  "$defs": {
+    "ExternalReference": {
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Namespace",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "value"
+      ],
+      "title": "ExternalReference",
+      "type": "object"
+    },
+    "FactDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "variant_key": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Variant Key",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "engine_power_kw",
+            "system_power_kw",
+            "continuous_power_kw",
+            "engine_displacement_cc",
+            "cylinders",
+            "battery_gross_kwh",
+            "battery_usable_kwh",
+            "liquid_consumption_l_100km",
+            "electric_consumption_kwh_100km",
+            "electric_range_km",
+            "co2_g_km",
+            "length_mm",
+            "body_width_mm",
+            "width_with_mirrors_mm",
+            "height_mm",
+            "seats",
+            "cargo_volume_liters",
+            "mass_kg",
+            "ac_charge_power_kw",
+            "dc_peak_charge_power_kw"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/MeasurementContext"
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "unknown",
+            "not_applicable",
+            "conflicted"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "selected_observation_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Observation Id"
+        },
+        "evidence_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "supersedes_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Id"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "actor_kind": {
+          "enum": [
+            "human",
+            "rule",
+            "agent"
+          ],
+          "title": "Actor Kind",
+          "type": "string"
+        },
+        "actor_id": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "variant_key",
+        "metric",
+        "context",
+        "status",
+        "reason",
+        "actor_kind",
+        "actor_id",
+        "policy_version",
+        "decided_at"
+      ],
+      "title": "FactDecision",
+      "type": "object"
+    },
+    "MeasurementContext": {
+      "additionalProperties": false,
+      "properties": {
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid To"
+        },
+        "market": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Market",
+          "type": "string"
+        },
+        "procedure": {
+          "anyOf": [
+            {
+              "enum": [
+                "WLTP",
+                "NEDC",
+                "declared",
+                "measured",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Procedure"
+        },
+        "cycle": {
+          "anyOf": [
+            {
+              "enum": [
+                "combined",
+                "urban",
+                "highway",
+                "weighted_combined",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cycle"
+        },
+        "configuration_key": {
+          "anyOf": [
+            {
+              "maxLength": 240,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configuration Key"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "seating_configuration": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seating Configuration"
+        },
+        "battery_condition": {
+          "anyOf": [
+            {
+              "enum": [
+                "charge_depleting",
+                "charge_sustaining",
+                "weighted",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Battery Condition"
+        }
+      },
+      "required": [
+        "market"
+      ],
+      "title": "MeasurementContext",
+      "type": "object"
+    },
+    "SourceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "source_key": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Source Key",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "manual_seed",
+            "public_dataset",
+            "curated_internal"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "market": {
+          "default": "IT",
+          "maxLength": 8,
+          "minLength": 2,
+          "title": "Market",
+          "type": "string"
+        },
+        "ranking_permission": {
+          "enum": [
+            "permitted",
+            "not_permitted",
+            "manual_validation_only"
+          ],
+          "title": "Ranking Permission",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "license": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "License",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "source_key",
+        "name",
+        "source_type",
+        "ranking_permission",
+        "url",
+        "license"
+      ],
+      "title": "SourceRecord",
+      "type": "object"
+    },
+    "SourceSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "source_key": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Source Key",
+          "type": "string"
+        },
+        "url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "artifact_path": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Artifact Path",
+          "type": "string"
+        },
+        "media_type": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "evidence_kind": {
+          "enum": [
+            "sourced",
+            "synthetic",
+            "legacy"
+          ],
+          "title": "Evidence Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_key",
+        "url",
+        "retrieved_at",
+        "content_sha256",
+        "artifact_path",
+        "media_type",
+        "evidence_kind"
+      ],
+      "title": "SourceSnapshot",
+      "type": "object"
+    },
+    "SpecObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "variant_key": {
+          "anyOf": [
+            {
+              "maxLength": 240,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Variant Key"
+        },
+        "candidate_variant_keys": {
+          "items": {
+            "maxLength": 240,
+            "pattern": "^[a-z0-9][a-z0-9._-]*$",
+            "type": "string"
+          },
+          "title": "Candidate Variant Keys",
+          "type": "array"
+        },
+        "metric": {
+          "enum": [
+            "engine_power_kw",
+            "system_power_kw",
+            "continuous_power_kw",
+            "engine_displacement_cc",
+            "cylinders",
+            "battery_gross_kwh",
+            "battery_usable_kwh",
+            "liquid_consumption_l_100km",
+            "electric_consumption_kwh_100km",
+            "electric_range_km",
+            "co2_g_km",
+            "length_mm",
+            "body_width_mm",
+            "width_with_mirrors_mm",
+            "height_mm",
+            "seats",
+            "cargo_volume_liters",
+            "mass_kg",
+            "ac_charge_power_kw",
+            "dc_peak_charge_power_kw"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "raw_value": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "raw_unit": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Raw Unit"
+        },
+        "value_min": {
+          "title": "Value Min",
+          "type": "number"
+        },
+        "value_max": {
+          "title": "Value Max",
+          "type": "number"
+        },
+        "unit": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/MeasurementContext"
+        },
+        "evidence_excerpt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Evidence Excerpt",
+          "type": "string"
+        },
+        "evidence_locator": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Evidence Locator",
+          "type": "string"
+        },
+        "extractor_version": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Extractor Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "snapshot_id",
+        "variant_key",
+        "metric",
+        "raw_value",
+        "raw_unit",
+        "value_min",
+        "value_max",
+        "unit",
+        "context",
+        "evidence_excerpt",
+        "evidence_locator",
+        "extractor_version"
+      ],
+      "title": "SpecObservation",
+      "type": "object",
+      "x-metric-units": {
+        "ac_charge_power_kw": "kW",
+        "battery_gross_kwh": "kWh",
+        "battery_usable_kwh": "kWh",
+        "body_width_mm": "mm",
+        "cargo_volume_liters": "l",
+        "co2_g_km": "g/km",
+        "continuous_power_kw": "kW",
+        "cylinders": "count",
+        "dc_peak_charge_power_kw": "kW",
+        "electric_consumption_kwh_100km": "kWh/100km",
+        "electric_range_km": "km",
+        "engine_displacement_cc": "cm3",
+        "engine_power_kw": "kW",
+        "height_mm": "mm",
+        "length_mm": "mm",
+        "liquid_consumption_l_100km": "l/100km",
+        "mass_kg": "kg",
+        "seats": "count",
+        "system_power_kw": "kW",
+        "width_with_mirrors_mm": "mm"
+      }
+    },
+    "VariantIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid To"
+        },
+        "variant_key": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Variant Key",
+          "type": "string"
+        },
+        "vehicle_key": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Vehicle Key",
+          "type": "string"
+        },
+        "trim": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Trim"
+        },
+        "powertrain_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "ICE",
+                "MHEV",
+                "HEV",
+                "PHEV",
+                "BEV"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Powertrain Type"
+        },
+        "fuel": {
+          "anyOf": [
+            {
+              "enum": [
+                "petrol",
+                "diesel",
+                "electricity",
+                "petrol_lpg",
+                "hydrogen"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fuel"
+        },
+        "transmission": {
+          "anyOf": [
+            {
+              "maxLength": 240,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Transmission"
+        },
+        "drivetrain": {
+          "anyOf": [
+            {
+              "enum": [
+                "FWD",
+                "RWD",
+                "AWD"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Drivetrain"
+        },
+        "engine_code": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Code"
+        },
+        "external_references": {
+          "items": {
+            "$ref": "#/$defs/ExternalReference"
+          },
+          "title": "External References",
+          "type": "array"
+        },
+        "evidence_snapshot_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Snapshot Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant_key",
+        "vehicle_key",
+        "trim",
+        "powertrain_type",
+        "fuel",
+        "transmission",
+        "drivetrain",
+        "evidence_snapshot_ids"
+      ],
+      "title": "VariantIdentity",
+      "type": "object"
+    },
+    "VehicleIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Canonical Key",
+          "type": "string"
+        },
+        "model_family_key": {
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Model Family Key",
+          "type": "string"
+        },
+        "make": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Make",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "vehicle_type": {
+          "enum": [
+            "car",
+            "motorcycle",
+            "scooter"
+          ],
+          "title": "Vehicle Type",
+          "type": "string"
+        },
+        "generation_key": {
+          "anyOf": [
+            {
+              "maxLength": 240,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Generation Key"
+        },
+        "phase_key": {
+          "anyOf": [
+            {
+              "maxLength": 240,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Phase Key"
+        },
+        "body_style": {
+          "anyOf": [
+            {
+              "maxLength": 240,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Body Style"
+        },
+        "model_year": {
+          "anyOf": [
+            {
+              "maximum": 2100,
+              "minimum": 1980,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Year"
+        },
+        "market": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Market",
+          "type": "string"
+        },
+        "evidence_snapshot_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Snapshot Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "model_family_key",
+        "make",
+        "model",
+        "vehicle_type",
+        "generation_key",
+        "phase_key",
+        "body_style",
+        "model_year",
+        "market",
+        "evidence_snapshot_ids"
+      ],
+      "title": "VehicleIdentity",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/SourceRecord"
+      },
+      "minItems": 1,
+      "title": "Sources",
+      "type": "array"
+    },
+    "vehicles": {
+      "items": {
+        "$ref": "#/$defs/VehicleIdentity"
+      },
+      "minItems": 1,
+      "title": "Vehicles",
+      "type": "array"
+    },
+    "variants": {
+      "items": {
+        "$ref": "#/$defs/VariantIdentity"
+      },
+      "minItems": 1,
+      "title": "Variants",
+      "type": "array"
+    },
+    "snapshots": {
+      "items": {
+        "$ref": "#/$defs/SourceSnapshot"
+      },
+      "minItems": 1,
+      "title": "Snapshots",
+      "type": "array"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/SpecObservation"
+      },
+      "title": "Observations",
+      "type": "array"
+    },
+    "decisions": {
+      "items": {
+        "$ref": "#/$defs/FactDecision"
+      },
+      "title": "Decisions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "sources",
+    "vehicles",
+    "variants",
+    "snapshots"
+  ],
+  "title": "CatalogV2",
+  "type": "object"
+}

@@ -1,0 +1,322 @@
+{
+  "schema_version": 2,
+  "sources": [
+    {
+      "source_key": "synthetic-v2",
+      "name": "Drivewise v2 synthetic source",
+      "source_type": "curated_internal",
+      "market": "IT",
+      "ranking_permission": "manual_validation_only",
+      "url": "https://example.test/catalog",
+      "license": "Synthetic fixture only"
+    }
+  ],
+  "vehicles": [
+    {
+      "canonical_key": "metro-g1-2026",
+      "model_family_key": "acme-metro",
+      "make": "Acme",
+      "model": "Metro",
+      "vehicle_type": "car",
+      "generation_key": "metro-g1",
+      "phase_key": null,
+      "body_style": "hatchback",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "canonical_key": "metro-g2-2026",
+      "model_family_key": "acme-metro",
+      "make": "Acme",
+      "model": "Metro",
+      "vehicle_type": "car",
+      "generation_key": "metro-g2",
+      "phase_key": null,
+      "body_style": "hatchback",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "canonical_key": "metro-g2-year-unknown",
+      "model_family_key": "acme-metro",
+      "make": "Acme",
+      "model": "Metro",
+      "vehicle_type": "car",
+      "generation_key": "metro-g2",
+      "phase_key": null,
+      "body_style": "hatchback",
+      "model_year": null,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "variant_key": "metro-g1-ice",
+      "vehicle_key": "metro-g1-2026",
+      "trim": "City",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "metro-g2-hev",
+      "vehicle_key": "metro-g2-2026",
+      "trim": "City",
+      "powertrain_type": "HEV",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "metro-g2-phev",
+      "vehicle_key": "metro-g2-2026",
+      "trim": "City",
+      "powertrain_type": "PHEV",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "metro-g2-bev",
+      "vehicle_key": "metro-g2-2026",
+      "trim": "City",
+      "powertrain_type": "BEV",
+      "fuel": "electricity",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "metro-unknown-bev",
+      "vehicle_key": "metro-g2-year-unknown",
+      "trim": "City",
+      "powertrain_type": "BEV",
+      "fuel": "electricity",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    }
+  ],
+  "snapshots": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "source_key": "synthetic-v2",
+      "url": "https://example.test/catalog/metro",
+      "retrieved_at": "2026-09-01T12:00:00Z",
+      "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "artifact_path": "synthetic/metro-1.html",
+      "media_type": "text/html",
+      "evidence_kind": "synthetic"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "source_key": "synthetic-v2",
+      "url": "https://example.test/catalog/metro",
+      "retrieved_at": "2026-09-02T12:00:00Z",
+      "content_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "artifact_path": "synthetic/metro-2.html",
+      "media_type": "text/html",
+      "evidence_kind": "synthetic"
+    }
+  ],
+  "observations": [
+    {
+      "id": "00000000-0000-0000-0000-00000000000a",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "metro-g2-bev",
+      "metric": "battery_gross_kwh",
+      "raw_value": "64",
+      "raw_unit": "kWh",
+      "value_min": 64,
+      "value_max": 64,
+      "unit": "kWh",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: battery_gross_kwh = 64",
+      "evidence_locator": "table 1, row 10",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000000b",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "metro-g2-bev",
+      "metric": "battery_usable_kwh",
+      "raw_value": "60",
+      "raw_unit": "kWh",
+      "value_min": 60,
+      "value_max": 60,
+      "unit": "kWh",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: battery_usable_kwh = 60",
+      "evidence_locator": "table 1, row 11",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000000c",
+      "snapshot_id": "00000000-0000-0000-0000-000000000002",
+      "variant_key": "metro-g2-bev",
+      "metric": "battery_usable_kwh",
+      "raw_value": "61",
+      "raw_unit": "kWh",
+      "value_min": 61,
+      "value_max": 61,
+      "unit": "kWh",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: battery_usable_kwh = 61",
+      "evidence_locator": "table 1, row 12",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000000d",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "metro-g2-hev",
+      "metric": "engine_power_kw",
+      "raw_value": "72",
+      "raw_unit": "kW",
+      "value_min": 72,
+      "value_max": 72,
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: engine_power_kw = 72",
+      "evidence_locator": "table 1, row 13",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000000e",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "metro-g2-hev",
+      "metric": "system_power_kw",
+      "raw_value": "103",
+      "raw_unit": "kW",
+      "value_min": 103,
+      "value_max": 103,
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: system_power_kw = 103",
+      "evidence_locator": "table 1, row 14",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000000f",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "metro-g2-phev",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "1.3",
+      "raw_unit": "l/100km",
+      "value_min": 1.3,
+      "value_max": 1.3,
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "weighted_combined",
+        "battery_condition": "weighted"
+      },
+      "evidence_excerpt": "Synthetic test only: liquid_consumption_l_100km = 1.3",
+      "evidence_locator": "table 1, row 15",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000010",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "metro-g2-bev",
+      "metric": "length_mm",
+      "raw_value": "4200-4230",
+      "raw_unit": "mm",
+      "value_min": 4200,
+      "value_max": 4230,
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: length_mm = 4200",
+      "evidence_locator": "table 1, row 16",
+      "extractor_version": "synthetic-v1"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "00000000-0000-0000-0000-000000000014",
+      "variant_key": "metro-g2-bev",
+      "metric": "battery_usable_kwh",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-00000000000b",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-00000000000b"
+      ],
+      "reason": "Synthetic example: one explicitly usable capacity.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000015",
+      "variant_key": "metro-g2-bev",
+      "metric": "battery_usable_kwh",
+      "context": {
+        "market": "IT"
+      },
+      "status": "conflicted",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-00000000000b",
+        "00000000-0000-0000-0000-00000000000c"
+      ],
+      "supersedes_id": "00000000-0000-0000-0000-000000000014",
+      "reason": "Synthetic example: conflicting usable capacities.",
+      "actor_kind": "rule",
+      "actor_id": "fixture-comparison",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-02T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000016",
+      "variant_key": "metro-unknown-bev",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "unknown",
+      "reason": "Seat count is absent; no guessed value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-02T13:00:00Z"
+    }
+  ]
+}
