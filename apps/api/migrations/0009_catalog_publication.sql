@@ -28,7 +28,7 @@ ALTER TABLE vehicle_specs
   ALTER COLUMN fuel_type DROP NOT NULL,
   ADD COLUMN catalog_version integer NOT NULL DEFAULT 1 CHECK (catalog_version IN (1, 2)),
   ADD COLUMN fuel text,
-  ADD COLUMN engine_code text,
+  ADD COLUMN IF NOT EXISTS engine_code text,
   ADD COLUMN external_references jsonb NOT NULL DEFAULT '[]',
   ADD COLUMN identity_evidence uuid[] NOT NULL DEFAULT '{}',
   ADD COLUMN legacy_record jsonb;
