@@ -1,0 +1,14 @@
+field,applies_to
+vehicle_type,all
+garage_status,all
+family_profile,car
+seat_height,motorcycle
+wet_weight,motorcycle/scooter
+passenger_comfort,motorcycle/scooter
+wind_protection,motorcycle
+underseat_storage,scooter
+urban_agility,scooter
+theft_observed_count,selected models
+theft_recovery_rate,selected models
+dynamic_report,all
+session_reset,all

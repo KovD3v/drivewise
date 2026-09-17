@@ -30,6 +30,8 @@ const eurFormatter = new Intl.NumberFormat('it-IT', {
 })
 
 const resultLabels: Record<string, string> = {
+  asking_price_eur: 'Prezzo richiesto',
+  current_km: 'Chilometraggio attuale',
   above_range: 'Sopra la fascia di mercato',
   asking_price_above_market_reference: 'Prezzo richiesto sopra il riferimento',
   asking_price_above_reference: 'Prezzo sopra il riferimento',
@@ -350,7 +352,7 @@ function TokenSection({
   )
 }
 
-function formatResultLabel(value: string) {
+export function formatResultLabel(value: string) {
   return resultLabels[value] ?? value.replaceAll('_', ' ')
 }
 

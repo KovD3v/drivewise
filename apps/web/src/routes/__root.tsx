@@ -5,7 +5,11 @@ import {
   Link,
   Outlet,
   Scripts,
+  useRouterState,
 } from '@tanstack/react-router'
+
+import { PageTransition } from '@/components/transition/PageTransition'
+import legacyStyles from '../legacy.css?url'
 
 import appStyles from '../styles.css?url'
 
@@ -23,10 +27,11 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Drivewise MVP',
+        title: 'DriveWise',
       },
     ],
     links: [
+      ...(legacyStyles ? [{ rel: 'stylesheet', href: legacyStyles }] : []),
       {
         rel: 'icon',
         href: faviconHref,
@@ -47,9 +52,12 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const path = useRouterState({ select: s => s.location.pathname });
+  const legacy = !['/', '/contact', '/privacy', '/terms'].includes(path) && !path.startsWith('/app/');
   return (
     <RootDocument>
-      <Outlet />
+      <div className={legacy ? "legacy-ui" : undefined}><Outlet /></div>
+      <PageTransition />
     </RootDocument>
   )
 }

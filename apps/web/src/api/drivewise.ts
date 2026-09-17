@@ -288,6 +288,7 @@ export interface AdvisorMetricProvenance {
 }
 
 export interface AdvisorRecommendationItem {
+  decision_status?: 'complete' | 'insufficient_data'
   vehicle: VehicleSummary
   selected_spec: AdvisorSelectedSpec
   offer: AdvisorOffer
@@ -974,4 +975,30 @@ async function readErrorDetail(response: Response) {
     return null
   }
   return null
+}
+
+// Guided Decision uses the existing persisted backend contract; errors never become mock rankings.
+export interface GuidedDecisionResponse {
+  contractVersion: 'guided-decision-v1'
+  decisionId: string
+  profileVersion: number
+  status: 'active' | 'completed' | 'abandoned'
+  message: string
+  decisionProfile: Record<string, { value: string | number | boolean | string[] } | Record<string, { value: number } | null> | null>
+  profileCompletion: number
+  decisionConfidence: number
+  missingInformation: { key: string; reason: string }[]
+  nextQuestion: { id: string; type: 'number' | 'boolean' | 'single_select' | 'multi_select' | 'text'; label: string; reason: string; constraints: { minimum: number | null; maximum: number | null; unit: string | null; options: string[] } | null } | null
+  previewRanking: { status: 'blocked' | 'ready' | 'insufficient_inventory'; groups: AdvisorRecommendationGroup[]; assumptions: string[]; blockingReasons: string[] }
+  garageCompatibility: { vehicleId: string; specId: string; status: 'comfortable' | 'tight' | 'incompatible' | 'insufficient_data'; message: string }[]
+  warnings: string[]
+}
+export async function createGuidedDecision(message: string): Promise<GuidedDecisionResponse> {
+  return postJson('/guided-decisions', { message, locale: 'it-IT', market: 'IT' }, () => { throw new Error('Il servizio Scelta Guidata non è raggiungibile. Riprova quando è disponibile.'); })
+}
+export async function addGuidedDecisionTurn(decisionId: string, message: string, expectedProfileVersion: number): Promise<GuidedDecisionResponse> {
+  return postJson(`/guided-decisions/${encodeURIComponent(decisionId)}/turns`, { message, expectedProfileVersion }, () => { throw new Error('Il servizio Scelta Guidata non è raggiungibile.'); })
+}
+export async function fetchGuidedDecision(decisionId: string): Promise<GuidedDecisionResponse> {
+  return fetchJson(`/guided-decisions/${encodeURIComponent(decisionId)}`, () => { throw new Error('Il servizio Scelta Guidata non è raggiungibile.'); })
 }

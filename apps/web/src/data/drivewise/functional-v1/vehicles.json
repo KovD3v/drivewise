@@ -1,0 +1,1170 @@
+[
+  {
+    "id": "fiat-panda",
+    "vehicle_type": "car",
+    "brand": "Fiat",
+    "model": "Panda",
+    "category": "City Car",
+    "pricing": {
+      "new_price_estimate": 18500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Mild Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 3653,
+      "width_with_mirrors_mm": 1882,
+      "height_mm": 1551,
+      "boot_liters": 225
+    },
+    "vehicle_dna": {
+      "reliability": 80,
+      "safety": 78,
+      "comfort": 70,
+      "technology": 68,
+      "family": 65,
+      "sport": 50,
+      "city": 95,
+      "travel": 60,
+      "running_cost": 92
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 13311,
+      "recovery_rate_pct": 54,
+      "observed_volume_band": "very_high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "fiat-500",
+    "vehicle_type": "car",
+    "brand": "Fiat",
+    "model": "500",
+    "category": "City Car",
+    "pricing": {
+      "new_price_estimate": 20500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Mild Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 3632,
+      "width_with_mirrors_mm": 1900,
+      "height_mm": 1527,
+      "boot_liters": 185
+    },
+    "vehicle_dna": {
+      "reliability": 79,
+      "safety": 78,
+      "comfort": 72,
+      "technology": 78,
+      "family": 55,
+      "sport": 58,
+      "city": 93,
+      "travel": 55,
+      "running_cost": 87
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 5254,
+      "recovery_rate_pct": 53,
+      "observed_volume_band": "very_high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "lancia-ypsilon",
+    "vehicle_type": "car",
+    "brand": "Lancia",
+    "model": "Ypsilon",
+    "category": "Utilitaria",
+    "pricing": {
+      "new_price_estimate": 24500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Mild Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4080,
+      "width_with_mirrors_mm": 1990,
+      "height_mm": 1440,
+      "boot_liters": 309
+    },
+    "vehicle_dna": {
+      "reliability": 82,
+      "safety": 82,
+      "comfort": 82,
+      "technology": 86,
+      "family": 70,
+      "sport": 55,
+      "city": 90,
+      "travel": 65,
+      "running_cost": 84
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 5048,
+      "recovery_rate_pct": 55,
+      "observed_volume_band": "very_high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "citroen-c3",
+    "vehicle_type": "car",
+    "brand": "Citroën",
+    "model": "C3",
+    "category": "Utilitaria",
+    "pricing": {
+      "new_price_estimate": 23000,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol"
+    },
+    "dimensions": {
+      "length_mm": 4015,
+      "width_with_mirrors_mm": 1987,
+      "height_mm": 1577,
+      "boot_liters": 310
+    },
+    "vehicle_dna": {
+      "reliability": 78,
+      "safety": 80,
+      "comfort": 78,
+      "technology": 80,
+      "family": 72,
+      "sport": 52,
+      "city": 92,
+      "travel": 64,
+      "running_cost": 85
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 1917,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "medium",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "volkswagen-golf",
+    "vehicle_type": "car",
+    "brand": "Volkswagen",
+    "model": "Golf",
+    "category": "Hatchback",
+    "pricing": {
+      "new_price_estimate": 34500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Mild Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4284,
+      "width_with_mirrors_mm": 2073,
+      "height_mm": 1491,
+      "boot_liters": 381
+    },
+    "vehicle_dna": {
+      "reliability": 86,
+      "safety": 91,
+      "comfort": 86,
+      "technology": 90,
+      "family": 82,
+      "sport": 72,
+      "city": 84,
+      "travel": 90,
+      "running_cost": 78
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 1608,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "medium",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "jeep-renegade",
+    "vehicle_type": "car",
+    "brand": "Jeep",
+    "model": "Renegade",
+    "category": "SUV",
+    "pricing": {
+      "new_price_estimate": 35500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Full Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4236,
+      "width_with_mirrors_mm": 2023,
+      "height_mm": 1684,
+      "boot_liters": 351
+    },
+    "vehicle_dna": {
+      "reliability": 82,
+      "safety": 84,
+      "comfort": 84,
+      "technology": 84,
+      "family": 88,
+      "sport": 58,
+      "city": 77,
+      "travel": 82,
+      "running_cost": 73
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 2192,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "fiat-500x",
+    "vehicle_type": "car",
+    "brand": "Fiat",
+    "model": "500X",
+    "category": "Crossover",
+    "pricing": {
+      "new_price_estimate": 33000,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Full Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4264,
+      "width_with_mirrors_mm": 2025,
+      "height_mm": 1595,
+      "boot_liters": 350
+    },
+    "vehicle_dna": {
+      "reliability": 82,
+      "safety": 84,
+      "comfort": 82,
+      "technology": 83,
+      "family": 84,
+      "sport": 60,
+      "city": 80,
+      "travel": 80,
+      "running_cost": 78
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 2168,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "peugeot-3008",
+    "vehicle_type": "car",
+    "brand": "Peugeot",
+    "model": "3008",
+    "category": "SUV",
+    "pricing": {
+      "new_price_estimate": 42500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Full Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4542,
+      "width_with_mirrors_mm": 2108,
+      "height_mm": 1641,
+      "boot_liters": 520
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "safety": 92,
+      "comfort": 90,
+      "technology": 93,
+      "family": 95,
+      "sport": 66,
+      "city": 72,
+      "travel": 92,
+      "running_cost": 74
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 737,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "low",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "toyota-corolla-ts",
+    "vehicle_type": "car",
+    "brand": "Toyota",
+    "model": "Corolla Touring Sports",
+    "category": "Station Wagon",
+    "pricing": {
+      "new_price_estimate": 33500,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Full Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4650,
+      "width_with_mirrors_mm": 2050,
+      "height_mm": 1460,
+      "boot_liters": 596
+    },
+    "vehicle_dna": {
+      "reliability": 92,
+      "safety": 92,
+      "comfort": 84,
+      "technology": 82,
+      "family": 94,
+      "sport": 55,
+      "city": 78,
+      "travel": 90,
+      "running_cost": 93
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "kia-sportage",
+    "vehicle_type": "car",
+    "brand": "Kia",
+    "model": "Sportage",
+    "category": "SUV",
+    "pricing": {
+      "new_price_estimate": 39000,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Full Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4515,
+      "width_with_mirrors_mm": 2100,
+      "height_mm": 1650,
+      "boot_liters": 587
+    },
+    "vehicle_dna": {
+      "reliability": 87,
+      "safety": 92,
+      "comfort": 88,
+      "technology": 91,
+      "family": 96,
+      "sport": 69,
+      "city": 73,
+      "travel": 93,
+      "running_cost": 86
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "tesla-model-y",
+    "vehicle_type": "car",
+    "brand": "Tesla",
+    "model": "Model Y",
+    "category": "SUV",
+    "pricing": {
+      "new_price_estimate": 46000,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Electric"
+    },
+    "dimensions": {
+      "length_mm": 4790,
+      "width_with_mirrors_mm": 2129,
+      "height_mm": 1624,
+      "boot_liters": 854
+    },
+    "vehicle_dna": {
+      "reliability": 82,
+      "safety": 94,
+      "comfort": 87,
+      "technology": 97,
+      "family": 96,
+      "sport": 78,
+      "city": 66,
+      "travel": 88,
+      "running_cost": 89
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "volvo-xc40",
+    "vehicle_type": "car",
+    "brand": "Volvo",
+    "model": "XC40",
+    "category": "SUV",
+    "pricing": {
+      "new_price_estimate": 45000,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Mild Hybrid"
+    },
+    "dimensions": {
+      "length_mm": 4440,
+      "width_with_mirrors_mm": 2034,
+      "height_mm": 1652,
+      "boot_liters": 452
+    },
+    "vehicle_dna": {
+      "reliability": 88,
+      "safety": 95,
+      "comfort": 91,
+      "technology": 88,
+      "family": 95,
+      "sport": 62,
+      "city": 76,
+      "travel": 92,
+      "running_cost": 81
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "yamaha-mt07",
+    "vehicle_type": "motorcycle",
+    "brand": "Yamaha",
+    "model": "MT-07",
+    "category": "Naked",
+    "pricing": {
+      "new_price_estimate": 7600,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 82,
+      "comfort": 73,
+      "technology": 72,
+      "sport": 88,
+      "city": 85,
+      "travel": 68,
+      "running_cost": 70
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 805,
+      "wet_weight_kg": 184,
+      "recommended_experience": "beginner_intermediate",
+      "passenger_comfort_score": 55,
+      "wind_protection_score": 68
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "honda-nx500",
+    "vehicle_type": "motorcycle",
+    "brand": "Honda",
+    "model": "NX500",
+    "category": "Adventure",
+    "pricing": {
+      "new_price_estimate": 7800,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 88,
+      "comfort": 88,
+      "technology": 78,
+      "sport": 82,
+      "city": 78,
+      "travel": 84,
+      "running_cost": 84
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 830,
+      "wet_weight_kg": 196,
+      "recommended_experience": "beginner_intermediate",
+      "passenger_comfort_score": 76,
+      "wind_protection_score": 84
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "bmw-r1300gs",
+    "vehicle_type": "motorcycle",
+    "brand": "BMW",
+    "model": "R 1300 GS",
+    "category": "Adventure",
+    "pricing": {
+      "new_price_estimate": 21500,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 86,
+      "comfort": 95,
+      "technology": 96,
+      "sport": 88,
+      "city": 55,
+      "travel": 96,
+      "running_cost": 72
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 850,
+      "wet_weight_kg": 237,
+      "recommended_experience": "experienced",
+      "passenger_comfort_score": 95,
+      "wind_protection_score": 96
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "ducati-monster",
+    "vehicle_type": "motorcycle",
+    "brand": "Ducati",
+    "model": "Monster",
+    "category": "Naked",
+    "pricing": {
+      "new_price_estimate": 13200,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 77,
+      "comfort": 76,
+      "technology": 88,
+      "sport": 92,
+      "city": 78,
+      "travel": 70,
+      "running_cost": 64
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 820,
+      "wet_weight_kg": 188,
+      "recommended_experience": "intermediate",
+      "passenger_comfort_score": 54,
+      "wind_protection_score": 70
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "kawasaki-ninja650",
+    "vehicle_type": "motorcycle",
+    "brand": "Kawasaki",
+    "model": "Ninja 650",
+    "category": "Sport Touring",
+    "pricing": {
+      "new_price_estimate": 9300,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 81,
+      "comfort": 80,
+      "technology": 78,
+      "sport": 88,
+      "city": 72,
+      "travel": 76,
+      "running_cost": 74
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 790,
+      "wet_weight_kg": 193,
+      "recommended_experience": "intermediate",
+      "passenger_comfort_score": 65,
+      "wind_protection_score": 76
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "triumph-tiger900",
+    "vehicle_type": "motorcycle",
+    "brand": "Triumph",
+    "model": "Tiger 900 GT",
+    "category": "Touring Adventure",
+    "pricing": {
+      "new_price_estimate": 15500,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 83,
+      "comfort": 94,
+      "technology": 91,
+      "sport": 86,
+      "city": 62,
+      "travel": 95,
+      "running_cost": 70
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 820,
+      "wet_weight_kg": 219,
+      "recommended_experience": "intermediate_experienced",
+      "passenger_comfort_score": 93,
+      "wind_protection_score": 95
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "harley-nightster",
+    "vehicle_type": "motorcycle",
+    "brand": "Harley-Davidson",
+    "model": "Nightster",
+    "category": "Custom",
+    "pricing": {
+      "new_price_estimate": 14900,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 75,
+      "comfort": 74,
+      "technology": 78,
+      "sport": 84,
+      "city": 58,
+      "travel": 68,
+      "running_cost": 60
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 705,
+      "wet_weight_kg": 221,
+      "recommended_experience": "intermediate",
+      "passenger_comfort_score": 70,
+      "wind_protection_score": 68
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "ktm-390-adventure",
+    "vehicle_type": "motorcycle",
+    "brand": "KTM",
+    "model": "390 Adventure",
+    "category": "Adventure",
+    "pricing": {
+      "new_price_estimate": 7400,
+      "currency": "EUR"
+    },
+    "vehicle_dna": {
+      "reliability": 82,
+      "comfort": 83,
+      "technology": 75,
+      "sport": 84,
+      "city": 82,
+      "travel": 80,
+      "running_cost": 86
+    },
+    "motorcycle_specific": {
+      "seat_height_mm": 855,
+      "wet_weight_kg": 172,
+      "recommended_experience": "beginner_intermediate",
+      "passenger_comfort_score": 68,
+      "wind_protection_score": 80
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "honda-sh125",
+    "vehicle_type": "scooter",
+    "brand": "Honda",
+    "model": "SH 125",
+    "category": "High Wheel Scooter",
+    "pricing": {
+      "new_price_estimate": 4100,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 125
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 90,
+      "technology": 76,
+      "city": 95,
+      "travel": 78,
+      "running_cost": 85
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 134,
+      "underseat_storage_l": 28,
+      "urban_agility_score": 95,
+      "passenger_comfort_score": 90,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 78
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 8050,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "very_high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "piaggio-liberty125",
+    "vehicle_type": "scooter",
+    "brand": "Piaggio",
+    "model": "Liberty 125",
+    "category": "High Wheel Scooter",
+    "pricing": {
+      "new_price_estimate": 3100,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 125
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 88,
+      "technology": 76,
+      "city": 96,
+      "travel": 72,
+      "running_cost": 90
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 130,
+      "underseat_storage_l": 17,
+      "urban_agility_score": 96,
+      "passenger_comfort_score": 88,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 72
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 2757,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "high",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "aprilia-scarabeo125",
+    "vehicle_type": "scooter",
+    "brand": "Aprilia",
+    "model": "Scarabeo 125",
+    "category": "High Wheel Scooter",
+    "pricing": {
+      "new_price_estimate": 3200,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 125
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 84,
+      "technology": 76,
+      "city": 92,
+      "travel": 74,
+      "running_cost": 86
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 139,
+      "underseat_storage_l": 18,
+      "urban_agility_score": 92,
+      "passenger_comfort_score": 84,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 74
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 1913,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "medium",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "kymco-agility125",
+    "vehicle_type": "scooter",
+    "brand": "Kymco",
+    "model": "Agility 125",
+    "category": "Urban Scooter",
+    "pricing": {
+      "new_price_estimate": 2700,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 125
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 86,
+      "technology": 76,
+      "city": 97,
+      "travel": 70,
+      "running_cost": 93
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 129,
+      "underseat_storage_l": 26,
+      "urban_agility_score": 97,
+      "passenger_comfort_score": 86,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 70
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 1729,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "medium",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "vespa-primavera125",
+    "vehicle_type": "scooter",
+    "brand": "Vespa",
+    "model": "Primavera 125",
+    "category": "Classic Scooter",
+    "pricing": {
+      "new_price_estimate": 4400,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 125
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 82,
+      "technology": 76,
+      "city": 90,
+      "travel": 76,
+      "running_cost": 78
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 130,
+      "underseat_storage_l": 16,
+      "urban_agility_score": 90,
+      "passenger_comfort_score": 82,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 76
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 1559,
+      "recovery_rate_pct": null,
+      "observed_volume_band": "medium",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "yamaha-tmax560",
+    "vehicle_type": "scooter",
+    "brand": "Yamaha",
+    "model": "TMAX 560",
+    "category": "Maxi Scooter",
+    "pricing": {
+      "new_price_estimate": 13900,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 560
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 92,
+      "technology": 76,
+      "city": 72,
+      "travel": 94,
+      "running_cost": 58
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 218,
+      "underseat_storage_l": 2,
+      "urban_agility_score": 72,
+      "passenger_comfort_score": 92,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 94
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": 1415,
+      "recovery_rate_pct": 32,
+      "observed_volume_band": "medium",
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": "LoJack Dossier Furti Veicoli 2025 / ANIASA, dati 2024",
+      "data_year": 2024
+    }
+  },
+  {
+    "id": "honda-forza350",
+    "vehicle_type": "scooter",
+    "brand": "Honda",
+    "model": "Forza 350",
+    "category": "GT Scooter",
+    "pricing": {
+      "new_price_estimate": 6900,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 330
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 94,
+      "technology": 76,
+      "city": 78,
+      "travel": 92,
+      "running_cost": 70
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 186,
+      "underseat_storage_l": 48,
+      "urban_agility_score": 78,
+      "passenger_comfort_score": 94,
+      "helmet_storage_full_face": true,
+      "ring_road_fit_score": 92
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "bmw-ce04",
+    "vehicle_type": "scooter",
+    "brand": "BMW",
+    "model": "CE 04",
+    "category": "Electric Maxi Scooter",
+    "pricing": {
+      "new_price_estimate": 13300,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Electric",
+      "engine_cc": 0
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 96,
+      "technology": 88,
+      "city": 80,
+      "travel": 88,
+      "running_cost": 72
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 235,
+      "underseat_storage_l": 45,
+      "urban_agility_score": 80,
+      "passenger_comfort_score": 96,
+      "helmet_storage_full_face": true,
+      "ring_road_fit_score": 88
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "niu-nqi-gts",
+    "vehicle_type": "scooter",
+    "brand": "NIU",
+    "model": "NQi GTS",
+    "category": "Electric Urban Scooter",
+    "pricing": {
+      "new_price_estimate": 4700,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Electric",
+      "engine_cc": 0
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 88,
+      "technology": 88,
+      "city": 98,
+      "travel": 72,
+      "running_cost": 89
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 113,
+      "underseat_storage_l": 35,
+      "urban_agility_score": 98,
+      "passenger_comfort_score": 88,
+      "helmet_storage_full_face": true,
+      "ring_road_fit_score": 72
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  },
+  {
+    "id": "sym-symphony125",
+    "vehicle_type": "scooter",
+    "brand": "SYM",
+    "model": "Symphony ST 125",
+    "category": "High Wheel Scooter",
+    "pricing": {
+      "new_price_estimate": 2900,
+      "currency": "EUR"
+    },
+    "powertrain": {
+      "fuel": "Petrol",
+      "engine_cc": 125
+    },
+    "vehicle_dna": {
+      "reliability": 84,
+      "comfort": 84,
+      "technology": 76,
+      "city": 96,
+      "travel": 74,
+      "running_cost": 92
+    },
+    "scooter_specific": {
+      "wet_weight_kg": 127,
+      "underseat_storage_l": 27,
+      "urban_agility_score": 96,
+      "passenger_comfort_score": 84,
+      "helmet_storage_full_face": false,
+      "ring_road_fit_score": 74
+    },
+    "theft_risk": {
+      "observed_thefts_italy_2024": null,
+      "recovery_rate_pct": null,
+      "observed_volume_band": null,
+      "normalized_theft_risk_index": null,
+      "normalized_risk_status": "not_computable_without_exposure_denominator",
+      "source": null,
+      "data_year": null
+    }
+  }
+]

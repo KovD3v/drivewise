@@ -1,0 +1,13 @@
+{
+  "title": "DriveWise Functional Coverage Vehicle v1",
+  "type": "object",
+  "required": [
+    "id",
+    "vehicle_type",
+    "brand",
+    "model",
+    "pricing",
+    "vehicle_dna",
+    "theft_risk"
+  ]
+}
