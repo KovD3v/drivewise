@@ -354,27 +354,61 @@ def test_conflicting_evidence_is_retained_without_selected_value(tmp_path):
     additional = copy.deepcopy(extraction()["observations"][1])
     additional["metric"] = "engine_power_kw"
     first_id = runner.state["bundle"]["observations"][0]["id"]
-    other = proposal_observation(ObservationProposal.model_validate(additional))
+    call = {"name": "submit_observations", "arguments": json.dumps({"observations": [additional]})}
+    result = runner.execute(call)
+    other = result["observations"][0]
+    # Crash/replay after saving a tool result must return the same IDs without duplicates.
+    resumed = Collector(config(), tmp_path, Router([]), Browser())
+    resumed.load()
+    assert resumed.execute(call) == result
+    assert len(resumed.state["bundle"]["observations"]) == 3
     data = {
-        "additional_observations": [additional],
         "decisions": [
             {
-                "variant_key": other.variant_key,
-                "metric": other.metric,
-                "context": other.context.model_dump(mode="json"),
+                "variant_key": other["variant_key"],
+                "metric": other["metric"],
+                "context": other["context"],
                 "status": "conflicted",
-                "evidence_ids": [first_id, str(other.id)],
+                "evidence_ids": [first_id, other["id"]],
                 "reason": "Synthetic competing interpretations left unresolved.",
             }
         ],
     }
-    runner.investigate(Investigation.model_validate(data))
-    decision = runner.state["bundle"]["decisions"][0]
+    resumed.investigate(Investigation.model_validate(data))
+    decision = resumed.state["bundle"]["decisions"][0]
     assert (
         decision["status"] == "conflicted"
         and decision["selected_observation_id"] is None
     )
     assert len(runner.state["bundle"]["observations"]) == 3
+
+
+def test_new_review_evidence_uses_returned_ids_and_still_requires_reading(tmp_path):
+    runner = prepared(tmp_path)
+    additional = extraction()["observations"][1]
+    call = {"name": "submit_observations", "arguments": json.dumps({"observations": [additional]})}
+    assert "error" in runner.execute(call)  # Investigation-only tool.
+    first_pass = extraction()
+    first_pass["observations"] = first_pass["observations"][:1]
+    runner.extract(Extraction.model_validate(first_pass))
+    assert "submit_observations" in [t["function"]["name"] for t in runner.tools()]
+    invalid = copy.deepcopy(additional)
+    invalid["context"]["market"] = "FR"
+    assert "error" in runner.execute({**call, "arguments": json.dumps({"observations": [invalid]})})
+    assert len(runner.state["bundle"]["observations"]) == 1
+    observation = runner.execute(call)["observations"][0]
+    proposal = {"decisions": [{
+        "variant_key": observation["variant_key"], "metric": observation["metric"],
+        "context": observation["context"], "status": "verified",
+        "selected_observation_id": observation["id"], "evidence_ids": [observation["id"]],
+        "reason": "Reviewed the new evidence.",
+    }]}
+    finish = {"name": "submit_investigation", "arguments": json.dumps(proposal)}
+    assert "re-reading" in runner.execute(finish)["error"]
+    runner.read(ReadEvidence(snapshot_id=SNAPSHOT_ID))
+    assert runner.execute(finish) == {"accepted": True}
+    assert runner.state["phase"] == "complete"
+    assert runner.state["bundle"]["decisions"][0]["selected_observation_id"] == observation["id"]
 
 
 def test_hash_tampering_and_changed_scope_refuse_resume(tmp_path):

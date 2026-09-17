@@ -7,6 +7,13 @@ runner extracts requested vehicle specifications, then starts a separate
 investigation pass. It produces a catalog v2 bundle and a gap report for explicit
 review and publication. Nothing runs on API startup, in CI, or on a schedule.
 
+During investigation, `submit_observations` validates and saves additional evidence
+and returns its observation IDs. The agent uses those IDs in a later
+`submit_investigation` call. Replaying an observation submission returns the same
+IDs without duplicating evidence; verification still requires re-reading excerpts.
+This tool contract is `manufacturer-agent-v2`. Older checkpoints remain on disk
+but require a new run directory because their pending tool calls use the v1 contract.
+
 ## Start later, when credentials are configured
 
 From the repository root, first inspect the plan; this command needs no keys or

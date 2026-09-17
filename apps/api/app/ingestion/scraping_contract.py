@@ -198,10 +198,11 @@ class DecisionProposal(ContractModel):
     reason: Text
 
 
+class ObservationBatch(ContractModel):
+    observations: list[ObservationProposal] = Field(min_length=1, max_length=1000)
+
+
 class Investigation(ContractModel):
-    additional_observations: list[ObservationProposal] = Field(
-        default_factory=list, max_length=1000
-    )
     decisions: list[DecisionProposal] = Field(max_length=1000)
     gaps: list[Text] = Field(default_factory=list, max_length=100)
 
