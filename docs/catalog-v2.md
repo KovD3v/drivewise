@@ -101,7 +101,7 @@ source independence detection, an agent or an automatic truth classifier.
 
 ## Storage and compatibility
 
-[`0005_catalog_evidence.sql`](../apps/api/migrations/0005_catalog_evidence.sql)
+[`0008_catalog_evidence.sql`](../apps/api/migrations/0008_catalog_evidence.sql)
 adds nullable vehicle type/generation/phase and variant powertrain/validity
 attributes. It does not infer them from existing labels. UUIDs, legacy values
 and source permissions are preserved.
@@ -132,6 +132,14 @@ recorded in the architecture review.
 
 ## Verification
 
+Catalog evidence uses version `0008`; versions `0005`–`0007` belong to the
+knowledge-profile and Guided Decision track. The migration runner rejects duplicate
+versions and mismatched ledger filenames. If this unreleased catalog migration was
+already applied as `0005_catalog_evidence.sql`, the runner moves that exact ledger
+entry to `0008` in the migration transaction without replaying SQL or changing data.
+The same transaction moves `0006_catalog_publication.sql` to `0009` when present.
+An occupied destination version fails and rolls back instead of overwriting history.
+
 Tests use disposable PostgreSQL 16 + pgvector, matching the existing CI database.
 Point `TEST_DATABASE_URL` and `DATABASE_URL` only at a disposable database:
 
@@ -141,7 +149,7 @@ APP_ENV=test .venv/bin/python -m pytest apps/api -q
 ```
 
 The evidence integration test checks fresh migration, a second migration run
-without changes, and a 0004 → 0005 upgrade inside an isolated schema rolled back
+without changes, and a 0004 → 0008 upgrade inside an isolated schema rolled back
 at completion. It exercises preserved IDs/values, immutable revisions, invalid
 evidence associations, fork rejection and every metric/unit pair.
 
@@ -161,7 +169,7 @@ describes the foreign-key and uniqueness guarantees used here.
 
 ## Staging and publication (follow-up to PR #12)
 
-Migration `0006_catalog_publication.sql` and `import_catalog_v2.py` complete the
+Migration `0009_catalog_publication.sql` and `import_catalog_v2.py` complete the
 local acquisition boundary. No crawler, external requests, LLM, or live database
 migration is performed. The caller supplies a **reviewed, self-contained v2
 bundle** and the original files under one artifact root.
