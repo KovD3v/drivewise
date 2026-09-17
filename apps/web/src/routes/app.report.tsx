@@ -174,7 +174,7 @@ function ReportContent({
               className="font-heading text-[5rem] leading-[0.9] font-extrabold tracking-[-0.05em] tabular-nums sm:text-[6.5rem]"
             />
             <p className="mt-4 text-[0.6875rem] tracking-[0.2em] text-muted-foreground uppercase">
-              Decision Score · {winner.score}/100
+              {winner.decisionStatus === 'insufficient_data' ? 'Punteggio provvisorio: dati insufficienti' : 'Decision Score'} · {winner.score}/100
             </p>
             <h1 className="font-heading mt-6 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
               {winner.vehicle.brand} {winner.vehicle.model}
@@ -294,7 +294,7 @@ function ReportContent({
                         {a.vehicle.brand} {a.vehicle.model}
                       </span>
                       <span className="mt-0.5 block truncate text-[0.8rem] text-muted-foreground">
-                        {a.why[0] ?? a.vehicle.category}
+                        {a.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : a.why[0] ?? a.vehicle.category}
                       </span>
                     </span>
                     <span className="font-heading shrink-0 font-semibold tabular-nums">

@@ -48,3 +48,20 @@ test('unknown category adds no invented category and oversized requests never re
   fireEvent.click(screen.getByRole('button', { name: 'Invia risposta' }));
   await waitFor(() => expect(createGuidedDecision).toHaveBeenCalledWith('Auto per la città'));
 });
+
+test.each([
+  ['parking', 'single_select', 'Nessun posto auto'],
+  ['constraint_modes', 'multi_select', 'Nessun vincolo obbligatorio'],
+] as const)('submits canonical none for %s without using its display label', async (id, type, label) => {
+  const next = { ...response, nextQuestion: { ...response.nextQuestion, id, type, constraints: { ...response.nextQuestion.constraints, options: ['none'] } } };
+  vi.mocked(createGuidedDecision).mockResolvedValue(next);
+  vi.mocked(addGuidedDecisionTurn).mockResolvedValue({ ...response, profileVersion: 2 });
+  render(<GuidedCarFlow initialQuery="Auto per la città" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Non lo so ancora' }));
+  await screen.findByPlaceholderText('Descrivi liberamente cosa cerchi');
+  fireEvent.click(screen.getByRole('button', { name: 'Invia risposta' }));
+  fireEvent.click(await screen.findByRole('button', { name: label }));
+  if (type === 'multi_select') fireEvent.click(screen.getByRole('button', { name: 'Conferma selezione' }));
+  await waitFor(() => expect(addGuidedDecisionTurn).toHaveBeenCalledWith('decision-123', 'none', 1));
+  expect(await screen.findByText(label)).toBeInTheDocument();
+});

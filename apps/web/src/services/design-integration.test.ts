@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { mockVehicleDetails } from '@/api/mockData';
 import { createGuidedDecision, addGuidedDecisionTurn } from '@/api/drivewise';
 import { fromApiVehicle, getVehicleById, getVehiclesByType } from './vehicleService';
-import { rankVehicles } from '@/lib/decision-engine';
+import { rankVehicles, toPreview } from '@/lib/decision-engine';
 import { saveAnalysis, listSavedAnalyses } from '@/lib/saved-analyses';
 import { signInMock } from '@/lib/mock-account';
 
@@ -53,4 +53,21 @@ test('missing two-wheel and account services are explicit browser mocks with no 
   await saveAnalysis({ vehicleId: ranking[0].vehicle.id, brand: 'Demo', model: 'Demo', score: 85, confidence: 50, tags: [], profile: { vehicleType: 'motorcycle' } }, 'demo-local');
   expect(await listSavedAnalyses()).toHaveLength(1);
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test('ranking preserves complete-first backend order, ties and assessment status', async () => {
+  const vehicle = mockVehicleDetails[0];
+  const item = (id: string, score: number, decision_status: string) => ({
+    vehicle: { ...vehicle, id }, selected_spec: vehicle.specs[0], score, decision_status,
+    positive_factors: [], tradeoffs: [],
+  });
+  const response = {
+    previewRanking: { groups: [{ items: [item('complete', 70, 'complete'), item('tie', 70, 'complete'), item('provisional', 90, 'insufficient_data')] }], assumptions: [] },
+    warnings: [], garageCompatibility: [],
+  };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
+  const ranking = await rankVehicles({ vehicleType: 'car', decisionId: 'decision-123' });
+  expect(ranking.map(item => item.vehicle.id)).toEqual(['complete', 'tie', 'provisional']);
+  expect(ranking[2].decisionStatus).toBe('insufficient_data');
+  expect(toPreview(ranking[2]).decisionStatus).toBe('insufficient_data');
 });

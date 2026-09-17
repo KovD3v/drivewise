@@ -53,6 +53,12 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState('');
   const question = response?.nextQuestion;
+  const choices = (question?.constraints?.options ?? []).map(value => ({
+    value,
+    label: value === 'none' && question?.id === 'constraint_modes'
+      ? 'Nessun vincolo obbligatorio' : labels[value] ?? value,
+  }));
+  const optionValue = (label: string) => choices.find(choice => choice.label === label)?.value ?? label;
   const ranking = response ? guidedRanking(response) : [];
   const completion = response ? Math.round(response.profileCompletion * 100) : Math.round((category === null ? 1 : 2) / 8 * 100);
   // Before the first response this describes the intake only; backend confidence takes over after submission.
@@ -76,7 +82,8 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
     inFlight.current = true; setBusy(true); setError(''); setRetry(message);
     try {
       const next = response ? await addGuidedDecisionTurn(response.decisionId, message, response.profileVersion) : await createGuidedDecision(request);
-      setMessages(prev => [...prev, { prompt: question?.label ?? 'Raccontami cosa cerchi.', answer: message }]);
+      const answer = message.split(', ').map(value => choices.find(choice => choice.value === value)?.label ?? value).join(', ');
+      setMessages(prev => [...prev, { prompt: question?.label ?? 'Raccontami cosa cerchi.', answer }]);
       setResponse(next); persist(next); setRetry('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Non riesco ad aggiornare il profilo. Riprova.');
@@ -104,8 +111,8 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
             {category !== null && (busy ? <DecisionMessage><TypingIndicator /></DecisionMessage> : <StepStage themeId={question?.id.includes('garage') ? 'garage' : question?.id === 'budget_eur' ? 'budget' : 'facts'} active>
               <DecisionMessage><p>{question?.label ?? (response ? 'Il tuo profilo è pronto.' : 'Raccontami cosa cerchi.')}</p><p className="text-muted-foreground">{question?.reason ?? (!response ? "Scrivi liberamente: userò le tue parole per pesare la scelta." : null)}</p></DecisionMessage>
               <div className="pl-[3.125rem]">
-                {question?.type === 'single_select' ? <QuickChoice key={`${response?.profileVersion}-${error}`} options={(question.constraints?.options ?? []).map(o => labels[o] ?? o)} onSelect={v => void submit(v)} /> :
-                question?.type === 'multi_select' ? <PrioritySelector key={`${response?.profileVersion}-${error}`} options={(question.constraints?.options ?? []).map(o => labels[o] ?? o)} onConfirm={values => void submit(values.join(', '))} /> :
+                {question?.type === 'single_select' ? <QuickChoice key={`${response?.profileVersion}-${error}`} options={choices.map(choice => choice.label)} onSelect={label => void submit(optionValue(label))} /> :
+                question?.type === 'multi_select' ? <PrioritySelector key={`${response?.profileVersion}-${error}`} options={choices.map(choice => choice.label)} onConfirm={values => void submit(values.map(optionValue).join(', '))} /> :
                 question?.type === 'number' ? <form onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); void submit(String(data.get('answer'))); }} className="flex flex-wrap gap-3">
                   <label className="sr-only" htmlFor="guided-number">{question.label}</label>
                   <input key={question.id} id="guided-number" name="answer" type="number" required min={question.constraints?.minimum ?? undefined} max={question.constraints?.maximum ?? undefined} step="1" placeholder={question.constraints?.unit ?? 'Valore'} className="h-12 min-w-0 rounded-full border border-border bg-card px-5" />

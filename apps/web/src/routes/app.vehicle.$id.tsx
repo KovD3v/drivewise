@@ -192,7 +192,7 @@ function VehiclePage() {
                   {score}
                 </p>
                 <p className="mt-2 text-[0.7rem] tracking-[0.18em] text-muted-foreground uppercase">
-                  Compatibilità con il tuo profilo
+                  {scored.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : 'Compatibilità con il tuo profilo'}
                 </p>
               </div>
             )}
@@ -285,7 +285,7 @@ function VehiclePage() {
                     className="block h-full rounded-2xl border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
                   >
                     <p className="truncate text-[0.9rem] font-medium">{vehicleName(a.vehicle)}</p>
-                    <p className="mt-1 text-[0.78rem] text-muted-foreground">{a.vehicle.category}</p>
+                    <p className="mt-1 text-[0.78rem] text-muted-foreground">{a.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : a.vehicle.category}</p>
                     {scored && (
                       <p className="font-heading mt-3 text-[1.1rem] font-bold tabular-nums">{a.score}%</p>
                     )}

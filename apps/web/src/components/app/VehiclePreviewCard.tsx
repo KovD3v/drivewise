@@ -36,7 +36,7 @@ export function VehiclePreviewCard({ vehicle, index }: { vehicle: PreviewVehicle
         />
       </div>
       <p className="mt-2 text-[0.7rem] tracking-[0.1em] text-muted-foreground uppercase">
-        Compatibilità
+        {vehicle.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : 'Compatibilità'}
       </p>
       </div>
     </motion.li>

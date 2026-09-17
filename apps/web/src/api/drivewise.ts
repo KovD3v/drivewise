@@ -288,6 +288,7 @@ export interface AdvisorMetricProvenance {
 }
 
 export interface AdvisorRecommendationItem {
+  decision_status?: 'complete' | 'insufficient_data'
   vehicle: VehicleSummary
   selected_spec: AdvisorSelectedSpec
   offer: AdvisorOffer
