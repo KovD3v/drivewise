@@ -269,10 +269,12 @@ identity. The separate `decision_engine/` package is not integrated by this PR.
 
 ### Boundary for the scraping PR
 
-Collectors must save immutable original files and emit this v2 bundle format.
-Extraction/normalization, source onboarding, matching, conflict resolution and
-agentic fact checking belong to the next PR. They may stage a bundle without
-publishing it. Publication is not itself a factual verifier: it validates the
+The [manufacturer collection agent](scraping.md) now archives immutable provider
+captures, extracts and investigates evidence in separate OpenRouter passes, and
+emits this v2 bundle format. The capture hash identifies the stored representation;
+it must never be presented as an original PDF hash when only parsed text was
+returned. Source permissions remain operator-owned. Bundles may be staged without
+publication. Publication is not itself a factual verifier: it validates the
 reviewed decisions and their structural/evidence requirements.
 
 This pilot uses complete bundles, local artifact files and read-time SQL views.

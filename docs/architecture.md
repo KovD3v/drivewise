@@ -83,7 +83,14 @@ Publication and consumer integration remain proposed work in the review.
 
 Seed data comes from SQL migrations. Local fixture ingestion reads synthetic `.md`, `.txt`, and `.json` files from `data/fixtures/ingestion` and writes normalized content into `documents` only.
 
-Firecrawl has a dry-run planner and source configuration shape, but no real crawler is active. `python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json` validates source names, types, URLs, limits, and API-key presence without HTTP requests or database writes.
+The legacy Firecrawl planner remains a dry run. `python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json` validates source names, types, URLs, limits, and API-key presence without HTTP requests or database writes.
+
+The separate [manufacturer collection runner](scraping.md) implements on-demand
+OpenRouter tool calling with Tinyfish Search/Fetch by default, optional Firecrawl
+acquisition (`--provider firecrawl`), separately enabled Tinyfish Agent navigation
+(`--tinyfish-agent`), and catalog v2 output.
+Only its explicit `--run` mode contacts providers; application startup and the
+legacy planner do not start collection.
 
 Embeddings have a dry-run planner and a fake-provider write path. `python apps/api/scripts/plan_embeddings.py` reads documents missing embeddings from the configured database and prints a batch plan without provider calls or database writes. `python apps/api/scripts/embed_documents.py --provider fake --write` can write deterministic local `1536`-dimension fake vectors into `documents.embedding` for development; `POST /search/documents` can query them only when `mode` is explicitly `vector_fake`. No real provider SDKs or external calls are configured.
 
