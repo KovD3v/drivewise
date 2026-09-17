@@ -26,7 +26,7 @@ def test_vehicle_repository_uses_contains_for_text_and_exact_for_enums():
     assert "fuel_type = %s" in conn.query
     assert "body_style = %s" in conn.query
     assert "market = %s" in conn.query
-    assert "EXISTS (SELECT 1 FROM vehicle_specs candidate" in conn.query
+    assert "EXISTS (SELECT 1 FROM catalog_read_specs candidate" in conn.query
     assert "candidate.fuel_type = %s" in conn.query
     assert "candidate.body_style = %s" in conn.query
     assert "default_spec.is_default" in conn.query
@@ -48,7 +48,7 @@ def test_vehicle_repository_resolve_candidates_left_joins_specs_by_market():
     repository.list_resolve_candidates("IT")
 
     assert "FROM vehicles v" in conn.query
-    assert "LEFT JOIN vehicle_specs s ON s.vehicle_id = v.id" in conn.query
+    assert "LEFT JOIN catalog_read_specs s ON s.vehicle_id = v.id" in conn.query
     assert "WHERE v.market = %s" in conn.query
     assert "ORDER BY v.make, v.model, v.model_year, s.trim" in conn.query
     assert conn.params == ["IT"]

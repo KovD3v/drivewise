@@ -126,7 +126,7 @@
       "source_key": "synthetic-v2",
       "url": "https://example.test/catalog/metro",
       "retrieved_at": "2026-09-01T12:00:00Z",
-      "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "content_sha256": "eb2e98693fb5ad53b0cb05dd999207bc41a47642ef64a04668abfbebd9dfe72f",
       "artifact_path": "synthetic/metro-1.html",
       "media_type": "text/html",
       "evidence_kind": "synthetic"
@@ -136,7 +136,7 @@
       "source_key": "synthetic-v2",
       "url": "https://example.test/catalog/metro",
       "retrieved_at": "2026-09-02T12:00:00Z",
-      "content_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "content_sha256": "2f4b37bdcb7dbe8be22735ac953445f68a6641c4316753c54d820f6ac281fa27",
       "artifact_path": "synthetic/metro-2.html",
       "media_type": "text/html",
       "evidence_kind": "synthetic"

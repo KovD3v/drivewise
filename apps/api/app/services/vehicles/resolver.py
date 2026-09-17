@@ -68,9 +68,9 @@ def resolve_vehicle_query(
             -candidate.confidence,
             candidate.vehicle.make,
             candidate.vehicle.model,
-            candidate.vehicle.model_year,
+            candidate.vehicle.model_year or 0,
             not bool(candidate.spec and candidate.spec.is_default),
-            candidate.spec.trim if candidate.spec else "",
+            (candidate.spec.trim or "") if candidate.spec else "",
             (candidate.spec.variant_key or "") if candidate.spec else "",
             str(candidate.spec.id) if candidate.spec else "",
         )
@@ -132,7 +132,7 @@ def _score_candidate(
     if spec is None:
         warnings.append("no_spec_match")
     else:
-        trim_score = _trim_overlap(spec.trim, query_tokens)
+        trim_score = _trim_overlap(spec.trim or "", query_tokens)
         if trim_score > 0:
             score += 0.26 * trim_score
             matched_fields.append("trim")
@@ -233,6 +233,8 @@ def _matches_model_year(
     row: dict[str, Any],
     query_tokens: set[str],
 ) -> bool:
+    if row["model_year"] is None:
+        return False
     model_year = str(row["model_year"])
     return request.model_year == row["model_year"] or model_year in query_tokens
 
@@ -244,6 +246,7 @@ def _row_to_spec(row: dict[str, Any]) -> VehicleSpec | None:
         {
             "id": row["spec_id"],
             "variant_key": row.get("variant_key"),
+            "catalog_version": row.get("spec_catalog_version", 1),
             "is_default": row.get("is_default", False),
             "trim": row["trim"],
             "body_style": row.get("spec_body_style", row.get("body_style")),

@@ -47,6 +47,7 @@ def test_migration_files_are_ordered():
         "0003_seed_initial_vehicles.sql",
         "0004_curated_catalog.sql",
         "0008_catalog_evidence.sql",
+        "0009_catalog_publication.sql",
     ]
 
 

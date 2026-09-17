@@ -40,7 +40,7 @@ def build_model_analysis(
     analysis_year = _resolve_analysis_year(as_of)
     assumptions = [
         "No live market sources are used in Model Analysis V1.",
-        "Reference price uses available MVP listing prices, then base price fallback.",
+        "Reference prices use eligible, fresh offers for the selected variant.",
         "Annual kilometres are estimated deterministically from usage_profile.",
         flat_rate_assumption_sentence(),
         "Maintenance is a heuristic based on body style, powertrain, age, and mileage.",
@@ -112,6 +112,7 @@ def build_model_analysis(
     elif (
         include_red_flags
         and request.current_km is not None
+        and vehicle.model_year is not None
         and _is_high_mileage(
             vehicle.model_year,
             request.current_km,
@@ -310,6 +311,8 @@ def _estimate_costs(
 
     if include_price and reference_price is None:
         missing_data.append("market_reference_price_eur")
+    if include_maintenance and maintenance is None:
+        missing_data.append("maintenance_inputs")
     if include_tco and monthly_energy is None:
         missing_data.append("energy_consumption")
         notes.append("energy_cost_not_estimated")
@@ -341,11 +344,17 @@ def _annual_maintenance(
     spec: VehicleSpec | None,
     current_km: int | None,
     analysis_year: int,
-) -> float:
+) -> float | None:
+    if vehicle.catalog_version == 2:
+        body_style = spec.body_style if spec else None
+        fuel_type = spec.fuel_type if spec else None
+    else:
+        body_style = spec.body_style if spec and spec.body_style else vehicle.body_style
+        fuel_type = spec.fuel_type if spec and spec.fuel_type else vehicle.fuel_type
+    if vehicle.model_year is None or body_style is None or fuel_type is None:
+        return None
     age = max(1, analysis_year - vehicle.model_year)
     km_factor = (current_km or 0) / 1000 * 2.5
-    body_style = spec.body_style if spec and spec.body_style else vehicle.body_style
-    fuel_type = spec.fuel_type if spec and spec.fuel_type else vehicle.fuel_type
     base_cost = 420 if body_style == "city_car" else 520
     if fuel_type == "electric":
         base_cost = 340

@@ -257,10 +257,11 @@ def test_model_analysis_repository_uses_broad_exact_spec_query():
 
     assert repository.list_model_analysis_candidates() == []
     sql, params = conn.calls[0]
-    assert params is None
-    assert "LEFT JOIN vehicle_specs" in sql
+    assert len(params) == 2
+    assert "LEFT JOIN catalog_analysis_specs" in sql
     assert "l.spec_id = s.id" in sql
-    assert "l.last_seen_at >=" not in sql
+    assert "l.last_seen_at >=" in sql
+    assert "LEFT JOIN catalog_usable_listings" in sql
     assert "import_run.status = 'completed'" not in sql
 
 
