@@ -27,7 +27,7 @@ variants, offers, and record-level provenance without calling external services.
 - `apps/api/migrations/0003_seed_initial_vehicles.sql` inserts synthetic seed data.
 - `apps/api/migrations/0004_curated_catalog.sql` adds stable catalog identity,
   variant-linked offers, import runs, and provenance.
-- `apps/api/migrations/0005_catalog_evidence.sql` adds nullable identity attributes
+- `apps/api/migrations/0008_catalog_evidence.sql` adds nullable identity attributes
   and immutable snapshots, observations, and fact decisions. See the
   [catalog v2 contract and compatibility boundary](catalog-v2.md).
 

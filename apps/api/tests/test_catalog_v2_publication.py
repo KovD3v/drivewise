@@ -485,7 +485,7 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            if migration.name[:4] not in {"0001", "0006"}:
+            if migration.name[:4] not in {"0001", "0009"}:
                 conn.execute(migration.read_text())
         conn.execute(
             """INSERT INTO vehicles (id, canonical_key, model_family_key, make, model,
@@ -497,7 +497,7 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
         with pytest.raises(psycopg.errors.UniqueViolation):
             with conn.transaction():
                 conn.execute(
-                    (MIGRATIONS_PATH / "0006_catalog_publication.sql").read_text()
+                    (MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text()
                 )
         assert conn.execute(
             "SELECT 1 FROM pg_constraint WHERE conname = 'vehicles_make_model_model_year_market_key' AND conrelid = 'vehicles'::regclass"

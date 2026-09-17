@@ -215,7 +215,7 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
             before = conn.execute(
                 "SELECT id, variant_key, horsepower, battery_kwh FROM vehicle_specs ORDER BY id"
             ).fetchall()
-            conn.execute((MIGRATIONS_PATH / "0005_catalog_evidence.sql").read_text())
+            conn.execute((MIGRATIONS_PATH / "0008_catalog_evidence.sql").read_text())
             assert (
                 conn.execute(
                     "SELECT id, variant_key, horsepower, battery_kwh FROM vehicle_specs ORDER BY id"
