@@ -46,7 +46,7 @@ def test_migration_files_are_ordered():
         "0002_create_mvp_schema.sql",
         "0003_seed_initial_vehicles.sql",
         "0004_curated_catalog.sql",
-        "0005_catalog_evidence.sql",
+        "0008_catalog_evidence.sql",
     ]
 
 
