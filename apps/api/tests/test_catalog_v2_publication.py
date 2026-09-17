@@ -509,3 +509,18 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
             ).fetchone()["n"]
             == 0
         )
+
+
+def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
+    schema = f"v2_knowledge_{uuid4().hex}"
+    with conn.transaction(force_rollback=True):
+        conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+        conn.execute(sql.SQL("SET LOCAL search_path TO {}, public").format(sql.Identifier(schema)))
+        for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
+            if migration.name[:4] not in {"0001", "0009"}:
+                conn.execute(migration.read_text())
+        conn.execute("ALTER TABLE vehicle_specs ADD COLUMN engine_code text")
+        conn.execute("UPDATE vehicle_specs SET engine_code = 'reviewed-code'")
+        conn.execute((MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text())
+        codes = conn.execute("SELECT engine_code FROM catalog_read_specs").fetchall()
+        assert codes and all(row["engine_code"] == "reviewed-code" for row in codes)
