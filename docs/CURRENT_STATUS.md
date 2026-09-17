@@ -2,6 +2,19 @@
 
 _Last updated: 2026-09-06_
 
+## Catalog collection update — 2026-09-17
+
+The `feat/manufacturer-extraction` branch adds an on-demand OpenRouter/Firecrawl
+collector on top of the catalog v2 evidence and publication branches. It targets
+operator-configured Italian car families/periods, preserves evidence, investigates
+conflicts separately, and emits bundles for explicit publication. See
+[run instructions and limits](scraping.md).
+
+This is infrastructure with offline provider-simulation tests. Credentials and the
+model will be configured later; broad scraping and 80% fleet coverage have not
+been started or claimed. The existing recommendation logic is unchanged. The
+remaining product-status sections below retain their 6 September snapshot.
+
 ## Overall phase
 **MVP implementation — frontend stabilization completed, backend/Decision Engine integration now the main priority.**
 

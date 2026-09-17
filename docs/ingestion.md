@@ -2,6 +2,10 @@
 
 Drivewise includes a local ingestion pipeline for synthetic fixture documents and a dry-run planner for future Firecrawl sources. The Firecrawl planner only validates configuration and prints what would be crawled; it does not call Firecrawl, make HTTP requests, write to PostgreSQL, or generate embeddings.
 
+Real manufacturer collection is implemented separately by the
+[OpenRouter + Firecrawl catalog agent](scraping.md). This page describes the older
+local-fixture and dry-run commands; their behavior is unchanged.
+
 ## Fixture Location
 
 Default fixtures live in:
@@ -129,4 +133,5 @@ Uncertain or unparsed fields remain in `metadata.unparsed_fields`. The pipeline 
 - No automatic vehicle/listing writes beyond `documents`.
 - Fixture values are synthetic and not authoritative.
 
-To activate real Firecrawl ingestion later, add an HTTP client boundary that calls Firecrawl explicitly, convert crawl results into `LocalDocument`-compatible normalized documents, persist through the existing `documents` path, and add integration tests that mock the Firecrawl API. Do not enable automatic crawling from app startup or CI.
+The manufacturer agent emits catalog v2 evidence bundles for explicit publication;
+it does not route specifications through this older `documents` fixture importer.

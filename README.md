@@ -83,13 +83,25 @@ uvicorn app.main:app --reload --app-dir apps/api --host 127.0.0.1 --port 8000
 
 API contract documentation is available in `docs/api-contract.md`.
 
-Firecrawl ingestion is not active. To validate future source configuration without crawling or writing to the database:
+The legacy Firecrawl planner validates source configuration without crawling or writing to the database:
 
 ```bash
 python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json
 ```
 
 `FIRECRAWL_API_KEY` is optional for planning and is never printed. The command only reports whether a key is configured.
+
+The [manufacturer collection agent](docs/scraping.md) uses OpenRouter and Firecrawl
+to produce catalog v2 bundles in a separate, explicitly started job. Preview its
+scope without keys or network access:
+
+```bash
+uv run --frozen --project apps/api python apps/api/scripts/scrape_catalog.py --config data/scraping.example.json
+```
+
+Add `--run --run-dir data/private/catalog/yaris-pilot` only when keys and an
+OpenRouter model are configured. Collection resumes from local checkpoints;
+publication remains a separate command.
 
 Embedding planning is dry-run only. To inspect documents missing embeddings without calling external providers or writing to the database:
 
