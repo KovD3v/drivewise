@@ -18,6 +18,7 @@ from app.ingestion.scraping_providers import (  # noqa: E402
     OpenRouter,
     ProviderError,
     Tinyfish,
+    TinyfishFetch,
 )
 
 
@@ -27,9 +28,17 @@ def main(argv=None) -> int:
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--env-file", type=Path, default=PROJECT_ROOT / ".env")
     parser.add_argument(
+        "--provider",
+        choices=("tinyfish", "firecrawl"),
+        default="tinyfish",
+        help="Document acquisition provider (default: Tinyfish Search/Fetch)",
+    )
+    parser.add_argument(
+        "--tinyfish-agent",
         "--tinyfish",
+        dest="tinyfish_agent",
         action="store_true",
-        help="Enable optional Tinyfish document navigation",
+        help="Enable optional paid Tinyfish Agent navigation",
     )
     parser.add_argument(
         "--model", help="OpenRouter model ID; overrides OPENROUTER_MODEL"
@@ -55,14 +64,17 @@ def main(argv=None) -> int:
             print(
                 json.dumps(
                     {
-                        key: state[key]
-                        for key in (
-                            "phase",
-                            "model_calls",
-                            "browser_calls",
-                            "gaps",
-                            "failures",
-                        )
+                        "provider": state.get("provider", "firecrawl"),
+                        **{
+                            key: state[key]
+                            for key in (
+                                "phase",
+                                "model_calls",
+                                "browser_calls",
+                                "gaps",
+                                "failures",
+                            )
+                        },
                     },
                     indent=2,
                 )
@@ -70,8 +82,9 @@ def main(argv=None) -> int:
             return 0
         if not args.run:
             print(config.model_dump_json(indent=2))
-            if args.tinyfish:
-                print("Tinyfish document navigation enabled for this plan.")
+            print(f"Document provider: {args.provider}.")
+            if args.tinyfish_agent:
+                print("Paid Tinyfish Agent navigation enabled for this plan.")
             print("Plan only. Add --run and --run-dir to start collection.")
             return 0
         load_env_file(
@@ -86,21 +99,23 @@ def main(argv=None) -> int:
             ),
         )
         model = args.model or os.getenv("OPENROUTER_MODEL", "")
-        router_key, browser_key = (
-            os.getenv("OPENROUTER_API_KEY"),
-            os.getenv("FIRECRAWL_API_KEY"),
+        router_key = os.getenv("OPENROUTER_API_KEY")
+        browser_key_name = (
+            "TINYFISH_API_KEY" if args.provider == "tinyfish" else "FIRECRAWL_API_KEY"
         )
+        browser_key = os.getenv(browser_key_name)
         tinyfish_key = os.getenv("TINYFISH_API_KEY")
-        if (
-            not model
-            or not router_key
-            or not browser_key
-            or (args.tinyfish and not tinyfish_key)
-        ):
+        required = {
+            "OPENROUTER_API_KEY": router_key,
+            "OPENROUTER_MODEL": model,
+            browser_key_name: browser_key,
+        }
+        if args.tinyfish_agent:
+            required["TINYFISH_API_KEY"] = tinyfish_key
+        missing = [key for key, value in required.items() if not value]
+        if missing:
             print(
-                "Configure OPENROUTER_API_KEY, OPENROUTER_MODEL and FIRECRAWL_API_KEY"
-                + (", plus TINYFISH_API_KEY for --tinyfish" if args.tinyfish else "")
-                + " before --run.",
+                "Configure " + ", ".join(missing) + " before --run.",
                 file=sys.stderr,
             )
             return 1
@@ -108,8 +123,10 @@ def main(argv=None) -> int:
             config,
             args.run_dir,
             OpenRouter(router_key, model),
-            Firecrawl(browser_key),
-            Tinyfish(tinyfish_key) if args.tinyfish else None,
+            TinyfishFetch(browser_key)
+            if args.provider == "tinyfish"
+            else Firecrawl(browser_key),
+            Tinyfish(tinyfish_key) if args.tinyfish_agent else None,
         ).run()
         print(json.dumps(report, indent=2))
         return 0

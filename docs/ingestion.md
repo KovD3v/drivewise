@@ -3,7 +3,7 @@
 Drivewise includes a local ingestion pipeline for synthetic fixture documents and a dry-run planner for future Firecrawl sources. The Firecrawl planner only validates configuration and prints what would be crawled; it does not call Firecrawl, make HTTP requests, write to PostgreSQL, or generate embeddings.
 
 Real manufacturer collection is implemented separately by the
-[OpenRouter catalog agent with Firecrawl and optional Tinyfish](scraping.md). This page describes the older
+[OpenRouter catalog agent with Tinyfish Fetch and optional Firecrawl](scraping.md). This page describes the older
 local-fixture and dry-run commands; their behavior is unchanged.
 
 ## Fixture Location

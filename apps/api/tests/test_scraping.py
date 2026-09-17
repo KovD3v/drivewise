@@ -4,8 +4,10 @@ import copy
 import importlib.util
 import json
 import os
+from io import BytesIO
 from pathlib import Path
 from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlsplit
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
@@ -39,6 +41,23 @@ CAPTURE = {
             "https://untrusted.example/ignore",
         ],
     },
+}
+FETCH_CAPTURE = {
+    "results": [
+        {
+            "url": URL,
+            "final_url": URL,
+            "title": "SYNTHETIC TEST ONLY",
+            "description": None,
+            "language": "it",
+            "format": "markdown",
+            "text": CAPTURE["data"]["markdown"],
+            "author": None,
+            "published_date": None,
+            "links": CAPTURE["data"]["links"],
+        }
+    ],
+    "errors": [],
 }
 RUN_ID = str(uuid5(NAMESPACE_URL, "synthetic-run"))
 SNAPSHOT_ID = str(uuid5(NAMESPACE_URL, RUN_ID + URL + digest(CAPTURE)))
@@ -163,7 +182,7 @@ def response(name, arguments, call_id="call-1"):
     }
 
 
-class Browser:
+class Browser(providers.Firecrawl):
     def __init__(self):
         self.calls = 0
 
@@ -366,7 +385,7 @@ def test_hash_tampering_and_changed_scope_refuse_resume(tmp_path):
         Collector(config(), tmp_path, Router([]), Browser()).run()
     changed = config()
     changed.target.make = "Fiat"
-    with pytest.raises(ValueError, match="scope/model changed"):
+    with pytest.raises(ValueError, match="scope/model/provider changed"):
         Collector(changed, tmp_path, Router([]), Browser()).run()
 
 
@@ -412,11 +431,17 @@ def test_provider_capture_warning_is_visible_in_both_passes(tmp_path):
 
 
 @pytest.mark.parametrize("tinyfish", [False, True])
+@pytest.mark.parametrize("provider", ["tinyfish", "firecrawl"])
 def test_cli_full_flow_uses_real_clients_with_simulated_http(
-    tmp_path, monkeypatch, capsys, tinyfish
+    tmp_path, monkeypatch, capsys, tinyfish, provider
 ):
     module = script()
     monkeypatch.setattr(os, "environ", dict(os.environ))
+    capture = FETCH_CAPTURE if provider == "tinyfish" else CAPTURE
+    monkeypatch.setattr(
+        f"{__name__}.SNAPSHOT_ID",
+        str(uuid5(NAMESPACE_URL, RUN_ID + URL + digest(capture))),
+    )
     steps = replies()
     if tinyfish:
         steps[0] = response(
@@ -425,31 +450,68 @@ def test_cli_full_flow_uses_real_clients_with_simulated_http(
     responses = iter(steps)
     endpoints = []
 
-    def fake_post(url, key, payload, **kwargs):
-        endpoints.append(url)
-        if url.endswith("chat/completions"):
-            assert key == "synthetic-openrouter-key"
-            names = {tool["function"]["name"] for tool in payload["tools"]}
-            assert ("browse" in names) is tinyfish
-            return next(responses)
-        if "tinyfish.ai" in url:
-            assert key == "synthetic-tinyfish-key"
-            assert kwargs == {"key_header": "X-API-Key"}
-            assert "toyota-yaris" in payload["goal"]
-            return {
-                "status": "COMPLETED",
-                "run_id": "synthetic-tinyfish-run",
-                "result": {
-                    "links": [URL, "https://untrusted.example/"],
-                    "power_kw": 9001,
-                },
-            }
-        assert key == "synthetic-firecrawl-key"
-        if url.endswith("/map"):
-            return {"success": True, "links": [{"url": URL}]}
-        return copy.deepcopy(CAPTURE)
+    class Opener:
+        def open(self, request, timeout):
+            url = request.full_url
+            endpoints.append(url)
+            payload = json.loads(request.data or b"{}")
+            if url.endswith("chat/completions"):
+                assert (
+                    request.get_header("Authorization")
+                    == "Bearer synthetic-openrouter-key"
+                )
+                names = {tool["function"]["name"] for tool in payload["tools"]}
+                assert ("browse" in names) is tinyfish
+                result = next(responses)
+            elif urlsplit(url).hostname == "api.search.tinyfish.ai":
+                assert request.get_method() == "GET"
+                assert request.get_header("X-api-key") == "synthetic-tinyfish-key"
+                assert parse_qs(urlsplit(url).query) == {
+                    "query": ["Yaris MY20"],
+                    "include_domains": ["newsroom.toyota.it"],
+                }
+                result = {
+                    "results": [
+                        {"url": URL, "snippet": "Unverified: 9001 kW"},
+                        {"url": "https://untrusted.example/"},
+                    ]
+                }
+            elif url == "https://api.fetch.tinyfish.ai":
+                assert request.get_method() == "POST"
+                assert request.get_header("X-api-key") == "synthetic-tinyfish-key"
+                assert payload == {
+                    "urls": [URL],
+                    "format": "markdown",
+                    "links": True,
+                    "ttl": 0,
+                    "per_url_timeout_ms": 45000,
+                }
+                result = FETCH_CAPTURE
+            elif url == "https://agent.tinyfish.ai/v1/automation/run":
+                assert request.get_header("X-api-key") == "synthetic-tinyfish-key"
+                assert "toyota-yaris" in payload["goal"]
+                result = {
+                    "status": "COMPLETED",
+                    "run_id": "synthetic-tinyfish-run",
+                    "result": {
+                        "links": [URL, "https://untrusted.example/"],
+                        "power_kw": 9001,
+                    },
+                }
+            else:
+                assert url.startswith("https://api.firecrawl.dev/v2/")
+                assert (
+                    request.get_header("Authorization")
+                    == "Bearer synthetic-firecrawl-key"
+                )
+                result = (
+                    {"success": True, "links": [{"url": URL}]}
+                    if url.endswith("/map")
+                    else CAPTURE
+                )
+            return BytesIO(json.dumps(result).encode())
 
-    monkeypatch.setattr(providers, "post_json", fake_post)
+    monkeypatch.setattr(providers, "build_opener", lambda *args: Opener())
     for key in (
         "OPENROUTER_API_KEY",
         "OPENROUTER_MODEL",
@@ -459,31 +521,47 @@ def test_cli_full_flow_uses_real_clients_with_simulated_http(
         monkeypatch.delenv(key, raising=False)
     env = tmp_path / "synthetic.env"
     env.write_text(
-        "OPENROUTER_API_KEY=synthetic-openrouter-key\nOPENROUTER_MODEL=synthetic/tool-model\nFIRECRAWL_API_KEY=synthetic-firecrawl-key\nTINYFISH_API_KEY=synthetic-tinyfish-key\n"
+        "OPENROUTER_API_KEY=synthetic-openrouter-key\nOPENROUTER_MODEL=synthetic/tool-model\n"
+        + (
+            "FIRECRAWL_API_KEY=synthetic-firecrawl-key\n"
+            if provider == "firecrawl"
+            else ""
+        )
+        + (
+            "TINYFISH_API_KEY=synthetic-tinyfish-key\n"
+            if provider == "tinyfish" or tinyfish
+            else ""
+        )
     )
     job = tmp_path / "config.json"
     job.write_text(config().model_dump_json())
     run = tmp_path / "run"
-    assert (
-        module.main(
-            [
-                "--config",
-                str(job),
-                "--run",
-                "--run-dir",
-                str(run),
-                "--env-file",
-                str(env),
-                *(["--tinyfish"] if tinyfish else []),
-            ]
-        )
-        == 0
-    )
+    args = [
+        "--config",
+        str(job),
+        "--run",
+        "--run-dir",
+        str(run),
+        "--env-file",
+        str(env),
+        *(["--provider", "firecrawl"] if provider == "firecrawl" else []),
+        *(["--tinyfish-agent"] if tinyfish else []),
+    ]
+    assert module.main(args) == 0
     bundle = CatalogV2.model_validate_json((run / "bundle.json").read_text())
     verify_artifacts(bundle, run)
     assert len(bundle.snapshots) == 1
     assert [o.value_min for o in bundle.observations] == [68, 85]
+    assert json.loads((run / bundle.snapshots[0].artifact_path).read_text()) == capture
+    state = json.loads((run / "state.json").read_text())
+    assert state["provider"] == provider
+    assert all(
+        "untrusted.example" not in json.dumps(value["links"])
+        for value in state["captures"].values()
+    )
     assert len(list((run / "navigation").glob("*.json"))) == int(tinyfish)
+    assert len(endpoints) == 7
+    assert module.main(args) == 0  # A completed run re-reads the saved provider format.
     assert len(endpoints) == 7
     assert "synthetic-openrouter-key" not in capsys.readouterr().out
     assert module.main(["--config", str(job), "--status", "--run-dir", str(run)]) == 0
@@ -571,8 +649,6 @@ def test_tinyfish_failures_are_cached_without_leaking_provider_errors(
 
 
 def test_tinyfish_transport_uses_api_key_and_bounded_public_navigation(monkeypatch):
-    from io import BytesIO
-
     class Opener:
         def open(self, request, timeout):
             assert request.full_url == "https://agent.tinyfish.ai/v1/automation/run"
@@ -622,6 +698,8 @@ def test_tinyfish_is_explicit_and_credentials_are_needed_only_for_runs(
         str(ROOT / "data/scraping.example.json"),
         "--env-file",
         str(tmp_path / "absent.env"),
+        "--provider",
+        "firecrawl",
         "--tinyfish",
     ]
     assert module.main(args) == 0
@@ -655,6 +733,121 @@ def test_page_failures_are_cached_and_do_not_break_resume(tmp_path):
     runner.load()
     assert "error" in runner.scrape(Browse(url=URL))
     assert browser.calls == 1 and len(runner.state["failures"]) == 1
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda r: r.update(results=[], errors=[{"url": URL, "error": "timeout"}]),
+        lambda r: r.update(
+            errors=[{"url": URL, "error": "target_http_error", "status": 403}]
+        ),
+        lambda r: r.pop("errors"),
+        lambda r: r.update(results=[r["results"][0], r["results"][0]]),
+        lambda r: r["results"][0].update(url=URL + "/wrong-document"),
+        lambda r: r["results"][0].update(
+            final_url="https://newsroom.toyota.it.evil.example/doc"
+        ),
+        lambda r: r["results"][0].update(
+            final_url="https://user:secret@newsroom.toyota.it/doc"
+        ),
+        lambda r: r["results"][0].update(final_url=None),
+        lambda r: r["results"][0].update(format="html"),
+        lambda r: r["results"][0].update(not_modified=True),
+        lambda r: r["results"][0].update(text=""),
+        lambda r: r["results"][0].update(text={"generated_claim": "9001 kW"}),
+        lambda r: r["results"][0].update(text="x" * 200001),
+    ],
+)
+def test_fetch_rejects_and_caches_incomplete_or_untrusted_evidence(
+    tmp_path, monkeypatch, mutation
+):
+    raw = copy.deepcopy(FETCH_CAPTURE)
+    mutation(raw)
+    calls = []
+
+    def fake_post(url, *args, **kwargs):
+        assert (
+            url == "https://api.fetch.tinyfish.ai"
+        )  # Never switch to a paid provider.
+        calls.append(url)
+        return raw
+
+    monkeypatch.setattr(providers, "post_json", fake_post)
+    runner = Collector(
+        config(), tmp_path, Router([]), providers.TinyfishFetch("synthetic-key")
+    )
+    runner.load()
+    failure = runner.scrape(Browse(url=URL))
+    assert "error" in failure and "secret" not in failure["error"]
+    assert runner.snapshots() == []
+    runner.load()
+    assert runner.scrape(Browse(url=URL)) == failure
+    assert len(calls) == runner.state["browser_calls"] == 1
+
+
+def test_fetch_preserves_pdf_capture_and_resumes_normalized_urls(tmp_path, monkeypatch):
+    url = "https://newsroom.toyota.it/specifiche-città.pdf"
+    raw = copy.deepcopy(FETCH_CAPTURE)
+    raw["results"][0].update(url=url, final_url=url)
+    calls = []
+    monkeypatch.setattr(
+        providers, "post_json", lambda *args, **kwargs: calls.append(args) or raw
+    )
+    runner = Collector(
+        config(), tmp_path, Router([]), providers.TinyfishFetch("synthetic-key")
+    )
+    runner.load()
+    evidence = runner.scrape(Browse(url=url))
+    assert "Engine: 68 kW" in evidence["text"]
+    snapshot = evidence["snapshot"]
+    assert json.loads((tmp_path / snapshot["artifact_path"]).read_text()) == raw
+    assert snapshot["content_sha256"] == digest(raw)
+    assert "statusCode" not in runner.capture_data(snapshot)["metadata"]
+    resumed = Collector(
+        config(), tmp_path, Router([]), providers.TinyfishFetch("synthetic-key")
+    )
+    resumed.load()
+    assert resumed.scrape(Browse(url=url)) == evidence and len(calls) == 1
+    with pytest.raises(ValueError, match="provider changed"):
+        Collector(config(), tmp_path, Router([]), Browser()).load()
+
+
+def test_provider_selection_preserves_legacy_firecrawl_runs(tmp_path):
+    runner = prepared(tmp_path)
+    runner.state.pop("provider")
+    runner.save()
+    runner.load()
+    assert "Engine: 68 kW" in runner.scrape(Browse(url=URL))["text"]
+    with pytest.raises(ValueError, match="provider changed"):
+        Collector(
+            config(), tmp_path, Router([]), providers.TinyfishFetch("synthetic-key")
+        ).load()
+
+
+@pytest.mark.parametrize("result", [{"results": None}, {"error": "synthetic-secret"}])
+def test_tinyfish_search_failures_do_not_become_evidence(tmp_path, monkeypatch, result):
+    calls = []
+
+    class Opener:
+        def open(self, request, timeout):
+            assert urlsplit(request.full_url).hostname == "api.search.tinyfish.ai"
+            calls.append(request)
+            return BytesIO(json.dumps(result).encode())
+
+    monkeypatch.setattr(providers, "build_opener", lambda *args: Opener())
+    runner = Collector(
+        config(), tmp_path, Router([]), providers.TinyfishFetch("synthetic-key")
+    )
+    runner.load()
+    call = {
+        "name": "discover",
+        "arguments": json.dumps({"url": URL, "search": "Yaris MY20"}),
+    }
+    failure = runner.execute(call)
+    assert "error" in failure and "synthetic-secret" not in failure["error"]
+    assert runner.execute(call) == failure and len(calls) == 1
+    assert runner.snapshots() == []
 
 
 def test_empty_results_produce_gap_report_not_fake_bundle(tmp_path):
@@ -755,7 +948,12 @@ def test_cli_plan_and_missing_credentials_never_call_providers(
     monkeypatch.setattr(
         module.Collector, "run", lambda *args: pytest.fail("Unexpected collection")
     )
-    for key in ("OPENROUTER_API_KEY", "OPENROUTER_MODEL", "FIRECRAWL_API_KEY"):
+    for key in (
+        "OPENROUTER_API_KEY",
+        "OPENROUTER_MODEL",
+        "FIRECRAWL_API_KEY",
+        "TINYFISH_API_KEY",
+    ):
         monkeypatch.delenv(key, raising=False)
     args = [
         "--config",
@@ -764,7 +962,10 @@ def test_cli_plan_and_missing_credentials_never_call_providers(
         str(tmp_path / "absent.env"),
     ]
     assert module.main(args) == 0
-    assert "Plan only" in capsys.readouterr().out
+    plan = capsys.readouterr().out
+    assert "Plan only" in plan and "Document provider: tinyfish." in plan
     assert module.main(args + ["--run", "--run-dir", str(tmp_path / "run")]) == 1
-    assert "Configure OPENROUTER_API_KEY" in capsys.readouterr().err
+    error = capsys.readouterr().err
+    assert "Configure OPENROUTER_API_KEY" in error and "TINYFISH_API_KEY" in error
+    assert "FIRECRAWL_API_KEY" not in error
     assert not (tmp_path / "run").exists()

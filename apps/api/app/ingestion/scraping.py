@@ -35,6 +35,7 @@ from app.ingestion.scraping_providers import (
     OpenRouter,
     ProviderError,
     Tinyfish,
+    TinyfishFetch,
 )
 
 
@@ -123,7 +124,7 @@ class Collector:
         config: ScrapingConfig,
         root: Path,
         model: OpenRouter,
-        browser: Firecrawl,
+        browser: Firecrawl | TinyfishFetch,
         tinyfish: Tinyfish | None = None,
     ):
         self.config, self.root = config, root
@@ -160,19 +161,28 @@ class Collector:
                 "model": self.model.model,
                 "config": self.config.model_dump(mode="json", exclude={"limits"}),
                 **({"tinyfish": True} if self.tinyfish is not None else {}),
+                # Existing Firecrawl checkpoints predate provider selection.
+                **(
+                    {"provider": self.browser.name}
+                    if self.browser.name != "firecrawl"
+                    else {}
+                ),
             }
         )
         path = self.root / "state.json"
         if path.exists():
             self.state = json.loads(path.read_text())
             if self.state.get("fingerprint") != fingerprint:
-                raise ValueError("Run scope/model changed; use a new run directory.")
+                raise ValueError(
+                    "Run scope/model/provider changed; use a new run directory."
+                )
             for capture in self.state["captures"].values():
                 if "snapshot" in capture:
                     self.capture_text(capture["snapshot"])
         else:
             self.state = {
                 "fingerprint": fingerprint,
+                "provider": self.browser.name,
                 "run_id": str(uuid4()),
                 "phase": "extract",
                 "model_calls": 0,
@@ -387,7 +397,7 @@ class Collector:
             try:
                 result = self.browser.discover(url, request.search)
                 if result.get("success") is not True:
-                    raise ProviderError("Firecrawl discovery failed.")
+                    raise ProviderError("Document discovery failed.")
                 result = {"links": self.allowed_links(result.get("links", []))}
             except ProviderError as error:
                 result = {"error": str(error)}
@@ -448,17 +458,8 @@ class Collector:
             self.reserve("browser")
             try:
                 result = self.browser.scrape(url)
-                data = result.get("data", {})
-                if not isinstance(data, dict):
-                    raise ProviderError("Firecrawl returned invalid capture data.")
-                metadata = data.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    raise ProviderError("Firecrawl returned invalid metadata.")
-                if result.get("success") is not True or metadata.get("error"):
-                    raise ProviderError("Firecrawl capture failed.")
-                status = metadata.get("statusCode")
-                if not isinstance(status, int) or not 200 <= status < 300:
-                    raise ProviderError("Source response is not a successful page.")
+                data = self.browser.capture_data(result, url)
+                metadata = data["metadata"]
                 for field in ("url", "sourceURL"):
                     if metadata.get(field):
                         actual_source = self.config.source_for(metadata[field])
@@ -508,7 +509,7 @@ class Collector:
         raw = path.read_bytes()
         if hashlib.sha256(raw).hexdigest() != parsed.content_sha256:
             raise ValueError("capture hash mismatch")
-        return json.loads(raw)["data"]
+        return self.browser.capture_data(json.loads(raw), str(parsed.url))
 
     def capture_text(self, snapshot: dict) -> str:
         return self.capture_data(snapshot)["markdown"]
@@ -692,6 +693,7 @@ class Collector:
         return {
             "phase": self.state["phase"],
             "model": self.model.model,
+            "provider": self.browser.name,
             "model_calls": self.state["model_calls"],
             "browser_calls": self.state["browser_calls"],
             "reported_model_cost_usd": self.state["reported_model_cost_usd"],
