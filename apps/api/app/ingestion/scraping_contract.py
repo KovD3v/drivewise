@@ -108,6 +108,10 @@ class Discover(Browse):
     search: str = Field(min_length=1, max_length=200)
 
 
+class Navigate(Browse):
+    goal: str = Field(min_length=1, max_length=2000)
+
+
 class ReadEvidence(ContractModel):
     snapshot_id: UUID
     start_line: int = Field(default=1, ge=1)

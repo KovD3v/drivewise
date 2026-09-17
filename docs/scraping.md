@@ -1,9 +1,10 @@
 # Manufacturer collection agent
 
 An on-demand OpenRouter agent uses Firecrawl to discover and read trusted sites,
-extracts the requested vehicle specifications, then starts a separate investigation
-pass. It produces a catalog v2 bundle and a gap report for explicit review and
-publication. Nothing runs on API startup, in CI, or on a schedule.
+with optional Tinyfish navigation for menus and filters. It extracts the requested
+vehicle specifications, then starts a separate investigation pass. It produces a
+catalog v2 bundle and a gap report for explicit review and publication. Nothing
+runs on API startup, in CI, or on a schedule.
 
 ## Start later, when credentials are configured
 
@@ -31,6 +32,27 @@ Repeat that command to resume the same job. Use `--status` instead of `--run` to
 read progress without keys or network access. Exit 2 means a budget/context limit
 or another process paused the run; exit 1 means an error. Complete jobs exit 0,
 including an explicit `no_evidence` outcome with a gap report and no bundle.
+
+### Optional Tinyfish navigation
+
+Set `TINYFISH_API_KEY` in the ignored `.env` later and add `--tinyfish` to enable
+the `browse` tool in both passes. An API key alone does not enable the tool.
+OpenRouter can delegate document discovery through menus, search and filters to
+Tinyfish. Returned URLs are filtered to the configured trusted hosts; OpenRouter
+then uses Firecrawl's `scrape` tool to capture evidence at those URLs. Firecrawl
+remains required. Tinyfish's generated JSON is a navigation receipt, never a
+source snapshot or proof of a vehicle fact. Content requiring browser state that
+Firecrawl cannot reproduce remains an evidence gap.
+
+```sh
+uv run --frozen --project apps/api --extra dev python apps/api/scripts/scrape_catalog.py \
+  --config data/scraping.example.json --tinyfish \
+  --run-dir data/private/catalog/yaris-tinyfish-pilot --run
+```
+
+Omit `--run` and `--run-dir` to preview this configuration without credentials or
+network access. Repeat the same flags to resume; changing whether Tinyfish is
+enabled requires a new run directory.
 
 ## What the operator controls
 
@@ -61,6 +83,7 @@ corroboration.
   identities, observations and gaps. Proposed quotes must occur verbatim in their
   captured document, and raw values/units must occur in those quotes. Markdown
   line locators are derived from the capture rather than trusted to the model.
+  When enabled, `browse` adds Tinyfish document discovery before scraping.
 - Canonical units, common numerical conversions, ascending ranges, family/market,
   dates and all v2 references are checked in code. Ambiguous units such as `hp`
   and unsupported number formats are rejected for investigation, not guessed.
@@ -87,31 +110,44 @@ Files in the ignored run directory:
 | `state.json` | Scope/model fingerprint, phase, conversation, usage, captures and failures; atomic checkpoints. |
 | `artifacts/<sha256>.json` | Immutable captured evidence, hash-checked when read/resumed. |
 | `model-responses/` | Provider receipts for debugging; local only. |
+| `navigation/<sha256>.json` | Tinyfish responses for debugging; excluded from factual evidence. |
 | `bundle.json` | Completed, validated v2 identities, observations and agent decisions. |
 | `report.json` | Missing/unverified metrics, gaps, failures and usage; no fleet-coverage claim. |
 
 ## Bounds and failure handling
 
-Model calls, Firecrawl calls, output tokens, context bytes and document characters
-are bounded. Attempts are charged against local call limits **before** sending;
+Model calls, browser calls, output tokens, context bytes and document characters
+are bounded. Firecrawl requests and Tinyfish runs share `max_browser_calls`.
+Attempts are charged against local call limits **before** sending;
 there is no hidden request retry. Reported OpenRouter costs are summed and calls
 with unknown cost are counted separately. These are invocation/token limits, not
-a guaranteed currency cap: model input pricing and Firecrawl PDF/page charges vary.
+a guaranteed currency cap: model input pricing, Firecrawl PDF/page charges and
+Tinyfish agent-step charges vary. Tinyfish charges are not included in the
+`reported_model_cost_usd` total, which covers only OpenRouter.
 Use provider-account spending limits for a hard financial cap.
 
-Successful discovery and captures are cached within the run, as are failed pages.
+Tinyfish uses the synchronous Agent API with a 60-second server-side duration
+limit and the shared 75-second HTTP timeout. It does not request beta step limits,
+account-gated HTML captures, vault access, saved profiles or enhanced proxies.
+Longer navigation needs a future async adapter; a local timeout cannot cancel a
+synchronous provider run. The configured server duration still applies.
+
+Successful discovery and captures are cached within the run, as are failed pages
+and Tinyfish runs. Changing a navigation goal creates a new budgeted attempt.
 Blocked/error pages are reported; no enhanced proxy escalation is enabled.
 Returned links and redirect metadata are checked against the trusted hosts before
-being admitted as evidence. Firecrawl controls the remote browser and redirect
-requests; this application does not provide a network-level egress guarantee for
-that service. API bearer tokens are sent only to fixed provider endpoints and
+being admitted as evidence. Tinyfish receives a read-only, trusted-host navigation
+instruction, but providers control their remote browsers and redirect requests;
+this application does not provide a network-level egress guarantee for either
+service. API credentials are sent only to fixed provider endpoints and
 API redirects are disabled.
 
 Only one process may own a run directory. An interrupted provider request can have
 been billed without a response being saved; resume may request it again, consuming
 another attempt. Completed checkpoints do not repeat completed work. Limits may
-be increased when resuming, but scope, source records and model changes require a
-new directory. There is no distributed queue or automatic cross-run identity merge.
+be increased when resuming, but scope, source records, model and Tinyfish enablement
+changes require a new directory. There is no distributed queue or automatic cross-run
+identity merge.
 
 ## Validate and publish separately
 
@@ -137,5 +173,5 @@ requested for this PR; credentials and the live model will be configured later.
 API contracts checked on 17 September 2026:
 [OpenRouter tool calling](https://openrouter.ai/docs/guides/features/tool-calling),
 [Firecrawl scrape](https://docs.firecrawl.dev/api-reference/endpoint/scrape),
-[Firecrawl map](https://docs.firecrawl.dev/api-reference/endpoint/map).
-Tinyfish is not integrated; Firecrawl is the single browsing provider in this PR.
+[Firecrawl map](https://docs.firecrawl.dev/api-reference/endpoint/map),
+[Tinyfish Agent API](https://docs.tinyfish.ai/agent-api/reference).

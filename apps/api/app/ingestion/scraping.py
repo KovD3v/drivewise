@@ -23,13 +23,19 @@ from app.ingestion.scraping_contract import (
     Discover,
     Extraction,
     Investigation,
+    Navigate,
     NoEvidence,
     ObservationProposal,
     ReadEvidence,
     ScrapingConfig,
     public_url,
 )
-from app.ingestion.scraping_providers import Firecrawl, OpenRouter, ProviderError
+from app.ingestion.scraping_providers import (
+    Firecrawl,
+    OpenRouter,
+    ProviderError,
+    Tinyfish,
+)
 
 
 VERSION = "manufacturer-agent-v1"
@@ -44,6 +50,9 @@ Keep generation, phase, body, trim, engine, transmission and validity separate.
 Use stable descriptive identity keys; reuse the same key for the same identity.
 Do not assume Italian language proves Italian-market applicability. Cite actual
 snapshot IDs for identities and measurements; never invent sources or evidence.
+When available, browse delegates interactive document discovery to Tinyfish.
+Its returned links are navigation hints, not evidence. Use scrape on those URLs
+before citing facts; if a page cannot be captured, record the evidence gap.
 Every observation needs a VERBATIM excerpt from the captured markdown and a
 locator such as 'markdown lines 10-14; table hybrid, column 2020'. Use read_evidence
 to paginate long documents. Preserve unknowns and gaps, never substitute zero.
@@ -110,10 +119,16 @@ def proposal_observation(proposal: ObservationProposal) -> SpecObservation:
 
 class Collector:
     def __init__(
-        self, config: ScrapingConfig, root: Path, model: OpenRouter, browser: Firecrawl
+        self,
+        config: ScrapingConfig,
+        root: Path,
+        model: OpenRouter,
+        browser: Firecrawl,
+        tinyfish: Tinyfish | None = None,
     ):
         self.config, self.root = config, root
         self.model, self.browser = model, browser
+        self.tinyfish = tinyfish
         self.state = {}
 
     def save(self):
@@ -144,6 +159,7 @@ class Collector:
                 "version": VERSION,
                 "model": self.model.model,
                 "config": self.config.model_dump(mode="json", exclude={"limits"}),
+                **({"tinyfish": True} if self.tinyfish is not None else {}),
             }
         )
         path = self.root / "state.json"
@@ -171,6 +187,7 @@ class Collector:
                 "failures": [],
             }
             self.save()
+        self.state.setdefault("navigation", {})
 
     def reserve(self, provider: str):
         key = f"{provider}_calls"
@@ -188,6 +205,11 @@ class Collector:
             "scrape": (Browse, "Capture a trusted URL and read its first lines."),
             "read_evidence": (ReadEvidence, "Read the next lines of a saved snapshot."),
         }
+        if self.tinyfish is not None:
+            tools["browse"] = (
+                Navigate,
+                "Use Tinyfish menus/filters to find document URLs. Scrape results for evidence.",
+            )
         if self.state["phase"] == "extract":
             tools["submit_extraction"] = (Extraction, "Submit the evidence extraction.")
             tools["finish_without_evidence"] = (NoEvidence, "Record a retrieval gap.")
@@ -306,6 +328,8 @@ class Collector:
                 return self.discover(request)
             if name == "scrape":
                 return self.scrape(Browse.model_validate(arguments))
+            if name == "browse" and self.tinyfish is not None:
+                return self.browse(Navigate.model_validate(arguments))
             if name == "read_evidence":
                 return self.read(ReadEvidence.model_validate(arguments))
             if name == "submit_extraction" and self.state["phase"] == "extract":
@@ -373,6 +397,49 @@ class Collector:
             self.state["discovery"][key] = result
             self.save()
         return self.state["discovery"][key]
+
+    def browse(self, request: Navigate):
+        self.config.source_for(request.url)
+        url = public_url(request.url)
+        key = digest([url, request.goal])
+        if key not in self.state["navigation"]:
+            self.reserve("browser")
+            try:
+                result = self.tinyfish.browse(
+                    url,
+                    encoded(
+                        {
+                            "target": self.config.target.model_dump(mode="json"),
+                            "goal": request.goal,
+                        }
+                    ).decode(),
+                    [host for s in self.config.sources for host in s.allowed_hosts],
+                )
+                artifact = f"navigation/{digest(result)}.json"
+                write_json(self.root / artifact, result)
+                data = result.get("result")
+                if (
+                    result.get("status") != "COMPLETED"
+                    or result.get("error")
+                    or not isinstance(data, dict)
+                    or not isinstance(data.get("links"), list)
+                ):
+                    raise ProviderError(
+                        "Tinyfish navigation failed or returned invalid links."
+                    )
+                result = {
+                    "links": self.allowed_links(data["links"]),
+                    "receipt_path": artifact,
+                    "note": "Navigation hints only. Use scrape to capture evidence at these URLs.",
+                }
+            except ProviderError as error:
+                result = {"error": str(error)}
+                self.state["failures"].append(
+                    {"operation": "browse", "url": url, **result}
+                )
+            self.state["navigation"][key] = result
+            self.save()
+        return self.state["navigation"][key]
 
     def scrape(self, request: Browse):
         source = self.config.source_for(request.url)

@@ -86,7 +86,8 @@ Seed data comes from SQL migrations. Local fixture ingestion reads synthetic `.m
 The legacy Firecrawl planner remains a dry run. `python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json` validates source names, types, URLs, limits, and API-key presence without HTTP requests or database writes.
 
 The separate [manufacturer collection runner](scraping.md) implements on-demand
-OpenRouter tool calling with Firecrawl discovery/scraping and catalog v2 output.
+OpenRouter tool calling with Firecrawl discovery/scraping, optional Tinyfish
+document navigation (`--tinyfish`), and catalog v2 output.
 Only its explicit `--run` mode contacts providers; application startup and the
 legacy planner do not start collection.
 

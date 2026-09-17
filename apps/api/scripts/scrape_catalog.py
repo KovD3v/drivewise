@@ -17,6 +17,7 @@ from app.ingestion.scraping_providers import (  # noqa: E402
     Firecrawl,
     OpenRouter,
     ProviderError,
+    Tinyfish,
 )
 
 
@@ -25,6 +26,11 @@ def main(argv=None) -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--env-file", type=Path, default=PROJECT_ROOT / ".env")
+    parser.add_argument(
+        "--tinyfish",
+        action="store_true",
+        help="Enable optional Tinyfish document navigation",
+    )
     parser.add_argument(
         "--model", help="OpenRouter model ID; overrides OPENROUTER_MODEL"
     )
@@ -64,25 +70,46 @@ def main(argv=None) -> int:
             return 0
         if not args.run:
             print(config.model_dump_json(indent=2))
+            if args.tinyfish:
+                print("Tinyfish document navigation enabled for this plan.")
             print("Plan only. Add --run and --run-dir to start collection.")
             return 0
         load_env_file(
             args.env_file,
-            frozenset({"OPENROUTER_API_KEY", "OPENROUTER_MODEL", "FIRECRAWL_API_KEY"}),
+            frozenset(
+                {
+                    "OPENROUTER_API_KEY",
+                    "OPENROUTER_MODEL",
+                    "FIRECRAWL_API_KEY",
+                    "TINYFISH_API_KEY",
+                }
+            ),
         )
         model = args.model or os.getenv("OPENROUTER_MODEL", "")
         router_key, browser_key = (
             os.getenv("OPENROUTER_API_KEY"),
             os.getenv("FIRECRAWL_API_KEY"),
         )
-        if not model or not router_key or not browser_key:
+        tinyfish_key = os.getenv("TINYFISH_API_KEY")
+        if (
+            not model
+            or not router_key
+            or not browser_key
+            or (args.tinyfish and not tinyfish_key)
+        ):
             print(
-                "Configure OPENROUTER_API_KEY, OPENROUTER_MODEL and FIRECRAWL_API_KEY before --run.",
+                "Configure OPENROUTER_API_KEY, OPENROUTER_MODEL and FIRECRAWL_API_KEY"
+                + (", plus TINYFISH_API_KEY for --tinyfish" if args.tinyfish else "")
+                + " before --run.",
                 file=sys.stderr,
             )
             return 1
         report = Collector(
-            config, args.run_dir, OpenRouter(router_key, model), Firecrawl(browser_key)
+            config,
+            args.run_dir,
+            OpenRouter(router_key, model),
+            Firecrawl(browser_key),
+            Tinyfish(tinyfish_key) if args.tinyfish else None,
         ).run()
         print(json.dumps(report, indent=2))
         return 0

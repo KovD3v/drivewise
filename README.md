@@ -91,9 +91,9 @@ python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json
 
 `FIRECRAWL_API_KEY` is optional for planning and is never printed. The command only reports whether a key is configured.
 
-The [manufacturer collection agent](docs/scraping.md) uses OpenRouter and Firecrawl
-to produce catalog v2 bundles in a separate, explicitly started job. Preview its
-scope without keys or network access:
+The [manufacturer collection agent](docs/scraping.md) uses OpenRouter and Firecrawl,
+with optional Tinyfish document navigation, to produce catalog v2 bundles in a
+separate, explicitly started job. Preview its scope without keys or network access:
 
 ```bash
 uv run --frozen --project apps/api python apps/api/scripts/scrape_catalog.py --config data/scraping.example.json

@@ -5,7 +5,8 @@ _Last updated: 2026-09-06_
 ## Catalog collection update — 2026-09-17
 
 The `feat/manufacturer-extraction` branch adds an on-demand OpenRouter/Firecrawl
-collector on top of the catalog v2 evidence and publication branches. It targets
+collector with optional Tinyfish document navigation, on top of the catalog v2
+evidence and publication branches. It targets
 operator-configured Italian car families/periods, preserves evidence, investigates
 conflicts separately, and emits bundles for explicit publication. See
 [run instructions and limits](scraping.md).
