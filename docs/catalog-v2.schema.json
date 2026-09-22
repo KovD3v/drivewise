@@ -532,12 +532,28 @@
           "title": "Raw Unit"
         },
         "value_min": {
-          "title": "Value Min",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Value Min"
         },
         "value_max": {
-          "title": "Value Max",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Value Max"
         },
         "unit": {
           "maxLength": 500,

@@ -2,6 +2,7 @@
 
 import json
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Literal, Self
 from uuid import UUID
@@ -22,7 +23,7 @@ from app.ingestion.catalog import CatalogValidationError, SourceRecord
 
 Key = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9._-]*$", max_length=240)]
 Text = Annotated[str, Field(min_length=1, max_length=500)]
-Number = Annotated[float, Field(strict=True, allow_inf_nan=False)]
+Number = Annotated[Decimal, Field(allow_inf_nan=False)]
 Metric = Literal[
     "engine_power_kw",
     "system_power_kw",
@@ -230,7 +231,10 @@ class SpecObservation(ContractModel):
         if self.value_max < self.value_min:
             raise ValueError("value_max precedes value_min")
         if self.metric in {"seats", "cylinders"}:
-            if not self.value_min.is_integer() or not self.value_max.is_integer():
+            if (
+                self.value_min != self.value_min.to_integral_value()
+                or self.value_max != self.value_max.to_integral_value()
+            ):
                 raise ValueError("counts must be integers")
         if self.metric in MEASURED_METRICS:
             if self.context.procedure is None or self.context.cycle is None:
@@ -304,6 +308,17 @@ class CatalogV2(ContractModel):
         snapshots = _index(self.snapshots, "id")
         observations = _index(self.observations, "id")
         _index(self.decisions, "id")
+        snapshot_acquisitions = set()
+        for snapshot in self.snapshots:
+            acquisition = (
+                snapshot.source_key,
+                str(snapshot.url),
+                snapshot.retrieved_at,
+                snapshot.content_sha256,
+            )
+            if acquisition in snapshot_acquisitions:
+                raise ValueError("duplicate snapshot acquisition")
+            snapshot_acquisitions.add(acquisition)
         identities = set()
         for vehicle in self.vehicles:
             identity = (
@@ -407,9 +422,13 @@ class CatalogV2(ContractModel):
 
 def load_catalog_v2(path: str | Path) -> CatalogV2:
     try:
-        return CatalogV2.model_validate_json(Path(path).read_text())
+        return CatalogV2.model_validate(
+            json.loads(Path(path).read_text(), parse_float=Decimal)
+        )
     except (OSError, UnicodeError) as error:
         raise CatalogValidationError("Cannot read catalog v2 file.") from error
+    except json.JSONDecodeError as error:
+        raise CatalogValidationError("Invalid catalog v2 JSON.") from error
     except ValidationError as error:
         # Never echo source content, URLs with credentials, or the whole payload.
         details = "; ".join(

@@ -68,6 +68,9 @@ An exact measurement uses equal `value_min` and `value_max`. Intervals stay
 intervals. Original value/unit, source excerpt/locator and extractor version are
 retained. No implicit conversion of CV/hp, gross/usable capacity, engine/system
 power or WLTP/NEDC is performed; source normalizers are not implemented here.
+The file loader parses decimal measurements without binary floating-point
+rounding. JSON serialization emits them as decimal strings so staging and
+publication can preserve the value stored in PostgreSQL `numeric` columns.
 
 Consumption, electric range and CO₂ require procedure and cycle. Unknown
 procedures can be stored as observations but cannot be verified. PHEV verification
@@ -153,7 +156,7 @@ without changes, and a 0004 → 0008 upgrade inside an isolated schema rolled ba
 at completion. It exercises preserved IDs/values, immutable revisions, invalid
 evidence associations, fork rejection and every metric/unit pair.
 
-Verified after review on 14 September 2026: **206 backend tests passed, none skipped**,
+Verified after review on 22 September 2026: **210 backend tests passed, none skipped**,
 using Python **3.11.15**, frozen dependencies and PostgreSQL **16.15** with
 pgvector; Ruff passed. Both the v2 validation
 command and the existing v1 `--check` command passed. The disposable container
