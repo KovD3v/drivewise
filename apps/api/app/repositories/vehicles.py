@@ -31,7 +31,7 @@ class VehiclesRepository:
         if variant_clauses:
             where_clauses.append(
                 "EXISTS ("
-                "SELECT 1 FROM vehicle_specs candidate "
+                "SELECT 1 FROM catalog_read_specs candidate "
                 "WHERE candidate.vehicle_id = v.id AND "
                 + " AND ".join(variant_clauses)
                 + ")"
@@ -52,12 +52,13 @@ class VehiclesRepository:
               v.make,
               v.model,
               v.model_year,
+              v.vehicle_type, v.generation_key, v.phase_key, v.catalog_version,
               COALESCE(default_spec.body_style, v.body_style) AS body_style,
               COALESCE(default_spec.fuel_type, v.fuel_type) AS fuel_type,
               v.market,
               COALESCE(default_spec.list_price_eur, v.base_price_eur) AS base_price_eur
             FROM vehicles v
-            LEFT JOIN vehicle_specs default_spec
+            LEFT JOIN catalog_read_specs default_spec
               ON default_spec.vehicle_id = v.id AND default_spec.is_default
             {where_sql}
             ORDER BY v.make, v.model, v.model_year
@@ -77,12 +78,13 @@ class VehiclesRepository:
               v.make,
               v.model,
               v.model_year,
+              v.vehicle_type, v.generation_key, v.phase_key, v.catalog_version,
               COALESCE(s.body_style, v.body_style) AS body_style,
               COALESCE(s.fuel_type, v.fuel_type) AS fuel_type,
               v.market,
               COALESCE(s.list_price_eur, v.base_price_eur) AS base_price_eur
             FROM vehicles v
-            LEFT JOIN vehicle_specs s
+            LEFT JOIN catalog_read_specs s
               ON s.vehicle_id = v.id AND s.is_default
             WHERE v.id = %s
             """,
@@ -97,6 +99,8 @@ class VehiclesRepository:
             SELECT
               id,
               variant_key,
+              catalog_version, powertrain_type, fuel, engine_code,
+              valid_from, valid_to, external_references,
               is_default,
               trim,
               body_style,
@@ -114,7 +118,7 @@ class VehiclesRepository:
               euro_emission_standard,
               seats,
               cargo_volume_liters
-            FROM vehicle_specs
+            FROM catalog_read_specs
             WHERE vehicle_id = %s
             ORDER BY is_default DESC, trim, variant_key
             """,
@@ -163,7 +167,7 @@ class VehiclesRepository:
                 '[]'::jsonb
               ) AS supported_metrics
             FROM vehicle_spec_provenance provenance
-            JOIN vehicle_specs spec ON spec.id = provenance.spec_id
+            JOIN catalog_read_specs spec ON spec.id = provenance.spec_id
             JOIN sources source ON source.id = provenance.source_id
             WHERE spec.vehicle_id = %s
             ORDER BY provenance.observed_at DESC, source.source_key
@@ -194,6 +198,14 @@ class VehiclesRepository:
             "provenance": list(vehicle_provenance),
         }
 
+    def list_facts(self, vehicle_id: UUID) -> list[dict[str, Any]]:
+        return list(self.conn.execute(
+            """SELECT f.*, s.variant_key FROM catalog_current_facts f
+               JOIN vehicle_specs s ON s.id = f.spec_id
+               WHERE s.vehicle_id = %s ORDER BY s.variant_key, f.metric, f.id""",
+            (vehicle_id,),
+        ).fetchall())
+
     def list_resolve_candidates(self, market: str) -> list[dict[str, Any]]:
         return list(
             self.conn.execute(
@@ -205,12 +217,20 @@ class VehiclesRepository:
                   v.make,
                   v.model,
                   v.model_year,
+                  v.vehicle_type, v.generation_key, v.phase_key, v.catalog_version,
                   COALESCE(s.body_style, v.body_style) AS body_style,
                   COALESCE(s.fuel_type, v.fuel_type) AS fuel_type,
                   v.market,
                   COALESCE(s.list_price_eur, v.base_price_eur) AS base_price_eur,
                   s.id AS spec_id,
                   s.variant_key,
+                  s.catalog_version AS spec_catalog_version,
+                  s.powertrain_type,
+                  s.fuel,
+                  s.engine_code,
+                  s.valid_from,
+                  s.valid_to,
+                  s.external_references,
                   s.is_default,
                   s.trim,
                   s.body_style AS spec_body_style,
@@ -229,7 +249,7 @@ class VehiclesRepository:
                   s.seats,
                   s.cargo_volume_liters
                 FROM vehicles v
-                LEFT JOIN vehicle_specs s ON s.vehicle_id = v.id
+                LEFT JOIN catalog_read_specs s ON s.vehicle_id = v.id
                 WHERE v.market = %s
                 ORDER BY v.make, v.model, v.model_year, s.trim
                 """,

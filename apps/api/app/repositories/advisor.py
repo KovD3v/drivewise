@@ -30,12 +30,20 @@ class AdvisorRepository:
               v.make,
               v.model,
               v.model_year,
+              v.catalog_version, v.vehicle_type, v.generation_key, v.phase_key,
               v.body_style AS vehicle_body_style,
               v.fuel_type AS vehicle_fuel_type,
               v.market,
               v.base_price_eur,
               s.id AS spec_id,
               s.variant_key,
+              s.catalog_version AS spec_catalog_version,
+              s.powertrain_type,
+              s.fuel,
+              s.engine_code,
+              s.valid_from,
+              s.valid_to,
+              s.external_references,
               s.is_default,
               s.trim,
               s.body_style AS spec_body_style,
@@ -81,7 +89,7 @@ class AdvisorRepository:
                     )
                     ORDER BY provenance_source.name, provenance.source_url
                   )
-                  FROM vehicle_spec_provenance AS provenance
+                  FROM catalog_read_provenance AS provenance
                   JOIN sources AS provenance_source
                     ON provenance_source.id = provenance.source_id
                   WHERE provenance.spec_id = s.id
@@ -93,7 +101,7 @@ class AdvisorRepository:
             FROM listings AS l
             JOIN vehicles AS v
               ON v.id = l.vehicle_id
-            JOIN vehicle_specs AS s
+            JOIN catalog_read_specs AS s
               ON s.id = l.spec_id
              AND s.vehicle_id = l.vehicle_id
             JOIN sources AS listing_source
@@ -122,7 +130,7 @@ class AdvisorRepository:
                 ) AS required_metric(metric)
                 WHERE NOT EXISTS (
                   SELECT 1
-                  FROM vehicle_spec_provenance AS required_provenance
+                  FROM catalog_read_provenance AS required_provenance
                   JOIN sources AS required_provenance_source
                     ON required_provenance_source.id = required_provenance.source_id
                   WHERE required_provenance.spec_id = s.id
@@ -140,7 +148,7 @@ class AdvisorRepository:
                   s.fuel_type = 'electric'
                   AND EXISTS (
                     SELECT 1
-                    FROM vehicle_spec_provenance AS energy_provenance
+                    FROM catalog_read_provenance AS energy_provenance
                     JOIN sources AS energy_provenance_source
                       ON energy_provenance_source.id = energy_provenance.source_id
                     WHERE energy_provenance.spec_id = s.id
@@ -154,7 +162,7 @@ class AdvisorRepository:
                   )
                   AND EXISTS (
                     SELECT 1
-                    FROM vehicle_spec_provenance AS range_provenance
+                    FROM catalog_read_provenance AS range_provenance
                     JOIN sources AS range_provenance_source
                       ON range_provenance_source.id = range_provenance.source_id
                     WHERE range_provenance.spec_id = s.id
@@ -171,7 +179,7 @@ class AdvisorRepository:
                   s.fuel_type <> 'electric'
                   AND EXISTS (
                     SELECT 1
-                    FROM vehicle_spec_provenance AS liquid_provenance
+                    FROM catalog_read_provenance AS liquid_provenance
                     JOIN sources AS liquid_provenance_source
                       ON liquid_provenance_source.id = liquid_provenance.source_id
                     WHERE liquid_provenance.spec_id = s.id
@@ -333,7 +341,7 @@ class AdvisorRepository:
                   ) AS required_metric(metric)
                   WHERE NOT EXISTS (
                     SELECT 1
-                    FROM vehicle_spec_provenance AS required_provenance
+                    FROM catalog_read_provenance AS required_provenance
                     JOIN sources AS required_provenance_source
                       ON required_provenance_source.id = required_provenance.source_id
                     WHERE required_provenance.spec_id = s.id
@@ -350,7 +358,7 @@ class AdvisorRepository:
                   AND (
                     NOT EXISTS (
                       SELECT 1
-                      FROM vehicle_spec_provenance AS energy_provenance
+                      FROM catalog_read_provenance AS energy_provenance
                       JOIN sources AS energy_provenance_source
                         ON energy_provenance_source.id = energy_provenance.source_id
                       WHERE energy_provenance.spec_id = s.id
@@ -364,7 +372,7 @@ class AdvisorRepository:
                     )
                     OR NOT EXISTS (
                       SELECT 1
-                      FROM vehicle_spec_provenance AS range_provenance
+                      FROM catalog_read_provenance AS range_provenance
                       JOIN sources AS range_provenance_source
                         ON range_provenance_source.id = range_provenance.source_id
                       WHERE range_provenance.spec_id = s.id
@@ -381,7 +389,7 @@ class AdvisorRepository:
                   s.fuel_type <> 'electric'
                   AND NOT EXISTS (
                     SELECT 1
-                    FROM vehicle_spec_provenance AS liquid_provenance
+                    FROM catalog_read_provenance AS liquid_provenance
                     JOIN sources AS liquid_provenance_source
                       ON liquid_provenance_source.id = liquid_provenance.source_id
                     WHERE liquid_provenance.spec_id = s.id
@@ -402,7 +410,7 @@ class AdvisorRepository:
                 ON v.id = l.vehicle_id
               JOIN sources AS listing_source
                 ON listing_source.id = l.source_id
-              LEFT JOIN vehicle_specs AS s
+              LEFT JOIN catalog_read_specs AS s
                 ON s.id = l.spec_id
                AND s.vehicle_id = l.vehicle_id
               LEFT JOIN import_runs AS import_run
@@ -419,6 +427,7 @@ class AdvisorRepository:
         return {row["reason"]: row["excluded_count"] for row in rows}
 
     def list_model_analysis_candidates(self) -> list[dict[str, Any]]:
+        evaluation_time = datetime.now(timezone.utc)
         rows = self.conn.execute(
             """
             SELECT
@@ -428,12 +437,20 @@ class AdvisorRepository:
               v.make,
               v.model,
               v.model_year,
-              v.body_style AS vehicle_body_style,
-              v.fuel_type AS vehicle_fuel_type,
+              v.catalog_version, v.vehicle_type, v.generation_key, v.phase_key,
+              s.body_style AS vehicle_body_style,
+              s.fuel_type AS vehicle_fuel_type,
               v.market,
-              v.base_price_eur,
+              NULL::numeric AS base_price_eur,
               s.id AS spec_id,
               s.variant_key,
+              s.catalog_version AS spec_catalog_version,
+              s.powertrain_type,
+              s.fuel,
+              s.engine_code,
+              s.valid_from,
+              s.valid_to,
+              s.external_references,
               s.is_default,
               s.trim,
               s.body_style AS spec_body_style,
@@ -465,11 +482,13 @@ class AdvisorRepository:
               l.valid_until,
               l.is_active
             FROM vehicles AS v
-            LEFT JOIN vehicle_specs AS s
+            LEFT JOIN catalog_analysis_specs AS s
               ON s.vehicle_id = v.id
-            LEFT JOIN listings AS l
+            LEFT JOIN catalog_usable_listings AS l
               ON l.vehicle_id = v.id
              AND l.spec_id = s.id
+             AND l.last_seen_at >= %s
+             AND (l.valid_until IS NULL OR l.valid_until >= %s)
             ORDER BY
               v.make,
               v.model,
@@ -479,7 +498,8 @@ class AdvisorRepository:
               s.id,
               l.price_eur NULLS LAST,
               l.id
-            """
+            """,
+            (evaluation_time - timedelta(days=FRESHNESS_DAYS), evaluation_time),
         ).fetchall()
         grouped: dict[UUID, dict[str, Any]] = {}
         seen_specs: set[UUID] = set()
@@ -553,6 +573,9 @@ class AdvisorRepository:
                     factor.model_dump(mode="json") for factor in item.tradeoffs
                 ],
                 "evidence": item.evidence,
+                "provenance": [
+                    entry.model_dump(mode="json") for entry in item.provenance
+                ],
             }
             rationale = " ".join(
                 factor.message
@@ -606,6 +629,13 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
     spec = {
         "id": row["spec_id"],
         "variant_key": row["variant_key"],
+        "catalog_version": row.get("spec_catalog_version", 1),
+        "powertrain_type": row.get("powertrain_type"),
+        "fuel": row.get("fuel"),
+        "engine_code": row.get("engine_code"),
+        "valid_from": row.get("valid_from"),
+        "valid_to": row.get("valid_to"),
+        "external_references": row.get("external_references") or [],
         "is_default": row["is_default"],
         "trim": row["trim"],
         "body_style": row["spec_body_style"],
@@ -667,6 +697,10 @@ def _model_analysis_vehicle(row: dict[str, Any]) -> dict[str, Any]:
         "make": row["make"],
         "model": row["model"],
         "model_year": row["model_year"],
+        "catalog_version": row.get("catalog_version", 1),
+        "vehicle_type": row.get("vehicle_type"),
+        "generation_key": row.get("generation_key"),
+        "phase_key": row.get("phase_key"),
         "body_style": row["vehicle_body_style"],
         "fuel_type": row["vehicle_fuel_type"],
         "market": row["market"],
@@ -678,6 +712,13 @@ def _model_analysis_spec(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row["spec_id"],
         "variant_key": row["variant_key"],
+        "catalog_version": row.get("spec_catalog_version", 1),
+        "powertrain_type": row.get("powertrain_type"),
+        "fuel": row.get("fuel"),
+        "engine_code": row.get("engine_code"),
+        "valid_from": row.get("valid_from"),
+        "valid_to": row.get("valid_to"),
+        "external_references": row.get("external_references") or [],
         "is_default": row["is_default"],
         "trim": row["trim"],
         "body_style": row["spec_body_style"],
@@ -766,6 +807,8 @@ def _metric_provenance(
                     "source_name": source["source_name"],
                     "source_url": source["source_url"],
                     "observed_at": source["observed_at"],
+                    "decision_id": metadata.get("decision_id"),
+                    "observation_id": metadata.get("observation_id"),
                 }
             )
     return provenance

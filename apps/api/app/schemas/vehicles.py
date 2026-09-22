@@ -1,8 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+
+from app.ingestion.catalog_v2 import ExternalReference, MeasurementContext, Metric
 
 
 class VehicleProvenance(BaseModel):
@@ -22,20 +24,31 @@ class VehicleSummary(BaseModel):
     id: UUID
     canonical_key: str | None = None
     model_family_key: str | None = None
+    vehicle_type: str | None = None
+    generation_key: str | None = None
+    phase_key: str | None = None
+    catalog_version: int = 1
     make: str
     model: str
-    model_year: int
-    body_style: str
-    fuel_type: str
+    model_year: int | None
+    body_style: str | None
+    fuel_type: str | None
     market: str
     base_price_eur: float | None = None
 
 
 class VehicleSpec(BaseModel):
+    catalog_version: int = 1
+    powertrain_type: str | None = None
+    fuel: str | None = None
+    engine_code: str | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
+    external_references: list[ExternalReference] = Field(default_factory=list)
     id: UUID
     variant_key: str | None = None
     is_default: bool = False
-    trim: str
+    trim: str | None
     body_style: str | None = None
     fuel_type: str | None = None
     list_price_eur: float | None = None
@@ -95,3 +108,31 @@ class VehicleResolveResponse(BaseModel):
     normalized_query: str
     status: Literal["matched", "ambiguous", "no_match"]
     matches: list[VehicleResolveMatch]
+
+
+class CatalogFact(BaseModel):
+    id: UUID
+    spec_id: UUID
+    variant_key: str
+    metric: Metric
+    context: MeasurementContext
+    status: Literal["verified", "unknown", "not_applicable", "conflicted"]
+    eligible: bool
+    value_min: float | None
+    value_max: float | None
+    unit: str | None
+    selected_observation_id: UUID | None
+    evidence_ids: list[UUID]
+    supersedes_id: UUID | None
+    reason: str
+    actor_kind: str
+    actor_id: str
+    policy_version: str
+    decided_at: datetime
+    source_key: str | None
+    source_name: str | None
+    source_url: str | None
+    retrieved_at: datetime | None
+    content_sha256: str | None
+    evidence_excerpt: str | None
+    evidence_locator: str | None
