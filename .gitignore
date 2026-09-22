@@ -19,3 +19,8 @@ node_modules
 
 # Reviewed real catalog snapshots stay local unless redistribution is cleared.
 data/private/catalog/
+
+# Generated browser captures and local research responses.
+.playwright-cli/
+output/playwright/
+output/source-shortlist/
