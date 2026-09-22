@@ -27,6 +27,9 @@ REQUIRED_TABLES = {
     "import_runs",
     "vehicle_provenance",
     "vehicle_spec_provenance",
+    "source_snapshots",
+    "spec_observations",
+    "fact_decisions",
 }
 
 
@@ -43,6 +46,7 @@ def test_migration_files_are_ordered():
         "0002_create_mvp_schema.sql",
         "0003_seed_initial_vehicles.sql",
         "0004_curated_catalog.sql",
+        "0008_catalog_evidence.sql",
     ]
 
 
@@ -67,7 +71,7 @@ def test_schema_creates_pgvector_and_required_tables():
     assert "epa_range_miles" not in sql
 
     for table_name in REQUIRED_TABLES:
-        assert f"CREATE TABLE IF NOT EXISTS {table_name}" in sql
+        assert re.search(rf"CREATE TABLE (?:IF NOT EXISTS )?{table_name}\b", sql)
 
 
 def test_seed_contains_five_synthetic_vehicles():

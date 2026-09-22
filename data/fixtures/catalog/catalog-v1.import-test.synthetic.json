@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "source_key": "drivewise-synthetic-catalog",
+      "name": "Drivewise Synthetic Catalog Fixture",
+      "source_type": "manual_seed",
+      "market": "IT",
+      "ranking_permission": "permitted",
+      "url": "https://example.test/drivewise/catalog",
+      "license": "Synthetic test data; no external rights asserted",
+      "notes": "Committed fixture for importer tests only."
+    }
+  ],
+  "vehicles": [
+    {
+      "canonical_key": "it-acme-metro-2026",
+      "model_family_key": "it-acme-metro",
+      "make": "Acme",
+      "model": "Metro",
+      "model_year": 2026,
+      "market": "IT",
+      "source_key": "drivewise-synthetic-catalog",
+      "source_url": "https://example.test/drivewise/catalog/acme-metro",
+      "observed_at": "2026-07-16T09:00:00+02:00"
+    }
+  ],
+  "variants": [
+    {
+      "variant_key": "it-acme-metro-2026-city-petrol",
+      "vehicle_key": "it-acme-metro-2026",
+      "trim": "City",
+      "is_default": true,
+      "body_style": "city_car",
+      "fuel_type": "petrol",
+      "list_price_eur": 18000,
+      "drivetrain": "fwd",
+      "transmission": "manual",
+      "engine": "1.0 synthetic petrol",
+      "horsepower": 75,
+      "battery_kwh": null,
+      "energy_consumption_kwh_100km": null,
+      "consumption_l_100km": 5.1,
+      "wltp_range_km": null,
+      "co2_g_km": 115,
+      "euro_emission_standard": "Synthetic Euro 6",
+      "seats": 5,
+      "cargo_volume_liters": 280,
+      "metadata": { "synthetic": true },
+      "source_key": "drivewise-synthetic-catalog",
+      "source_url": "https://example.test/drivewise/catalog/acme-metro/petrol",
+      "observed_at": "2026-07-16T09:00:00+02:00"
+    },
+    {
+      "variant_key": "it-acme-metro-2026-city-electric",
+      "vehicle_key": "it-acme-metro-2026",
+      "trim": "City",
+      "is_default": false,
+      "body_style": "city_car",
+      "fuel_type": "electric",
+      "list_price_eur": 26000,
+      "drivetrain": "fwd",
+      "transmission": "single-speed",
+      "engine": "synthetic electric motor",
+      "horsepower": 120,
+      "battery_kwh": 48,
+      "energy_consumption_kwh_100km": 15.5,
+      "consumption_l_100km": null,
+      "wltp_range_km": 310,
+      "co2_g_km": 0,
+      "euro_emission_standard": null,
+      "seats": 5,
+      "cargo_volume_liters": 260,
+      "metadata": { "synthetic": true },
+      "source_key": "drivewise-synthetic-catalog",
+      "source_url": "https://example.test/drivewise/catalog/acme-metro/electric",
+      "observed_at": "2026-07-16T09:00:00+02:00"
+    }
+  ],
+  "listings": [
+    {
+      "listing_ref": "synthetic-metro-petrol-new",
+      "variant_key": "it-acme-metro-2026-city-petrol",
+      "title": "Synthetic Acme Metro City new",
+      "price_eur": 17500,
+      "mileage": 0,
+      "condition": "new",
+      "location_region": "Lazio",
+      "listed_at": "2026-07-16",
+      "valid_until": "2026-08-15T23:59:59+02:00",
+      "is_active": true,
+      "raw_payload": { "synthetic": true },
+      "source_key": "drivewise-synthetic-catalog",
+      "source_url": "https://example.test/drivewise/offers/metro-new",
+      "observed_at": "2026-07-16T09:00:00+02:00"
+    },
+    {
+      "listing_ref": "synthetic-metro-electric-used",
+      "variant_key": "it-acme-metro-2026-city-electric",
+      "title": "Synthetic Acme Metro City electric used",
+      "price_eur": 22000,
+      "mileage": 12000,
+      "condition": "used",
+      "location_region": "Lombardia",
+      "listed_at": "2026-07-15",
+      "valid_until": "2026-08-14T23:59:59+02:00",
+      "is_active": true,
+      "raw_payload": { "synthetic": true },
+      "source_key": "drivewise-synthetic-catalog",
+      "source_url": "https://example.test/drivewise/offers/metro-used",
+      "observed_at": "2026-07-16T09:00:00+02:00"
+    }
+  ]
+}

@@ -7,6 +7,9 @@ from app.core.config import get_settings
 
 
 MIGRATIONS_PATH = Path(__file__).resolve().parents[2] / "migrations"
+RENAMED_MIGRATIONS = {
+    "0005_catalog_evidence.sql": "0008_catalog_evidence.sql",
+}
 
 
 @dataclass(frozen=True)
@@ -28,9 +31,13 @@ def iter_migration_files(migrations_path: Path = MIGRATIONS_PATH) -> list[Path]:
 
 def load_migrations(migrations_path: Path = MIGRATIONS_PATH) -> list[Migration]:
     migrations: list[Migration] = []
+    versions: set[str] = set()
 
     for path in iter_migration_files(migrations_path):
         version = path.name.split("_", maxsplit=1)[0]
+        if version in versions:
+            raise ValueError(f"Duplicate migration version {version}: {path.name}")
+        versions.add(version)
         migrations.append(
             Migration(
                 version=version,
@@ -43,6 +50,7 @@ def load_migrations(migrations_path: Path = MIGRATIONS_PATH) -> list[Migration]:
 
 
 def run_migrations(database_url: str | None = None) -> MigrationRun:
+    migrations = load_migrations()
     settings = get_settings()
     applied_now: list[str] = []
     already_applied: list[str] = []
@@ -58,15 +66,24 @@ def run_migrations(database_url: str | None = None) -> MigrationRun:
             """
         )
 
-        applied_versions = {
-            row[0]
-            for row in conn.execute(
-                "SELECT version FROM drivewise_schema_migrations"
-            ).fetchall()
-        }
+        # These unreleased migrations only changed names, not SQL. Preserve data.
+        for old, new in RENAMED_MIGRATIONS.items():
+            conn.execute(
+                """UPDATE drivewise_schema_migrations SET version = %s, name = %s
+                   WHERE version = %s AND name = %s""",
+                (new.split("_", 1)[0], new, old.split("_", 1)[0], old),
+            )
+        applied_versions = dict(conn.execute(
+            "SELECT version, name FROM drivewise_schema_migrations"
+        ).fetchall())
 
-        for migration in load_migrations():
+        for migration in migrations:
             if migration.version in applied_versions:
+                if applied_versions[migration.version] != migration.name:
+                    raise ValueError(
+                        f"Migration version {migration.version} already belongs to "
+                        f"{applied_versions[migration.version]}, not {migration.name}"
+                    )
                 already_applied.append(migration.name)
                 continue
 

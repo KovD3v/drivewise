@@ -6,6 +6,10 @@ document-ingestion pipeline and never call a crawler or external service.
 The v1 shape is defined in `docs/catalog-v1.schema.json`. A synthetic fixture is
 available at `data/fixtures/catalog/catalog-v1.synthetic.json`.
 
+The [v2 evidence contract](catalog-v2.md) has a separate offline validator and
+additive storage migration. It is not accepted by this v1 import command;
+publication of v2 evidence into the current catalog is not implemented yet.
+
 Before changing a source to `ranking_permission: "permitted"`, complete the
 human licence, access, metric-trust, and freshness review in
 [`docs/source-review.md`](source-review.md).
