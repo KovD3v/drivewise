@@ -59,10 +59,11 @@ Every observation needs a VERBATIM excerpt from the captured markdown and a
 locator such as 'markdown lines 10-14; table hybrid, column 2020'. Use read_evidence
 to paginate long documents. Preserve unknowns and gaps, never substitute zero.
 Respect metric units and retain original values/units. Explain any conversion in
-context.method. Raw values must be decimal scalars or ascending ranges; supported
+context.method. Raw values may be decimal or Italian dot-grouped scalars/ranges; supported
 conversions include CV/PS to kW (0.73549875), km/l to l/100km (100/x), Wh to kWh,
 Wh/km to kWh/100km, cc/l to cm3, m/cm to mm and dm3 to litres. Do not round converted
-values beyond 1e-5 relative tolerance. Ambiguous grouped numbers need review.
+values beyond 1e-5 relative tolerance. A single dotted group in units other
+than cc/cm3, mm or kg is ambiguous; retain a gap.
 Keep combustion/system/continuous power, gross/usable battery,
 width with/without mirrors, mass definitions, luggage seating/method, measurement
 procedures, cycles, configuration and intervals separate. Do not add motor powers.
@@ -587,7 +588,11 @@ class Collector:
             if proposal.raw_unit:
                 raw_unit = re.sub(r"\s+", "", proposal.raw_unit).casefold()
                 excerpt = re.sub(r"\s+", "", proposal.evidence_excerpt).casefold()
-                if raw_unit not in excerpt:
+                # Digits may precede a unit; letters and slashes may not.
+                if not re.search(
+                    r"(?<![^\W\d_])(?<!/)" + re.escape(raw_unit) + r"(?![\w/])",
+                    excerpt,
+                ):
                     raise ValueError("raw unit must occur in the cited excerpt")
             if proposal.metric not in self.config.target.metrics:
                 raise ValueError("metric is outside requested scope")

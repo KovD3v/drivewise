@@ -133,22 +133,31 @@ class ObservationProposal(ContractModel):
 
     @model_validator(mode="after")
     def checked_conversion(self):
-        # Only unambiguous decimal scalars/ranges; grouped numbers require review.
-        number = r"\d+(?:[.,]\d+)?"
+        raw_unit = (
+            (self.raw_unit or "count").replace(" ", "").replace("³", "3").casefold()
+        )
+        number = r"(?:\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)"
         match = re.fullmatch(rf"({number})(?:\s*[-–]\s*({number}))?", self.raw_value)
         if not match:
-            raise ValueError("raw_value must be a decimal scalar or ascending range")
-        lower, upper = [
-            float(v.replace(",", ".")) for v in (match[1], match[2] or match[1])
-        ]
+            raise ValueError("raw_value must be a numeric scalar or ascending range")
+
+        def parse_number(value: str) -> float:
+            if re.fullmatch(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?", value):
+                if (
+                    value.count(".") == 1
+                    and "," not in value
+                    and raw_unit not in {"cc", "cm3", "mm", "kg"}
+                ):
+                    raise ValueError("ambiguous dotted number; retain a gap")
+                return float(value.replace(".", "").replace(",", "."))
+            return float(value.replace(",", "."))
+
+        lower, upper = [parse_number(v) for v in (match[1], match[2] or match[1])]
         if lower > upper:
             raise ValueError("raw range is inverted; investigate the source")
         target = METRIC_UNITS[self.metric]
         if self.unit != target:
             raise ValueError("normalized unit does not match the metric")
-        raw_unit = (
-            (self.raw_unit or "count").replace(" ", "").replace("³", "3").casefold()
-        )
         conversions = {
             ("cv", "kW"): 0.73549875,
             ("ps", "kW"): 0.73549875,

@@ -754,6 +754,42 @@ def test_unit_citation_and_locator_are_not_trusted_to_model(tmp_path):
         runner.observations([ObservationProposal.model_validate(proposal)])
 
 
+@pytest.mark.parametrize(
+    "excerpt, accepted",
+    [
+        ("altezza 150 cm", False),
+        ("altezza 150 mm", False),
+        ("altezza 150 km", False),
+        ("altezza 150 m³", False),
+        ("altezza 150 m", True),
+    ],
+)
+def test_cited_unit_must_be_a_whole_unit(tmp_path, monkeypatch, excerpt, accepted):
+    monkeypatch.setitem(CAPTURE["data"], "markdown", excerpt)
+    settings = config()
+    settings.target.metrics.append("height_mm")
+    runner = Collector(settings, tmp_path, Router([]), Browser())
+    runner.load()
+    runner.scrape(Browse(url=URL))
+    proposal = extraction()["observations"][0]
+    proposal.update(
+        snapshot_id=runner.snapshots()[0]["id"],
+        metric="height_mm",
+        raw_value="150",
+        raw_unit="m",
+        value_min=150000.0,
+        value_max=150000.0,
+        unit="mm",
+        evidence_excerpt=excerpt,
+    )
+    observation = ObservationProposal.model_validate(proposal)
+    if accepted:
+        assert runner.observations([observation])[0]["raw_unit"] == "m"
+    else:
+        with pytest.raises(ValueError, match="raw unit"):
+            runner.observations([observation])
+
+
 def test_page_failures_are_cached_and_do_not_break_resume(tmp_path):
     class Blocked(Browser):
         def scrape(self, url):
@@ -939,6 +975,39 @@ def test_normalization_is_checked_not_trusted_to_llm(
     assert proposal.value_min == low and proposal.value_max == high
     data["value_min"] += 10
     with pytest.raises(ValidationError, match="deterministic conversion"):
+        ObservationProposal.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "raw,raw_unit,metric,unit,expected",
+    [
+        ("1.490", "cc", "engine_displacement_cc", "cm3", 1490),
+        ("1.490,5", "cc", "engine_displacement_cc", "cm3", 1490.5),
+        ("4.180", "mm", "length_mm", "mm", 4180),
+    ],
+)
+def test_italian_grouped_measurements_are_not_decimal_fractions(
+    raw, raw_unit, metric, unit, expected
+):
+    data = extraction()["observations"][0]
+    data.update(
+        raw_value=raw,
+        raw_unit=raw_unit,
+        metric=metric,
+        unit=unit,
+        value_min=float(expected),
+        value_max=float(expected),
+    )
+    assert ObservationProposal.model_validate(data).value_min == expected
+    data["value_min"] = data["value_max"] = expected / 1000
+    with pytest.raises(ValidationError, match="deterministic conversion"):
+        ObservationProposal.model_validate(data)
+
+
+def test_ambiguous_dotted_number_without_grouped_unit_is_rejected():
+    data = extraction()["observations"][0]
+    data.update(raw_value="1.490", value_min=1.49, value_max=1.49)
+    with pytest.raises(ValidationError, match="ambiguous"):
         ObservationProposal.model_validate(data)
 
 
