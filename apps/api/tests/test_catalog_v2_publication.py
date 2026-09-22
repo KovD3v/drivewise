@@ -23,11 +23,13 @@ from app.ingestion.catalog_v2_writer import (
 )
 from app.main import app
 from app.repositories.advisor import AdvisorRepository
-from app.repositories.filters import VehicleFilters
+from app.repositories.filters import ListingFilters, VehicleFilters
+from app.repositories.listings import ListingsRepository
 from app.repositories.vehicles import VehiclesRepository
 from app.schemas.advisor import AdvisorRecommendationRequest, ModelAnalysisRequest
 from app.services.advisor.scoring import build_recommendations
-from app.schemas.vehicles import VehicleDetail, VehicleResolveRequest
+from app.schemas.listings import ListingWithVehicle
+from app.schemas.vehicles import VehicleDetail, VehicleResolveRequest, VehicleSpec
 from app.services.advisor.model_analysis import build_model_analysis
 from app.services.vehicles.resolver import resolve_vehicle_query
 
@@ -368,6 +370,12 @@ def test_permitted_facts_feed_both_consumers_and_revocation_removes_them(
     conn, tmp_path
 ):
     data = bundle(tmp_path)
+    data["variants"][0].update(
+        engine_code="ACME-ICE-1",
+        valid_from="2025-01-01",
+        valid_to="2027-12-31",
+        external_references=[{"namespace": "manufacturer", "value": "ACME-001"}],
+    )
     data["sources"][0]["ranking_permission"] = "permitted"
     data["snapshots"][0]["evidence_kind"] = "sourced"
     add_fact(data, "seats", 5)
@@ -387,6 +395,37 @@ def test_permitted_facts_feed_both_consumers_and_revocation_removes_them(
     spec = conn.execute(
         "SELECT * FROM vehicle_specs WHERE variant_key = 'metro-g1-ice'"
     ).fetchone()
+    expected_identity = {
+        "powertrain_type": "ICE",
+        "fuel": "petrol",
+        "engine_code": "ACME-ICE-1",
+        "valid_from": "2025-01-01",
+        "valid_to": "2027-12-31",
+        "external_references": [{"namespace": "manufacturer", "value": "ACME-001"}],
+    }
+
+    def identity(value):
+        return VehicleSpec.model_validate(value).model_dump(
+            mode="json", include=set(expected_identity)
+        )
+
+    detail_spec = VehicleDetail.model_validate(
+        VehiclesRepository(conn).get_vehicle(spec["vehicle_id"])
+    ).specs[0]
+    assert identity(detail_spec) == expected_identity
+    resolve_rows = VehiclesRepository(conn).list_resolve_candidates("IT")
+    powertrains = {row["variant_key"]: row["powertrain_type"] for row in resolve_rows}
+    assert powertrains["metro-g2-bev"] == "BEV"
+    assert powertrains["metro-g2-phev"] == "PHEV"
+    resolved_spec = next(
+        row["spec"]
+        for row in resolve_vehicle_query(
+            VehicleResolveRequest(query="Acme Metro City"),
+            resolve_rows,
+        ).model_dump(mode="json")["matches"]
+        if row["spec"] and row["spec"]["variant_key"] == spec["variant_key"]
+    )
+    assert identity(resolved_spec) == expected_identity
     run_id = uuid4()
     conn.execute(
         "INSERT INTO import_runs (id,schema_version,dataset_hash,file_name,status) VALUES (%s,1,'offer-test','test','completed')",
@@ -402,9 +441,22 @@ def test_permitted_facts_feed_both_consumers_and_revocation_removes_them(
                    VALUES (%s,%s,%s,%s,'test','Test offer',10000,10000,'used','https://example.test/offer',now(),now(),'test',%s)""",
         (listing_id, spec["vehicle_id"], spec["id"], source_id, run_id),
     )
+    listing_repo = ListingsRepository(conn)
+    listing_spec = ListingWithVehicle.model_validate(
+        listing_repo.get_listing(listing_id)
+    ).spec
+    assert listing_spec is not None
+    assert identity(listing_spec) == expected_identity
+    assert (
+        identity(
+            listing_repo.list_listings(ListingFilters(spec_id=spec["id"]))[0]["spec"]
+        )
+        == expected_identity
+    )
     repo = AdvisorRepository(conn)
     candidates = repo.list_candidates()
     assert len(candidates) == 1
+    assert identity(candidates[0]["spec"]) == expected_identity
     assert candidates[0]["spec"]["consumption_l_100km"] == 4.5
     items = build_recommendations(
         AdvisorRecommendationRequest(budget_max_eur=15000, primary_use="city"),
@@ -412,6 +464,7 @@ def test_permitted_facts_feed_both_consumers_and_revocation_removes_them(
     )
     assert len(items) == 1 and items[0].vehicle.catalog_version == 2
     assert items[0].selected_spec.catalog_version == 2
+    assert identity(items[0].selected_spec) == expected_identity
     assert any(p.decision_id for p in items[0].provenance if p.metric == "seats")
     recommendation_id = repo.create_run({})
     repo.save_items(recommendation_id, items)
@@ -426,6 +479,7 @@ def test_permitted_facts_feed_both_consumers_and_revocation_removes_them(
         if c["vehicle"]["id"] == spec["vehicle_id"]
     )
     assert analysis["listings"][0]["price_eur"] == 10000
+    assert identity(analysis["specs"][0]) == expected_identity
     assert analysis["specs"][0]["consumption_l_100km"] == 4.5
     conn.execute(
         "UPDATE listings SET last_seen_at = now() - interval '40 days', first_seen_at = now() - interval '50 days' WHERE id = %s",
@@ -515,7 +569,11 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
     schema = f"v2_knowledge_{uuid4().hex}"
     with conn.transaction(force_rollback=True):
         conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
-        conn.execute(sql.SQL("SET LOCAL search_path TO {}, public").format(sql.Identifier(schema)))
+        conn.execute(
+            sql.SQL("SET LOCAL search_path TO {}, public").format(
+                sql.Identifier(schema)
+            )
+        )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
             if migration.name[:4] not in {"0001", "0009"}:
                 conn.execute(migration.read_text())
