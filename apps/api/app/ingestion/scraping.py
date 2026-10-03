@@ -63,7 +63,9 @@ context.method. Raw values may be decimal or Italian dot-grouped scalars/ranges;
 conversions include CV/PS to kW (0.73549875), km/l to l/100km (100/x), Wh to kWh,
 Wh/km to kWh/100km, cc/l to cm3, m/cm to mm and dm3 to litres. Do not round converted
 values beyond 1e-5 relative tolerance. A single dotted group in units other
-than cc/cm3, mm or kg is ambiguous; retain a gap.
+than cc/cm3, mm or kg is ambiguous; retain a gap. A single comma followed by
+exactly three digits after one to three leading digits is also ambiguous;
+retain a gap rather than choosing a decimal or thousands interpretation.
 Keep combustion/system/continuous power, gross/usable battery,
 width with/without mirrors, mass definitions, luggage seating/method, measurement
 procedures, cycles, configuration and intervals separate. Do not add motor powers.
@@ -587,10 +589,13 @@ class Collector:
                 raise ValueError("raw value must occur in the cited excerpt")
             if proposal.raw_unit:
                 raw_unit = re.sub(r"\s+", "", proposal.raw_unit).casefold()
-                excerpt = re.sub(r"\s+", "", proposal.evidence_excerpt).casefold()
+                unit_pattern = r"\s*".join(map(re.escape, raw_unit))
+                excerpt = re.sub(r"\s+", " ", proposal.evidence_excerpt).casefold()
+                # Keep compound-unit boundaries even with spaces around a slash.
+                excerpt = re.sub(r"\s*/\s*", "/", excerpt)
                 # Digits may precede a unit; letters and slashes may not.
                 if not re.search(
-                    r"(?<![^\W\d_])(?<!/)" + re.escape(raw_unit) + r"(?![\w/])",
+                    r"(?<![^\W\d_])(?<!/)" + unit_pattern + r"(?![\w/])",
                     excerpt,
                 ):
                     raise ValueError("raw unit must occur in the cited excerpt")

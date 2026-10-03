@@ -106,6 +106,8 @@ corroboration.
 - Canonical units, common numerical conversions, ascending ranges, family/market,
   dates and all v2 references are checked in code. Ambiguous units such as `hp`
   and unsupported number formats are rejected for investigation, not guessed.
+  A single comma followed by three digits, such as `1,490 cc`, is ambiguous
+  between decimal and thousands notation and remains a gap, including in ranges.
 - Pass 2 receives the extraction in a fresh conversation. It can read more sources
   and add observations, but cannot rewrite the first pass or change identities.
   A `verified` proposal requires re-reading the text containing every cited quote
@@ -156,7 +158,9 @@ with unknown cost are counted separately. These are invocation/token limits, not
 a guaranteed currency cap: model input pricing, Firecrawl PDF/page charges and
 Tinyfish Agent charges vary. Browser-provider charges are not included in the
 `reported_model_cost_usd` total, which covers only OpenRouter.
-Use provider-account spending limits for a hard financial cap.
+Before the first live run, check and configure account spending controls for
+OpenRouter, Tinyfish and Firecrawl if selected. Use available provider-side limits
+to cap spending; the local call limits do not enforce a currency budget.
 
 Fetch requests one URL at a time with a 45-second per-URL budget and the shared
 75-second HTTP timeout. There are no automatic retries or cross-provider fallbacks.

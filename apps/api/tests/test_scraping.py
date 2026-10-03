@@ -761,6 +761,8 @@ def test_unit_citation_and_locator_are_not_trusted_to_model(tmp_path):
         ("altezza 150 mm", False),
         ("altezza 150 km", False),
         ("altezza 150 m³", False),
+        ("consumo 150 km / m", False),
+        ("consumo 150 m / km", False),
         ("altezza 150 m", True),
     ],
 )
@@ -788,6 +790,53 @@ def test_cited_unit_must_be_a_whole_unit(tmp_path, monkeypatch, excerpt, accepte
     else:
         with pytest.raises(ValueError, match="raw unit"):
             runner.observations([observation])
+
+
+@pytest.mark.parametrize(
+    "excerpt,raw,raw_unit,metric,unit,expected",
+    [
+        ("Lunghezza mm 4.180", "4.180", "mm", "length_mm", "mm", 4180),
+        ("Massa kg 1.090", "1.090", "kg", "mass_kg", "kg", 1090),
+        ("Potenza CV 116", "116", "CV", "engine_power_kw", "kW", 85.317855),
+        ("1,5 m di altezza", "1,5", "m", "height_mm", "mm", 1500),
+        (
+            "Consumo 4,5 l/100 km", "4,5", "l/100km",
+            "liquid_consumption_l_100km", "l/100km", 4.5,
+        ),
+        (
+            "Consumo l / 100\u00a0km\t4,5", "4,5", "l / 100 km",
+            "liquid_consumption_l_100km", "l/100km", 4.5,
+        ),
+    ],
+)
+def test_cited_units_preserve_word_boundaries_and_internal_spaces(
+    tmp_path, monkeypatch, excerpt, raw, raw_unit, metric, unit, expected
+):
+    monkeypatch.setitem(CAPTURE["data"], "markdown", excerpt)
+    settings = config()
+    settings.target.metrics = [metric]
+    runner = Collector(settings, tmp_path, Router([]), Browser())
+    runner.load()
+    runner.scrape(Browse(url=URL))
+    data = extraction()["observations"][0]
+    data.update(
+        snapshot_id=runner.snapshots()[0]["id"],
+        raw_value=raw,
+        raw_unit=raw_unit,
+        metric=metric,
+        unit=unit,
+        value_min=expected,
+        value_max=expected,
+        evidence_excerpt=excerpt,
+    )
+    if metric == "liquid_consumption_l_100km":
+        data["context"].update(procedure="WLTP", cycle="combined")
+    if metric == "mass_kg":
+        data["context"]["method"] = "Synthetic test mass definition"
+    observation = runner.observations([ObservationProposal.model_validate(data)])[0]
+    assert observation["value_min"] == expected
+    assert observation["raw_unit"] == raw_unit
+    assert observation["evidence_excerpt"] == excerpt
 
 
 def test_page_failures_are_cached_and_do_not_break_resume(tmp_path):
@@ -1007,6 +1056,29 @@ def test_italian_grouped_measurements_are_not_decimal_fractions(
 def test_ambiguous_dotted_number_without_grouped_unit_is_rejected():
     data = extraction()["observations"][0]
     data.update(raw_value="1.490", value_min=1.49, value_max=1.49)
+    with pytest.raises(ValidationError, match="ambiguous"):
+        ObservationProposal.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "raw,low,high",
+    [
+        ("1,490", 1.49, 1.49),
+        ("1,490", 1490, 1490),
+        ("1,490-2,490", 1.49, 2.49),
+        ("1-1,490", 1, 1.49),
+    ],
+)
+def test_ambiguous_comma_group_cannot_become_an_observation(raw, low, high):
+    data = extraction()["observations"][0]
+    data.update(
+        raw_value=raw,
+        raw_unit="cc",
+        metric="engine_displacement_cc",
+        unit="cm3",
+        value_min=low,
+        value_max=high,
+    )
     with pytest.raises(ValidationError, match="ambiguous"):
         ObservationProposal.model_validate(data)
 

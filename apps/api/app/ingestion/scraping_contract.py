@@ -142,6 +142,8 @@ class ObservationProposal(ContractModel):
             raise ValueError("raw_value must be a numeric scalar or ascending range")
 
         def parse_number(value: str) -> float:
+            if re.fullmatch(r"\d{1,3},\d{3}", value):
+                raise ValueError("ambiguous comma-grouped number; retain a gap")
             if re.fullmatch(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?", value):
                 if (
                     value.count(".") == 1
