@@ -42,10 +42,19 @@ export const Route = createFileRoute("/app/report")({
   }),
   component: ReportPage,
   errorComponent: ReportUnavailable,
-  notFoundComponent: ReportUnavailable,
+  notFoundComponent: ReportNotFound,
 });
 
+// TanStack splits each route slot into its own chunk; a slot function must not be referenced elsewhere.
+function ReportNotFound() {
+  return <ReportMissing />;
+}
+
 function ReportUnavailable() {
+  return <ReportMissing />;
+}
+
+function ReportMissing() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader label="Decision Report" maxWidth="max-w-[70rem]" />
@@ -118,7 +127,7 @@ function ReportPage() {
   }
 
   if (error || (profile && ranking.length === 0)) return <div className="min-h-screen bg-background"><AppHeader label="Decision Report" /><main className="mx-auto max-w-2xl px-8 py-24"><h1 className="font-heading text-3xl">Report non disponibile</h1><p role="alert" className="mt-5">{error || 'Nessuna offerta verificata corrisponde al profilo.'}</p><Link to="/app/start" className="mt-6 inline-block underline">Rivedi la Scelta Guidata</Link></main></div>;
-  if (!profile) return <ReportUnavailable />;
+  if (!profile) return <ReportMissing />;
 
   return <ReportContent profile={profile} ranking={ranking} confidence={confidence} />;
 }

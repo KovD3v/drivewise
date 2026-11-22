@@ -38,7 +38,7 @@ export function ListingDetailPage({ listing }: { listing: ListingWithVehicle }) 
                 {listing.vehicle.make} {listing.vehicle.model}
               </h3>
               <p>
-                {listing.vehicle.model_year} · {listing.vehicle.body_style}
+                {listing.vehicle.model_year ?? 'Anno non disponibile'} · {listing.vehicle.body_style}
               </p>
             </div>
             <dl className="facts-grid">
@@ -63,11 +63,11 @@ export function ListingDetailPage({ listing }: { listing: ListingWithVehicle }) 
   )
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dd>{value ?? 'Non disponibile'}</dd>
     </div>
   )
 }

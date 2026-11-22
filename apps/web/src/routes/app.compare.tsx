@@ -27,7 +27,7 @@ export const Route = createFileRoute("/app/compare")({
   component: ComparePage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-10 text-center text-sm text-muted-foreground">
-      {error.message}
+      {error instanceof Error ? error.message : "Confronto non disponibile."}
     </div>
   ),
   notFoundComponent: () => (

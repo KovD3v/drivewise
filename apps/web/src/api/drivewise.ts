@@ -14,21 +14,37 @@ function getApiBaseUrl() {
 }
 
 export interface VehicleSummary {
+  vehicle_type?: string | null
+  generation_key?: string | null
+  phase_key?: string | null
+  catalog_version?: 1 | 2
   id: string
   canonical_key: string
   model_family_key: string
   make: string
   model: string
-  model_year: number
-  body_style: string
-  fuel_type: string
+  model_year: number | null
+  body_style: string | null
+  fuel_type: string | null
   market: string
   base_price_eur: number | null
 }
 
 export interface VehicleSpec {
+  catalog_version?: 1 | 2
+  variant_key?: string | null
+  is_default?: boolean
+  body_style?: string | null
+  fuel_type?: string | null
+  powertrain_type?: string | null
+  fuel?: string | null
+  engine_code?: string | null
+  valid_from?: string | null
+  valid_to?: string | null
+  external_references?: Array<{ namespace: string; value: string }>
+  energy_consumption_kwh_100km?: number | null
   id: string
-  trim: string
+  trim: string | null
   drivetrain: string | null
   transmission: string | null
   engine: string | null
@@ -275,12 +291,14 @@ export interface AdvisorFactor {
   component: AdvisorScoreComponent
   message: string
   metric?: string
-  value?: string | number
-  threshold?: string | number
+  value?: string | number | null
+  threshold?: string | number | null
   contribution: number
 }
 
 export interface AdvisorMetricProvenance {
+  decision_id?: string | null
+  observation_id?: string | null
   metric: string
   source_name: string
   source_url: string | null
@@ -288,12 +306,24 @@ export interface AdvisorMetricProvenance {
 }
 
 export interface AdvisorRecommendationItem {
-  decision_status?: 'complete' | 'insufficient_data'
   vehicle: VehicleSummary
   selected_spec: AdvisorSelectedSpec
   offer: AdvisorOffer
   score: number
-  component_scores: Record<AdvisorScoreComponent, number>
+  decision_status: 'complete' | 'insufficient_data'
+  decision_score: number | null
+  decision_confidence: number | null
+  structural_fit: number | null
+  preference_fit: number | null
+  pillar_scores: Record<string, number>
+  penalties: string[]
+  strengths: string[]
+  missing_factors: string[]
+  warnings: string[]
+  module_versions: Record<string, string>
+  assumptions: string[]
+  score_composition: Record<string, unknown>
+  component_scores: Record<AdvisorScoreComponent, number | null>
   positive_factors: AdvisorFactor[]
   tradeoffs: AdvisorFactor[]
   evidence: Record<string, unknown>
@@ -311,6 +341,7 @@ export interface AdvisorRecommendationResponse {
   assumptions: string[]
   excluded_counts_by_reason: Record<string, number>
   groups: AdvisorRecommendationGroup[]
+  insufficient_data_counts_by_reason: Record<string, number>
 }
 
 export async function fetchVehicles(

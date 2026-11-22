@@ -32,6 +32,9 @@ def main(env_path: Path = PROJECT_ROOT / ".env") -> int:
 
     try:
         report = run_migrations(database_url)
+    except ValueError as error:
+        print(f"Invalid migration history: {error}", file=sys.stderr)
+        return 1
     except psycopg.OperationalError:
         print(
             "Could not connect to the database configured by DATABASE_URL. "

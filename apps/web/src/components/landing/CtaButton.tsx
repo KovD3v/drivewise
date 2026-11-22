@@ -73,7 +73,7 @@ function CtaLink({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const reduceMotion = useReducedMotion();
-  const isLoading = useRouterState({ select: (s) => s.isLoading || s.isTransitioning });
+  const isLoading = useRouterState({ select: (s) => s.isLoading || s.status === "pending" });
 
   // Precarica il bundle della route subito: il primo click non deve mai attendere.
   useEffect(() => {

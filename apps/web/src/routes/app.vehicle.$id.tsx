@@ -46,10 +46,19 @@ export const Route = createFileRoute("/app/vehicle/$id")({
   },
   component: VehiclePage,
   notFoundComponent: VehicleNotFound,
-  errorComponent: VehicleNotFound,
+  errorComponent: VehicleUnavailable,
 });
 
+// TanStack splits each route slot into its own chunk; a slot function must not be referenced elsewhere.
+function VehicleUnavailable() {
+  return <VehicleMissing />;
+}
+
 function VehicleNotFound() {
+  return <VehicleMissing />;
+}
+
+function VehicleMissing() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader label="Dettaglio veicolo" />

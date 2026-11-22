@@ -102,10 +102,13 @@ export type TheftReference = {
 const VEHICLES = (vehiclesJson as unknown as Vehicle[]).filter(v => v.vehicle_type !== "car").map(v => ({ ...v, mock: true }));
 export const theftReference = theftReferenceJson as unknown as TheftReference;
 
+// Catalog v2 leaves an unreviewed body style empty; show it, but never offer it as a filter.
+const UNKNOWN_CATEGORY = "Categoria non indicata";
+
 export function fromApiVehicle(v: VehicleSummary | VehicleDetail): Vehicle {
   const spec = 'specs' in v ? v.specs[0] : undefined;
   return {
-    id: v.id, vehicle_type: 'car', brand: v.make, model: v.model, category: v.body_style,
+    id: v.id, vehicle_type: 'car', brand: v.make, model: v.model, category: v.body_style ?? UNKNOWN_CATEGORY,
     pricing: { new_price_estimate: v.base_price_eur, currency: 'EUR' },
     powertrain: { fuel: v.fuel_type }, dimensions: { boot_liters: spec?.cargo_volume_liters },
     // ponytail: presentation-only mock metrics until the API exposes reliability data. Never used for ranking.
@@ -152,7 +155,7 @@ export async function filterVehicles(criteria: VehicleFilter = {}): Promise<Vehi
 
 export async function getCategories(type: VehicleTypeKey): Promise<string[]> {
   const list = await getVehiclesByType(type);
-  return [...new Set(list.map((v) => v.category))].sort((a, b) => a.localeCompare(b, "it-IT"));
+  return [...new Set(list.map((v) => v.category).filter((c) => c !== UNKNOWN_CATEGORY))].sort((a, b) => a.localeCompare(b, "it-IT"));
 }
 
 /** Regioni con più furti (reference Italia 2024) per il contesto territoriale. */
