@@ -3,7 +3,10 @@ from datetime import datetime, timezone
 import pytest
 
 from app.schemas.guided_decisions import DecisionProfile
-from app.services.guided_decisions.engine import process_guided_decision_turn
+from app.services.guided_decisions.engine import (
+    _advisor_request_from_profile,
+    process_guided_decision_turn,
+)
 from app.services.guided_decisions.interpreter import extract_profile_updates
 from app.services.guided_decisions.questions import QUESTION_DEFINITIONS, next_question
 from test_guided_decisions import (
@@ -290,3 +293,27 @@ def test_garage_answer_below_question_minimum_is_rejected():
 )
 def test_priorities_keep_the_order_the_user_wrote(message, expected):
     assert _extract(message, "priorities").priorities.value == expected
+
+
+def _with_garage(profile, parking):
+    profile.parking = _fact(parking)
+    for field in ("useful_length_mm", "useful_width_mm", "useful_height_mm",
+                  "door_width_mm", "door_height_mm"):
+        setattr(profile.garage, field, _fact(2_500))
+    return profile
+
+
+def test_garage_dimensions_only_apply_while_parking_in_a_garage():
+    in_garage = _advisor_request_from_profile(_with_garage(_complete_guided_profile(), "garage"))
+    outdoor = _advisor_request_from_profile(
+        _with_garage(_complete_guided_profile(), "outdoor_space")
+    )
+    assert in_garage.garage is not None
+    assert outdoor.garage is None
+
+
+def test_family_primary_use_makes_children_question_applicable():
+    definition = next(item for item in QUESTION_DEFINITIONS if item.key == "children_count")
+    profile = DecisionProfile(primary_use=_fact("family"))
+    assert definition.is_applicable(profile)
+    assert not definition.is_applicable(DecisionProfile(primary_use=_fact("city")))

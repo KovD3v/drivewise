@@ -37,6 +37,13 @@ def _explicit_family(profile: DecisionProfile) -> bool:
     return profile.family is not None and profile.family.value is True
 
 
+def _family_use(profile: DecisionProfile) -> bool:
+    """Children matter when the user says family, in words or as the primary use."""
+    return _explicit_family(profile) or (
+        profile.primary_use is not None and profile.primary_use.value == "family"
+    )
+
+
 def _explicit_profile(profile: DecisionProfile) -> bool:
     return profile.vehicle_type is not None or _explicit_family(profile)
 
@@ -205,7 +212,7 @@ QUESTION_DEFINITIONS = (
             constraints=QuestionConstraints(minimum=0, unit="children"),
         ),
         is_answered=_has("children_count"),
-        is_applicable=_explicit_family,
+        is_applicable=_family_use,
     ),
     QuestionDefinition(
         key="passengers_usual",

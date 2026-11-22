@@ -296,7 +296,8 @@ def test_contextual_multi_select_answer_updates_priorities():
 
     assert result.response.updated_fields == ["priorities"]
     assert result.profile.priorities.value == ["space", "running_cost"]
-    assert result.response.next_question is None
+    # A family primary use still needs the child count.
+    assert result.response.next_question.id == "children_count"
 
 
 def test_garage_dimensions_become_missing_only_for_a_garage():

@@ -154,9 +154,10 @@ def _advisor_request_from_profile(profile: DecisionProfile) -> AdvisorRecommenda
         )
         if getattr(profile.garage, field_name) is not None
     }
+    parks_in_garage = profile.parking is not None and profile.parking.value == "garage"
     garage = (
         AdvisorGarageDimensions.model_validate(garage_values)
-        if len(garage_values) == 5
+        if parks_in_garage and len(garage_values) == 5
         else None
     )
     return AdvisorRecommendationRequest(
