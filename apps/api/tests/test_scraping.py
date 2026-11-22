@@ -1,6 +1,7 @@
 """Offline provider simulations exercise the actual runner and v2 output."""
 
 import copy
+from decimal import Decimal
 import importlib.util
 import json
 import os
@@ -834,7 +835,8 @@ def test_cited_units_preserve_word_boundaries_and_internal_spaces(
     if metric == "mass_kg":
         data["context"]["method"] = "Synthetic test mass definition"
     observation = runner.observations([ObservationProposal.model_validate(data)])[0]
-    assert observation["value_min"] == expected
+    # Catalog v2 serializes decimal measurements as decimal strings.
+    assert Decimal(observation["value_min"]) == Decimal(str(expected))
     assert observation["raw_unit"] == raw_unit
     assert observation["evidence_excerpt"] == excerpt
 
@@ -1021,7 +1023,8 @@ def test_normalization_is_checked_not_trusted_to_llm(
         value_max=float(high),
     )
     proposal = ObservationProposal.model_validate(data)
-    assert proposal.value_min == low and proposal.value_max == high
+    assert proposal.value_min == Decimal(str(low))
+    assert proposal.value_max == Decimal(str(high))
     data["value_min"] += 10
     with pytest.raises(ValidationError, match="deterministic conversion"):
         ObservationProposal.model_validate(data)
