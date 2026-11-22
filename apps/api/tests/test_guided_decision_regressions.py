@@ -317,3 +317,14 @@ def test_family_primary_use_makes_children_question_applicable():
     profile = DecisionProfile(primary_use=_fact("family"))
     assert definition.is_applicable(profile)
     assert not definition.is_applicable(DecisionProfile(primary_use=_fact("city")))
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("guido soprattutto in extraurbano", ["highway"]),
+        ("uso urbano e autostrada", ["city", "highway"]),
+    ],
+)
+def test_usage_matches_whole_terms(message, expected):
+    assert _extract(message).usage.value == expected

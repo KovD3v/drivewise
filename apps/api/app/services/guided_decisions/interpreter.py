@@ -516,12 +516,7 @@ def _extract_usage(normalized: str) -> list[str]:
         ("neopatentato", "new_driver"),
         ("prima auto", "new_driver"),
     )
-    matches = [
-        (normalized.find(term), mapped)
-        for term, mapped in terms
-        if normalized.find(term) >= 0
-    ]
-    return _deduplicate([mapped for _, mapped in sorted(matches)])
+    return _matching_values(normalized, dict(terms))
 
 
 def _extract_automatic_required(normalized: str) -> bool | None:
