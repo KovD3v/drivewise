@@ -3,7 +3,6 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import (
-    BaseModel,
     ConfigDict,
     Field,
     PrivateAttr,
@@ -11,8 +10,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas.base import ApiModel
 from app.schemas.vehicles import VehicleSpec, VehicleSummary
-
 
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
 ConstraintMode = Literal["hard", "soft"]
@@ -77,7 +76,7 @@ NextAction = Literal[
 ]
 
 
-class AdvisorConstraintModes(BaseModel):
+class AdvisorConstraintModes(ApiModel):
     model_config = ConfigDict(populate_by_name=True)
 
     budget: ConstraintMode = "soft"
@@ -87,7 +86,7 @@ class AdvisorConstraintModes(BaseModel):
     garage: ConstraintMode = "soft"
 
 
-class AdvisorGarageDimensions(BaseModel):
+class AdvisorGarageDimensions(ApiModel):
     useful_length_mm: int = Field(gt=0)
     useful_width_mm: int = Field(gt=0)
     useful_height_mm: int = Field(gt=0)
@@ -95,7 +94,7 @@ class AdvisorGarageDimensions(BaseModel):
     door_height_mm: int = Field(gt=0)
 
 
-class AdvisorRecommendationRequest(BaseModel):
+class AdvisorRecommendationRequest(ApiModel):
     _annual_km_was_defaulted: bool = PrivateAttr(default=False)
 
     budget_min_eur: float | None = Field(default=None, ge=0)
@@ -163,7 +162,7 @@ class AdvisorRecommendationRequest(BaseModel):
         return value
 
 
-class ModelAnalysisRequest(BaseModel):
+class ModelAnalysisRequest(ApiModel):
     query: str | None = Field(default=None, min_length=2, max_length=160)
     vehicle_id: UUID | None = None
     spec_id: UUID | None = None
@@ -201,7 +200,7 @@ class ModelAnalysisRequest(BaseModel):
         return self
 
 
-class ModelAnalysisCostSummary(BaseModel):
+class ModelAnalysisCostSummary(ApiModel):
     market_reference_price_eur: float | None = None
     estimated_annual_maintenance_eur: float | None = None
     estimated_monthly_energy_eur: float | None = None
@@ -209,7 +208,7 @@ class ModelAnalysisCostSummary(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
-class ModelAnalysisResponse(BaseModel):
+class ModelAnalysisResponse(ApiModel):
     status: FlowStatus
     resolved_vehicle: VehicleSummary | None = None
     resolved_spec: VehicleSpec | None = None
@@ -225,7 +224,7 @@ class ModelAnalysisResponse(BaseModel):
     next_actions: list[NextAction]
 
 
-class AdvisorOffer(BaseModel):
+class AdvisorOffer(ApiModel):
     id: UUID
     vehicle_id: UUID
     spec_id: UUID
@@ -261,7 +260,7 @@ class AdvisorVehicleSummary(VehicleSummary):
     model_family_key: str
 
 
-class AdvisorFactor(BaseModel):
+class AdvisorFactor(ApiModel):
     component: AdvisorScoreComponent
     message: str
     metric: str | None = None
@@ -270,7 +269,7 @@ class AdvisorFactor(BaseModel):
     contribution: float
 
 
-class AdvisorMetricProvenance(BaseModel):
+class AdvisorMetricProvenance(ApiModel):
     decision_id: UUID | None = None
     observation_id: UUID | None = None
     metric: str
@@ -286,7 +285,7 @@ class AdvisorMetricProvenance(BaseModel):
         return value
 
 
-class AdvisorRecommendationItem(BaseModel):
+class AdvisorRecommendationItem(ApiModel):
     vehicle: AdvisorVehicleSummary
     selected_spec: AdvisorSelectedSpec
     offer: AdvisorOffer
@@ -311,12 +310,12 @@ class AdvisorRecommendationItem(BaseModel):
     provenance: list[AdvisorMetricProvenance]
 
 
-class AdvisorRecommendationGroup(BaseModel):
+class AdvisorRecommendationGroup(ApiModel):
     condition: Literal["new", "used"]
     items: list[AdvisorRecommendationItem]
 
 
-class AdvisorRecommendationResponse(BaseModel):
+class AdvisorRecommendationResponse(ApiModel):
     run_id: UUID
     scoring_version: str
     assumptions: list[str]

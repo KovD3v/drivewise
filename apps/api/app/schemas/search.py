@@ -24,6 +24,8 @@ class DocumentSearchRequest(BaseModel):
         return normalized
 
 
+# The search route excludes None values, so these models keep optional fields
+# optional in the response schema instead of using ApiModel.
 class DocumentSearchItem(BaseModel):
     id: UUID
     title: str

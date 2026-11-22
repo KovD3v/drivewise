@@ -1,11 +1,12 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { test, expect, vi } from 'vitest'
 
+import { mockListing, mockVehicle } from '../api/mockData'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { ListingListPage } from './ListingList'
 
 const listingsResponse = [
-  {
+  mockListing({
     id: '30000000-0000-4000-8000-000000000001',
     vehicle_id: '00000000-0000-4000-8000-000000000001',
     source_id: '10000000-0000-4000-8000-000000000001',
@@ -16,7 +17,7 @@ const listingsResponse = [
     condition: 'used',
     location_region: 'Piemonte',
     listed_at: '2026-01-15',
-    vehicle: {
+    vehicle: mockVehicle({
       id: '00000000-0000-4000-8000-000000000001',
       canonical_key: 'fiat-panda-2024-it',
       model_family_key: 'fiat-panda',
@@ -27,8 +28,8 @@ const listingsResponse = [
       fuel_type: 'mild_hybrid_petrol',
       market: 'IT',
       base_price_eur: 15500,
-    },
-  },
+    }),
+  }),
 ]
 
 test('renders loader data and submits URL filter state', () => {

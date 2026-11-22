@@ -1,3 +1,4 @@
+import type { components } from './schema.gen'
 import {
   mockDocumentDetails,
   mockDocuments,
@@ -13,127 +14,26 @@ function getApiBaseUrl() {
   return import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
 }
 
-export interface VehicleSummary {
-  vehicle_type?: string | null
-  generation_key?: string | null
-  phase_key?: string | null
-  catalog_version?: 1 | 2
-  id: string
-  canonical_key: string
-  model_family_key: string
-  make: string
-  model: string
-  model_year: number | null
-  body_style: string | null
-  fuel_type: string | null
-  market: string
-  base_price_eur: number | null
-}
+// Response and request shapes come from the API's OpenAPI schema.
+// Regenerate with `bun run gen:api-types` after changing a FastAPI model.
+type Schemas = components['schemas']
 
-export interface VehicleSpec {
-  catalog_version?: 1 | 2
-  variant_key?: string | null
-  is_default?: boolean
-  body_style?: string | null
-  fuel_type?: string | null
-  powertrain_type?: string | null
-  fuel?: string | null
-  engine_code?: string | null
-  valid_from?: string | null
-  valid_to?: string | null
-  external_references?: Array<{ namespace: string; value: string }>
-  energy_consumption_kwh_100km?: number | null
-  id: string
-  trim: string | null
-  drivetrain: string | null
-  transmission: string | null
-  engine: string | null
-  horsepower: number | null
-  battery_kwh: number | null
-  consumption_l_100km: number | null
-  wltp_range_km: number | null
-  co2_g_km: number | null
-  euro_emission_standard: string | null
-  seats: number | null
-  cargo_volume_liters: number | null
-}
+export type VehicleSummary = Schemas['VehicleSummary']
+export type VehicleSpec = Schemas['VehicleSpec']
+export type VehicleDetail = Schemas['VehicleDetail']
 
-export interface VehicleDetail extends VehicleSummary {
-  specs: VehicleSpec[]
-}
+export type ModelAnalysisRequest = Schemas['ModelAnalysisRequest']
+export type ModelAnalysisUsageProfile = NonNullable<
+  ModelAnalysisRequest['usage_profile']
+>[number]
+export type ModelAnalysisScope = NonNullable<
+  ModelAnalysisRequest['analysis_scope']
+>[number]
+export type ModelAnalysisCostSummary = Schemas['ModelAnalysisCostSummary']
+export type ModelAnalysisResponse = Schemas['ModelAnalysisResponse']
 
-export type ModelAnalysisUsageProfile =
-  | 'city'
-  | 'mixed'
-  | 'highway'
-  | 'family'
-  | 'work'
-
-export type ModelAnalysisScope = 'price' | 'maintenance' | 'red_flags' | 'tco'
-
-export interface ModelAnalysisRequest {
-  query?: string
-  vehicle_id?: string
-  spec_id?: string
-  market?: string
-  model_year?: number
-  fuel_type?: string
-  body_style?: string
-  asking_price_eur?: number
-  current_km?: number
-  usage_profile?: ModelAnalysisUsageProfile[]
-  analysis_scope?: ModelAnalysisScope[]
-}
-
-export interface ModelAnalysisCostSummary {
-  market_reference_price_eur: number | null
-  estimated_annual_maintenance_eur: number | null
-  estimated_monthly_energy_eur: number | null
-  estimated_depreciation_3y_eur: number | null
-  notes: string[]
-}
-
-export interface ModelAnalysisResponse {
-  status: 'completed' | 'needs_input' | 'low_confidence' | 'error'
-  resolved_vehicle: VehicleSummary | null
-  resolved_spec: VehicleSpec | null
-  verdict: 'interesting_with_checks' | 'risky_at_price' | 'not_enough_data'
-  price_assessment: 'in_range' | 'above_range' | 'below_range' | 'unknown'
-  estimated_costs: ModelAnalysisCostSummary
-  red_flags: string[]
-  checklist: string[]
-  confidence: number
-  assumptions: string[]
-  warnings: string[]
-  missing_data: string[]
-  next_actions: string[]
-}
-
-export interface ListingWithVehicle {
-  id: string
-  vehicle_id: string
-  source_id: string
-  listing_ref: string
-  title: string
-  price_eur: number | null
-  mileage: number | null
-  condition: string
-  location_region: string | null
-  listed_at: string | null
-  vehicle: VehicleSummary
-}
-
-export interface IngestedDocument {
-  id: string
-  source_id: string
-  vehicle_id: string | null
-  listing_id: string | null
-  document_type: string
-  title: string
-  content: string
-  metadata: Record<string, unknown>
-  created_at: string
-}
+export type ListingWithVehicle = Schemas['ListingWithVehicle']
+export type IngestedDocument = Schemas['DocumentRead']
 
 export interface VehicleFilters {
   make?: string
@@ -167,36 +67,10 @@ export interface DocumentFilters {
   offset?: number
 }
 
-export type DocumentSearchMode = 'text_only' | 'vector_fake'
-
-export interface DocumentSearchRequest {
-  query: string
-  document_type?: string
-  limit?: number
-  include_content?: boolean
-  mode?: DocumentSearchMode
-}
-
-export interface DocumentSearchItem {
-  id: string
-  title: string
-  document_type: string
-  score: number
-  snippet: string
-  metadata: {
-    source_id: string | null
-    vehicle_id: string | null
-    listing_id: string | null
-    created_at: string | null
-  }
-  content?: string
-}
-
-export interface DocumentSearchResponse {
-  query: string
-  mode: DocumentSearchMode
-  items: DocumentSearchItem[]
-}
+export type DocumentSearchRequest = Schemas['DocumentSearchRequest']
+export type DocumentSearchMode = NonNullable<DocumentSearchRequest['mode']>
+export type DocumentSearchItem = Schemas['DocumentSearchItem']
+export type DocumentSearchResponse = Schemas['DocumentSearchResponse']
 
 interface NormalizedDocumentSearchRequest {
   query: string
@@ -206,143 +80,20 @@ interface NormalizedDocumentSearchRequest {
   mode: DocumentSearchMode
 }
 
-export type AdvisorPrimaryUse =
-  | 'city'
-  | 'highway'
-  | 'family'
-  | 'work'
-  | 'new_driver'
-
-export type AdvisorPriority =
-  | 'price'
-  | 'efficiency_range'
-  | 'space'
-  | 'running_cost'
-
-export type AdvisorCondition = 'any' | 'new' | 'used'
-
-export type AdvisorFuelType =
-  | 'diesel'
-  | 'electric'
-  | 'full_hybrid_petrol'
-  | 'hybrid_petrol'
-  | 'mild_hybrid_petrol'
-  | 'petrol'
-  | 'petrol_lpg'
-
-export type AdvisorBodyStyle =
-  | 'city_car'
-  | 'crossover'
-  | 'hatchback'
-  | 'mpv'
-  | 'sedan'
-  | 'small_hatchback'
-  | 'suv'
-  | 'van'
-  | 'wagon'
-
-export interface AdvisorRequest {
-  budget_min_eur?: number
-  budget_max_eur: number
-  primary_use: AdvisorPrimaryUse
-  condition?: AdvisorCondition
-  annual_km?: number
-  preferred_fuel_type?: AdvisorFuelType
-  preferred_body_style?: AdvisorBodyStyle
-  max_mileage?: number
-  priorities?: AdvisorPriority[]
-}
-
-export type AdvisorScoreComponent =
-  | 'price_fit'
-  | 'use_case_fit'
-  | 'running_cost'
-  | 'space'
-  | 'efficiency_range'
-
-export interface AdvisorSelectedSpec extends VehicleSpec {
-  variant_key: string
-  is_default: boolean
-  body_style: string
-  fuel_type: string
-  list_price_eur: number | null
-  energy_consumption_kwh_100km: number | null
-}
-
-export interface AdvisorOffer {
-  id: string
-  vehicle_id: string
-  spec_id: string
-  source_id: string
-  listing_ref: string
-  title: string
-  price_eur: number
-  mileage: number | null
-  condition: 'new' | 'used' | 'certified'
-  location_region: string | null
-  source_url: string | null
-  listed_at: string | null
-  last_seen_at?: string
-  valid_until: string | null
-  is_active: boolean
-}
-
-export interface AdvisorFactor {
-  component: AdvisorScoreComponent
-  message: string
-  metric?: string
-  value?: string | number | null
-  threshold?: string | number | null
-  contribution: number
-}
-
-export interface AdvisorMetricProvenance {
-  decision_id?: string | null
-  observation_id?: string | null
-  metric: string
-  source_name: string
-  source_url: string | null
-  observed_at: string | null
-}
-
-export interface AdvisorRecommendationItem {
-  vehicle: VehicleSummary
-  selected_spec: AdvisorSelectedSpec
-  offer: AdvisorOffer
-  score: number
-  decision_status: 'complete' | 'insufficient_data'
-  decision_score: number | null
-  decision_confidence: number | null
-  structural_fit: number | null
-  preference_fit: number | null
-  pillar_scores: Record<string, number>
-  penalties: string[]
-  strengths: string[]
-  missing_factors: string[]
-  warnings: string[]
-  module_versions: Record<string, string>
-  assumptions: string[]
-  score_composition: Record<string, unknown>
-  component_scores: Record<AdvisorScoreComponent, number | null>
-  positive_factors: AdvisorFactor[]
-  tradeoffs: AdvisorFactor[]
-  evidence: Record<string, unknown>
-  provenance: AdvisorMetricProvenance[]
-}
-
-export interface AdvisorRecommendationGroup {
-  condition: Exclude<AdvisorCondition, 'any'>
-  items: AdvisorRecommendationItem[]
-}
-
-export interface AdvisorRecommendationResponse {
-  run_id: string
-  scoring_version: string
-  assumptions: string[]
-  excluded_counts_by_reason: Record<string, number>
-  groups: AdvisorRecommendationGroup[]
-  insufficient_data_counts_by_reason: Record<string, number>
-}
+export type AdvisorRequest = Schemas['AdvisorRecommendationRequest']
+export type AdvisorPrimaryUse = AdvisorRequest['primary_use']
+export type AdvisorPriority = NonNullable<AdvisorRequest['priorities']>[number]
+export type AdvisorCondition = NonNullable<AdvisorRequest['condition']>
+export type AdvisorFuelType = NonNullable<AdvisorRequest['preferred_fuel_type']>
+export type AdvisorBodyStyle = NonNullable<AdvisorRequest['preferred_body_style']>
+export type AdvisorScoreComponent = Schemas['AdvisorFactor']['component']
+export type AdvisorSelectedSpec = Schemas['AdvisorSelectedSpec']
+export type AdvisorOffer = Schemas['AdvisorOffer']
+export type AdvisorFactor = Schemas['AdvisorFactor']
+export type AdvisorMetricProvenance = Schemas['AdvisorMetricProvenance']
+export type AdvisorRecommendationItem = Schemas['AdvisorRecommendationItem']
+export type AdvisorRecommendationGroup = Schemas['AdvisorRecommendationGroup']
+export type AdvisorRecommendationResponse = Schemas['AdvisorRecommendationResponse']
 
 export async function fetchVehicles(
   filters: VehicleFilters = {},
@@ -763,10 +514,11 @@ function buildMockModelAnalysisResponse(
 }
 
 function assessMockPrice(
-  askingPrice: number | undefined,
+  askingPrice: number | null | undefined,
   referencePrice: number | null | undefined,
 ): ModelAnalysisResponse['price_assessment'] {
   if (
+    askingPrice === null ||
     askingPrice === undefined ||
     referencePrice === null ||
     referencePrice === undefined

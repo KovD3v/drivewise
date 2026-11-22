@@ -4,17 +4,18 @@ from datetime import datetime
 from typing import Any, Generic, Literal, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from app.schemas.advisor import (
     AdvisorBodyStyle,
     AdvisorCondition,
+    AdvisorConstraintModes,
     AdvisorFuelType,
     AdvisorPriority,
     AdvisorRecommendationGroup,
-    AdvisorConstraintModes,
     PrimaryUse,
 )
+from app.schemas.base import ApiModel
 
 
 def _to_camel(value: str) -> str:
@@ -22,7 +23,7 @@ def _to_camel(value: str) -> str:
     return head + "".join(part.capitalize() for part in tail)
 
 
-class GuidedDecisionWireModel(BaseModel):
+class GuidedDecisionWireModel(ApiModel):
     model_config = ConfigDict(
         alias_generator=_to_camel,
         populate_by_name=True,
@@ -189,7 +190,7 @@ class GuidedDecisionResponse(GuidedDecisionWireModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class GuidedDecisionRecord(BaseModel):
+class GuidedDecisionRecord(ApiModel):
     id: UUID
     locale: str
     market: str

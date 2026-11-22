@@ -2,12 +2,13 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
 from app.ingestion.catalog_v2 import ExternalReference, MeasurementContext, Metric
+from app.schemas.base import ApiModel
 
 
-class VehicleProvenance(BaseModel):
+class VehicleProvenance(ApiModel):
     source_id: UUID
     source_key: str
     source_name: str
@@ -20,7 +21,7 @@ class VehicleProvenance(BaseModel):
     supported_metrics: list[str] = Field(default_factory=list)
 
 
-class VehicleSummary(BaseModel):
+class VehicleSummary(ApiModel):
     id: UUID
     canonical_key: str | None = None
     model_family_key: str | None = None
@@ -37,7 +38,7 @@ class VehicleSummary(BaseModel):
     base_price_eur: float | None = None
 
 
-class ProfileProvenance(BaseModel):
+class ProfileProvenance(ApiModel):
     source_id: UUID
     source_key: str
     source_name: str
@@ -46,14 +47,14 @@ class ProfileProvenance(BaseModel):
     observed_at: datetime
 
 
-class VehicleIdentity(BaseModel):
+class VehicleIdentity(ApiModel):
     generation_name: str | None = None
     restyling_label: str | None = None
     category: str | None = None
     doors: int | None = None
 
 
-class VehicleDimensions(BaseModel):
+class VehicleDimensions(ApiModel):
     length_mm: int | None = None
     width_mm: int | None = None
     height_mm: int | None = None
@@ -65,7 +66,7 @@ class VehicleDimensions(BaseModel):
     cargo_volume_liters: float | None = None
 
 
-class VehiclePowertrain(BaseModel):
+class VehiclePowertrain(ApiModel):
     engine_description: str | None = None
     engine_code: str | None = None
     displacement_cc: int | None = None
@@ -79,7 +80,7 @@ class VehiclePowertrain(BaseModel):
     wltp_range_km: int | None = None
 
 
-class VehicleTransmission(BaseModel):
+class VehicleTransmission(ApiModel):
     transmission: str | None = None
     transmission_type: str | None = None
     gear_count: int | None = None
@@ -87,14 +88,14 @@ class VehicleTransmission(BaseModel):
     differential_type: str | None = None
 
 
-class VehiclePerformance(BaseModel):
+class VehiclePerformance(ApiModel):
     acceleration_0_100_s: float | None = None
     top_speed_kmh: int | None = None
     braking_100_0_m: float | None = None
     power_to_weight_kw_per_t: float | None = None
 
 
-class VehicleOfficialEfficiency(BaseModel):
+class VehicleOfficialEfficiency(ApiModel):
     homologation_cycle: str | None = None
     consumption_l_100km: float | None = None
     energy_consumption_kwh_100km: float | None = None
@@ -102,7 +103,7 @@ class VehicleOfficialEfficiency(BaseModel):
     euro_emission_standard: str | None = None
 
 
-class VehicleMaintenanceItem(BaseModel):
+class VehicleMaintenanceItem(ApiModel):
     id: UUID
     operation_code: str
     title: str
@@ -112,7 +113,7 @@ class VehicleMaintenanceItem(BaseModel):
     provenance: ProfileProvenance
 
 
-class VehicleSafetyRating(BaseModel):
+class VehicleSafetyRating(ApiModel):
     id: UUID
     assessment_system: str
     assessment_year: int
@@ -124,7 +125,7 @@ class VehicleSafetyRating(BaseModel):
     provenance: ProfileProvenance
 
 
-class VehicleFeature(BaseModel):
+class VehicleFeature(ApiModel):
     id: UUID
     feature_key: str
     category: Literal["adas", "safety", "technology", "comfort"]
@@ -134,13 +135,13 @@ class VehicleFeature(BaseModel):
     provenance: ProfileProvenance
 
 
-class VehicleSafety(BaseModel):
+class VehicleSafety(ApiModel):
     ratings: list[VehicleSafetyRating] = Field(default_factory=list)
     adas: list[VehicleFeature] = Field(default_factory=list)
     equipment: list[VehicleFeature] = Field(default_factory=list)
 
 
-class VehicleMediaAsset(BaseModel):
+class VehicleMediaAsset(ApiModel):
     id: UUID
     asset_key: str
     asset_type: Literal["photo", "brochure", "manual"]
@@ -151,7 +152,7 @@ class VehicleMediaAsset(BaseModel):
     provenance: ProfileProvenance
 
 
-class VehicleSpec(BaseModel):
+class VehicleSpec(ApiModel):
     catalog_version: int = 1
     powertrain_type: str | None = None
     fuel: str | None = None
@@ -203,7 +204,7 @@ class VehicleDetail(VehicleSummary):
     provenance: list[VehicleProvenance] = Field(default_factory=list)
 
 
-class VehicleResolveRequest(BaseModel):
+class VehicleResolveRequest(ApiModel):
     query: str = Field(min_length=2, max_length=160)
     market: str = "IT"
     model_year: int | None = Field(default=None, ge=1980, le=2100)
@@ -225,7 +226,7 @@ class VehicleResolveRequest(BaseModel):
         return value.strip().upper() or "IT"
 
 
-class VehicleResolveMatch(BaseModel):
+class VehicleResolveMatch(ApiModel):
     confidence: float
     match_level: Literal["vehicle", "spec"]
     vehicle: VehicleSummary
@@ -234,14 +235,14 @@ class VehicleResolveMatch(BaseModel):
     warnings: list[str]
 
 
-class VehicleResolveResponse(BaseModel):
+class VehicleResolveResponse(ApiModel):
     query: str
     normalized_query: str
     status: Literal["matched", "ambiguous", "no_match"]
     matches: list[VehicleResolveMatch]
 
 
-class CatalogFact(BaseModel):
+class CatalogFact(ApiModel):
     id: UUID
     spec_id: UUID
     variant_key: str
