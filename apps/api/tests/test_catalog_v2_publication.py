@@ -577,7 +577,6 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
             if migration.name[:4] not in {"0001", "0009"}:
                 conn.execute(migration.read_text())
-        conn.execute("ALTER TABLE vehicle_specs ADD COLUMN engine_code text")
         conn.execute("UPDATE vehicle_specs SET engine_code = 'reviewed-code'")
         conn.execute((MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text())
         codes = conn.execute("SELECT engine_code FROM catalog_read_specs").fetchall()

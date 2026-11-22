@@ -1,60 +1,99 @@
-# DriveWise — Decision Records
+# DriveWise decision records
 
-## ADR-001 — LLM does not determine ranking
+## ADR-001: LLM does not determine ranking
+
 **Status:** Accepted
 
-The recommendation/ranking is produced by deterministic code. Generative AI may interpret free-form input and explain output, but must not silently recalculate or override the ranking.
+Deterministic Advisor code produces recommendations and ranking. Generative AI
+may interpret free-form input and explain output, but it must not recalculate or
+override the ranking.
 
-## ADR-002 — Decision Score is contextual
+## ADR-002: Decision Score is contextual
+
 **Status:** Accepted
 
-Decision Score belongs to the relationship `user ↔ vehicle`; it is not an absolute rating stored on the vehicle.
+Decision Score belongs to the relationship `user` and `vehicle`. It is not an
+absolute rating stored on the vehicle.
 
-## ADR-003 — Decision Confidence is separate from Decision Score
+## ADR-003: Decision Confidence is separate from Decision Score
+
 **Status:** Accepted
 
-Decision Confidence represents how reliable the recommendation is given profile completeness, data quality and ranking stability.
+Decision Confidence describes profile completeness, evidence completeness, and
+ranking stability. It is not a probability of purchase success.
 
-## ADR-004 — v1.0 score composition
-**Status:** Accepted for MVP
+## ADR-004: Advisor v3 score composition
 
-Final score composition:
+**Status:** Accepted
+
+Advisor v3 uses:
+
 - 65% Structural Fit
 - 35% Preference Fit
+- Preference rank weights of 50%, 30%, and 20% for the first three priorities
 
-Top-three user priorities contribute to Preference Fit with rank weights 50% / 30% / 20%.
+Structural Fit has six stable pillars. Priorities affect Preference Fit only so
+the same preference is not counted twice.
 
-## ADR-005 — Hard vs soft constraints
+## ADR-005: Hard and soft constraints
+
 **Status:** Accepted
 
-Some preferences may be either soft or hard. Examples: category SUV, fuel type and automatic transmission. A hard constraint may exclude a vehicle before scoring. A soft preference affects fit score instead.
+Requests declare constraint modes. A hard constraint can exclude a candidate. A
+soft constraint affects fit and is reported as a trade-off. Missing required
+evidence returns `insufficient_data` rather than a guessed value.
 
-## ADR-006 — Garage can be a hard constraint
+## ADR-006: Garage can be a hard constraint
+
 **Status:** Accepted
 
-If the vehicle physically cannot pass the garage entrance or fit within required dimensions, it is excluded. Tight but possible fits remain scoreable and are explained as a trade-off.
+Advisor checks useful length, body width, height, door height, and door width
+against width with mirrors folded. A hard incompatible fit excludes a vehicle.
+A tight but possible fit remains scoreable and is explained. Missing dimensions
+block a definitive fit claim.
 
-## ADR-007 — Data sources have different confidence
+## ADR-007: Source evidence has confidence and freshness
+
 **Status:** Accepted
 
-Data confidence incorporates source reliability, freshness, field confidence and verification. Manufacturer/official sources rank above community or synthetic sources.
+Evidence records retain source identity, observation time, record time, content
+hash, current state, and supported metrics. Ranking uses current claims from
+permitted sources. Specialist assessments must also identify exact
+applicability and a module version.
 
-## ADR-008 — Lovable is a client, not the calculation engine
+## ADR-008: The frontend is a client
+
 **Status:** Accepted
 
-Do not duplicate the Python scoring rules in Lovable/TypeScript. Lovable calls backend APIs that execute the Python engine.
+The web app does not reproduce Advisor formulas. It calls the API and renders
+the response. The API is the only runtime boundary for ranking.
 
-## ADR-009 — Backend API boundary
+## ADR-009: Backend owns the integration boundary
+
 **Status:** Accepted
 
-The Python engine must remain an isolated domain package that can be called by FastAPI/service code. HTTP, auth, database and session concerns must not leak into scoring modules.
+FastAPI owns HTTP, validation, persistence, and session orchestration. The
+Advisor service owns deterministic eligibility, module assessment, scoring,
+and ranking. Database and transport concerns do not enter scoring modules.
 
-## ADR-010 — Vehicle page is decision-oriented
+## ADR-010: Vehicle pages explain decisions
+
 **Status:** Accepted
 
-Technical specifications are secondary. The page prioritizes fit, reasons, trade-offs, ownership cost, reliability, known issues, recalls and context-specific insight.
+Technical specifications support the decision context. The page also exposes
+fit, reasons, trade-offs, ownership estimates, evidence, and missing data.
 
-## ADR-011 — Mock data is not production truth
+## ADR-011: Mock data is not production truth
+
 **Status:** Accepted
 
-Current vehicle records are development fixtures. UI should support a subtle `Preview MVP` / demo indicator until real validated sources replace them.
+Dataset v0.2 and its calibration material are synthetic development fixtures.
+The product must label them as mock data until reviewed sources replace them.
+
+## ADR-012: Advisor v3 is the single ranking authority
+
+**Status:** Accepted
+
+The retired `decision_engine/` package is not a compatibility runtime. Its
+reports are historical snapshots and its calibration JSON is non-runtime
+dataset material. API and Guided Decision use `advisor-v3.0`.

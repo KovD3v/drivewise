@@ -49,7 +49,73 @@
     {"canonical_key":"it-lumen-grand-2024","model_family_key":"it-lumen-grand","make":"Lumen","model":"Grand","model_year":2024,"market":"IT","source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/catalog/lumen-grand","observed_at":"2026-07-16T09:00:00+02:00"}
   ],
   "variants": [
-    {"variant_key":"it-acme-metro-2026-petrol","vehicle_key":"it-acme-metro-2026","trim":"City","is_default":true,"body_style":"city_car","fuel_type":"petrol","consumption_l_100km":5.1,"seats":5,"cargo_volume_liters":280,"provenance_claims":[{"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-metro-petrol","observed_at":"2026-07-16T09:00:00+02:00","supported_metrics":["variant_key","vehicle_key","trim","is_default","body_style","fuel_type","consumption_l_100km","seats","cargo_volume_liters"]}],"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-metro-petrol","observed_at":"2026-07-16T09:00:00+02:00"},
+    {
+      "variant_key": "it-acme-metro-2026-petrol",
+      "vehicle_key": "it-acme-metro-2026",
+      "trim": "City",
+      "is_default": true,
+      "body_style": "city_car",
+      "fuel_type": "petrol",
+      "generation_name": "Second generation",
+      "restyling_label": "2026 update",
+      "category": "city_car",
+      "doors": 5,
+      "length_mm": 3820,
+      "width_mm": 1680,
+      "height_mm": 1530,
+      "wheelbase_mm": 2440,
+      "curb_weight_kg": 1120,
+      "gross_weight_kg": 1580,
+      "payload_kg": 460,
+      "engine": "1.0 turbo petrol",
+      "engine_code": "SYN-T10",
+      "displacement_cc": 999,
+      "cylinders": 3,
+      "horsepower": 100,
+      "power_kw": 74,
+      "torque_nm": 170,
+      "transmission": "6-speed manual",
+      "transmission_type": "manual",
+      "gear_count": 6,
+      "drivetrain": "fwd",
+      "differential_type": "open",
+      "acceleration_0_100_s": 10.8,
+      "top_speed_kmh": 185,
+      "braking_100_0_m": 36.5,
+      "homologation_cycle": "WLTP",
+      "consumption_l_100km": 5.1,
+      "co2_g_km": 116,
+      "euro_emission_standard": "Euro 6e",
+      "seats": 5,
+      "cargo_volume_liters": 280,
+      "maintenance_schedule": [
+        {"operation_code": "engine-oil", "title": "Engine oil and filter", "interval_km": 15000, "interval_months": 12, "notes": "Whichever occurs first", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/maintenance/metro-engine-oil", "observed_at": "2026-07-16T09:00:00+02:00"},
+        {"operation_code": "brake-fluid", "title": "Brake fluid replacement", "interval_months": 24, "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/maintenance/metro-brake-fluid", "observed_at": "2026-07-16T09:00:00+02:00"}
+      ],
+      "safety_ratings": [
+        {"assessment_system": "Synthetic Euro NCAP", "assessment_year": 2026, "overall_stars": 5, "adult_occupant_percent": 88, "child_occupant_percent": 84, "vulnerable_road_users_percent": 72, "safety_assist_percent": 79, "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/safety/metro-euro-ncap", "observed_at": "2026-07-16T09:00:00+02:00"}
+      ],
+      "features": [
+        {"feature_key": "adaptive-cruise-control", "category": "adas", "name": "Adaptive cruise control", "availability": "standard", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/features/metro-adaptive-cruise-control", "observed_at": "2026-07-16T09:00:00+02:00"},
+        {"feature_key": "six-airbags", "category": "safety", "name": "Six airbags", "availability": "standard", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/features/metro-six-airbags", "observed_at": "2026-07-16T09:00:00+02:00"},
+        {"feature_key": "wireless-carplay", "category": "technology", "name": "Wireless CarPlay", "availability": "optional", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/features/metro-wireless-carplay", "observed_at": "2026-07-16T09:00:00+02:00"},
+        {"feature_key": "heated-front-seats", "category": "comfort", "name": "Heated front seats", "availability": "optional", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/features/metro-heated-front-seats", "observed_at": "2026-07-16T09:00:00+02:00"}
+      ],
+      "media": [
+        {"asset_key": "metro-exterior-photo", "asset_type": "photo", "title": "Metro exterior", "url": "https://example.test/media/metro-exterior.jpg", "mime_type": "image/jpeg", "locale": "it-IT", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/media/metro-exterior-source", "observed_at": "2026-07-16T09:00:00+02:00"},
+        {"asset_key": "metro-brochure-it", "asset_type": "brochure", "title": "Metro brochure", "url": "https://example.test/media/metro-brochure-it.pdf", "mime_type": "application/pdf", "locale": "it-IT", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/media/metro-brochure-source", "observed_at": "2026-07-16T09:00:00+02:00"},
+        {"asset_key": "metro-owner-manual-it", "asset_type": "manual", "title": "Metro owner manual", "url": "https://example.test/media/metro-owner-manual-it.pdf", "mime_type": "application/pdf", "locale": "it-IT", "source_key": "drivewise-synthetic-catalog", "source_url": "https://example.test/media/metro-owner-manual-source", "observed_at": "2026-07-16T09:00:00+02:00"}
+      ],
+      "provenance_claims": [{
+        "source_key": "drivewise-synthetic-catalog",
+        "source_url": "https://example.test/specs/acme-metro-petrol",
+        "observed_at": "2026-07-16T09:00:00+02:00",
+        "supported_metrics": ["variant_key", "vehicle_key", "trim", "is_default", "body_style", "fuel_type", "generation_name", "restyling_label", "category", "doors", "length_mm", "width_mm", "height_mm", "wheelbase_mm", "curb_weight_kg", "gross_weight_kg", "payload_kg", "engine", "engine_code", "displacement_cc", "cylinders", "horsepower", "power_kw", "torque_nm", "transmission", "transmission_type", "gear_count", "drivetrain", "differential_type", "acceleration_0_100_s", "top_speed_kmh", "braking_100_0_m", "homologation_cycle", "consumption_l_100km", "co2_g_km", "euro_emission_standard", "seats", "cargo_volume_liters"]
+      }],
+      "source_key": "drivewise-synthetic-catalog",
+      "source_url": "https://example.test/specs/acme-metro-petrol",
+      "observed_at": "2026-07-16T09:00:00+02:00"
+    },
     {"variant_key":"it-acme-metro-2026-electric","vehicle_key":"it-acme-metro-2026","trim":"City","is_default":false,"body_style":"city_car","fuel_type":"electric","energy_consumption_kwh_100km":15.5,"wltp_range_km":310,"seats":5,"cargo_volume_liters":260,"provenance_claims":[{"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-metro-electric","observed_at":"2026-07-16T09:00:00+02:00","supported_metrics":["variant_key","vehicle_key","trim","is_default","body_style","fuel_type","energy_consumption_kwh_100km","wltp_range_km","seats","cargo_volume_liters"]}],"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-metro-electric","observed_at":"2026-07-16T09:00:00+02:00"},
     {"variant_key":"it-acme-glide-2026-petrol","vehicle_key":"it-acme-glide-2026","trim":"Base Petrol","is_default":true,"body_style":"small_hatchback","fuel_type":"petrol","consumption_l_100km":5.0,"seats":5,"cargo_volume_liters":310,"provenance_claims":[{"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-glide-petrol","observed_at":"2026-07-16T09:00:00+02:00","supported_metrics":["variant_key","vehicle_key","trim","is_default","body_style","fuel_type","consumption_l_100km","seats","cargo_volume_liters"]}],"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-glide-petrol","observed_at":"2026-07-16T09:00:00+02:00"},
     {"variant_key":"it-acme-glide-2026-full-hybrid","vehicle_key":"it-acme-glide-2026","trim":"Full Hybrid","is_default":false,"body_style":"small_hatchback","fuel_type":"full_hybrid_petrol","consumption_l_100km":4.2,"seats":5,"cargo_volume_liters":295,"provenance_claims":[{"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-glide-hybrid","observed_at":"2026-07-16T09:00:00+02:00","supported_metrics":["variant_key","vehicle_key","trim","is_default","body_style","fuel_type","consumption_l_100km","seats","cargo_volume_liters"]}],"source_key":"drivewise-synthetic-catalog","source_url":"https://example.test/specs/acme-glide-hybrid","observed_at":"2026-07-16T09:00:00+02:00"},

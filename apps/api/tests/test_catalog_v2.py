@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -36,11 +37,38 @@ def test_v2_represents_identity_uncertainty_and_keeps_conflict_history():
     )
 
 
+def test_v2_preserves_decimal_precision_from_json_and_round_trip(tmp_path):
+    raw = FIXTURE.read_text().replace(
+        '"value_min": 64', '"value_min": 1.0000000000000001', 1
+    )
+    path = tmp_path / "precise.json"
+    path.write_text(raw)
+    payload = load_catalog_v2(path)
+    value = payload.observations[0].value_min
+    assert value == Decimal("1.0000000000000001")
+    assert (
+        CatalogV2.model_validate(payload.model_dump(mode="json"))
+        .observations[0]
+        .value_min
+        == value
+    )
+
+
+def test_v2_rejects_duplicate_snapshot_storage_identity():
+    raw = json.loads(FIXTURE.read_text())
+    duplicate = {**raw["snapshots"][0], "id": str(uuid4())}
+    raw["snapshots"].append(duplicate)
+    with pytest.raises(ValidationError, match="duplicate snapshot acquisition"):
+        CatalogV2.model_validate(raw)
+    duplicate["retrieved_at"] = raw["snapshots"][1]["retrieved_at"]
+    CatalogV2.model_validate(raw)
+
+
 @pytest.mark.parametrize(
     ("section", "index", "field", "value", "message"),
     [
         ("observations", 0, "unit", "Wh", "requires unit"),
-        ("observations", 0, "value_min", True, "valid number"),
+        ("observations", 0, "value_min", True, "Decimal input"),
         ("observations", 0, "value_min", float("nan"), "finite number"),
         ("observations", 0, "value_max", float("inf"), "finite number"),
         ("observations", 0, "value_min", 0, "zero is not unknown"),
