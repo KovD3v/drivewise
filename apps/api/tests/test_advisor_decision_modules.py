@@ -15,7 +15,7 @@ from app.services.advisor.energy_prices import (
 )
 from app.services.advisor.tco import estimate_tco
 from app.services.advisor.constraints import evaluate_constraints, transmission_is_automatic
-from app.services.advisor.scoring import _category_fit, _tco_assessment
+from app.services.advisor.scoring import _category_fit, _evidence_completeness, _tco_assessment
 from app.services.advisor.garage import family_fit, garage_fit
 from app.services.advisor.powertrain import powertrain_fit
 
@@ -616,3 +616,15 @@ def test_category_fit_follows_soft_body_and_fuel_preferences():
         fuel_type="petrol",
     )
     assert with_other < plain <= with_matching
+
+
+def test_unavailable_assessments_earn_no_evidence_completeness():
+    def module(status, missing=()):
+        return ModuleAssessment(
+            status=status, version="t", assumptions=("a",), missing_data=missing
+        )
+
+    assert _evidence_completeness({"a": module("insufficient_data", ("reliability",))}) == 0.0
+    assert _evidence_completeness({"a": module("available")}) == 100.0
+    assert _evidence_completeness({"a": module("available", ("tax",))}) == 70.0
+    assert _evidence_completeness({"a": module("estimated", ("tax",))}) == 70.0

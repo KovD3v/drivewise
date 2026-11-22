@@ -1010,10 +1010,10 @@ def _profile_completeness(request: AdvisorRecommendationRequest) -> float:
 
 
 def _evidence_completeness(assessments: dict[str, ModuleAssessment]) -> float:
+    # Only assessments that produced a result earn credit; partial results earn
+    # less, and unavailable modules earn none.
     values = [
-        70.0
-        if item.missing_data
-        else 100.0
+        (70.0 if item.missing_data else 100.0)
         if item.status == "available"
         else 70.0
         if item.status == "estimated"
