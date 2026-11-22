@@ -1,0 +1,8 @@
+# Synthetic catalog fixtures use variant keys such as "it-acme-metro-2026-petrol".
+# The default generic-api-key rule flags them because the field is named *_key.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic ACME catalog variant keys"
+regexes = ['''it-acme-[a-z0-9-]+''']

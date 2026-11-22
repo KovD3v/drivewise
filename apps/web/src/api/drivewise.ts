@@ -275,8 +275,8 @@ export interface AdvisorFactor {
   component: AdvisorScoreComponent
   message: string
   metric?: string
-  value?: string | number
-  threshold?: string | number
+  value?: string | number | null
+  threshold?: string | number | null
   contribution: number
 }
 
@@ -292,7 +292,20 @@ export interface AdvisorRecommendationItem {
   selected_spec: AdvisorSelectedSpec
   offer: AdvisorOffer
   score: number
-  component_scores: Record<AdvisorScoreComponent, number>
+  decision_status: 'complete' | 'insufficient_data'
+  decision_score: number | null
+  decision_confidence: number | null
+  structural_fit: number | null
+  preference_fit: number | null
+  pillar_scores: Record<string, number>
+  penalties: string[]
+  strengths: string[]
+  missing_factors: string[]
+  warnings: string[]
+  module_versions: Record<string, string>
+  assumptions: string[]
+  score_composition: Record<string, unknown>
+  component_scores: Record<AdvisorScoreComponent, number | null>
   positive_factors: AdvisorFactor[]
   tradeoffs: AdvisorFactor[]
   evidence: Record<string, unknown>
@@ -310,6 +323,7 @@ export interface AdvisorRecommendationResponse {
   assumptions: string[]
   excluded_counts_by_reason: Record<string, number>
   groups: AdvisorRecommendationGroup[]
+  insufficient_data_counts_by_reason: Record<string, number>
 }
 
 export async function fetchVehicles(
