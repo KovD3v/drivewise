@@ -6,7 +6,7 @@ Operational rules for Codex and other coding agents working on Drivewise.
 
 - Keep the MVP scaffold simple and locally runnable.
 - Do not add recommendation logic until explicitly requested.
-- Do not integrate Firecrawl until explicitly requested.
+- Firecrawl is authorized as an optional manufacturer-collection provider; select it explicitly.
 - Do not add Redis runtime dependencies until the cache layer is designed.
 - Treat Neon PostgreSQL and pgvector as planned infrastructure unless a task asks for database implementation.
 

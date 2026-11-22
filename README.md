@@ -11,7 +11,7 @@ The initial product wedge and private-beta gates are defined in
 - Backend: FastAPI / Python
 - Database: Neon PostgreSQL
 - Vector search: pgvector on Neon
-- Data collection: public sources, Hugging Face datasets, curated internal dataset, and future Firecrawl integration
+- Data collection: trusted public sources, Tinyfish Search/Fetch, optional Firecrawl, and curated internal dataset
 - Cache: PostgreSQL first, Redis-ready later
 
 ## Prerequisites
@@ -83,13 +83,26 @@ uvicorn app.main:app --reload --app-dir apps/api --host 127.0.0.1 --port 8000
 
 API contract documentation is available in `docs/api-contract.md`.
 
-Firecrawl ingestion is not active. To validate future source configuration without crawling or writing to the database:
+The legacy Firecrawl planner validates source configuration without crawling or writing to the database:
 
 ```bash
 python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json
 ```
 
 `FIRECRAWL_API_KEY` is optional for planning and is never printed. The command only reports whether a key is configured.
+
+The [manufacturer collection agent](docs/scraping.md) uses OpenRouter with Tinyfish
+Search/Fetch by default. Firecrawl is an optional acquisition alternative, and
+Tinyfish Agent navigation can be enabled separately. It produces catalog v2 bundles
+in an explicitly started job. Preview its scope without keys or network access:
+
+```bash
+uv run --frozen --project apps/api python apps/api/scripts/scrape_catalog.py --config data/scraping.example.json
+```
+
+Add `--run --run-dir data/private/catalog/yaris-pilot` only when keys and an
+OpenRouter model are configured. Collection resumes from local checkpoints;
+publication remains a separate command.
 
 Embedding planning is dry-run only. To inspect documents missing embeddings without calling external providers or writing to the database:
 
