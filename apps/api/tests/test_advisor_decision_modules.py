@@ -14,7 +14,8 @@ from app.services.advisor.energy_prices import (
     LIQUID_ENERGY_PRICES_EUR_PER_LITER,
 )
 from app.services.advisor.tco import estimate_tco
-from app.services.advisor.constraints import evaluate_constraints
+from app.services.advisor.constraints import evaluate_constraints, transmission_is_automatic
+from app.services.advisor.scoring import _tco_assessment
 from app.services.advisor.garage import family_fit, garage_fit
 from app.services.advisor.powertrain import powertrain_fit
 
@@ -558,3 +559,45 @@ def test_hard_garage_missing_folded_width_is_insufficient_data(candidate):
     )
     assert result.status == "insufficient_data"
     assert "vehicle.width_mirrors_folded_mm" in result.missing_data
+
+
+def test_partial_tco_is_not_scored_as_cheaper(candidate):
+    complete = _tco_assessment(estimate_tco(v3_request(), candidate, as_of=AS_OF), 30_000)
+    candidate["spec"]["power_kw"] = None
+    partial = _tco_assessment(estimate_tco(v3_request(), candidate, as_of=AS_OF), 30_000)
+    assert complete.value is not None
+    assert partial.value is None
+    assert partial.status == "insufficient_data"
+    assert "tax" in partial.missing_data
+
+
+@pytest.mark.parametrize(
+    "transmission,expected",
+    [
+        ("automatic", True), ("DCT", True), ("e-CVT", True), ("single_speed", True),
+        ("torque converter", True), ("manual", False), ("Manuale", False),
+        ("unknown gearbox", None), (None, None),
+    ],
+)
+def test_transmission_classification(transmission, expected):
+    assert transmission_is_automatic(transmission) is expected
+
+
+def _with_transmission(candidate, transmission):
+    candidate["decision_context"] = {"powertrain": {"transmission_type": transmission}}
+    return candidate
+
+
+def test_soft_transmission_with_unknown_gearbox_is_a_tradeoff(candidate):
+    result = evaluate_constraints(
+        v3_request(automatic_required=True), _with_transmission(candidate, None)
+    )
+    assert result.status == "eligible"
+    assert "transmission_insufficient_data" in result.soft_tradeoffs
+
+
+def test_hard_transmission_accepts_dct_and_rejects_manual(candidate):
+    request = v3_request(automatic_required=True, constraint_modes={"transmission": "hard"})
+    assert evaluate_constraints(request, _with_transmission(candidate, "dct")).status == "eligible"
+    manual = evaluate_constraints(request, _with_transmission(candidate, "manual"))
+    assert manual.reasons == ("transmission_mismatch",)

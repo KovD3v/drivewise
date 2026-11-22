@@ -953,6 +953,16 @@ def _tco_assessment(
 ) -> ModuleAssessment:
     if assessment.value is None:
         return assessment
+    if assessment.missing_data:
+        # A partial total omits costs, so scoring it would favour incomplete data.
+        return ModuleAssessment(
+            status="insufficient_data",
+            version=assessment.version,
+            details=assessment.details,
+            assumptions=assessment.assumptions,
+            evidence=assessment.evidence,
+            missing_data=assessment.missing_data,
+        )
     annual = float(assessment.value)
     # Same bounded annual-cost target as the v1 scorer; lower cost is better.
     target = max(3500.0, 0.22 * budget_max_eur)

@@ -213,3 +213,69 @@ def test_invalid_short_answers_do_not_complete_question(key, answer):
     )
     assert profile == DecisionProfile()
     assert fields == []
+
+
+def _extract(message, expected_question_id=None):
+    profile, _ = extract_profile_updates(
+        message,
+        DecisionProfile(),
+        expected_question_id=expected_question_id,
+        captured_at=AS_OF,
+    )
+    return profile
+
+
+@pytest.mark.parametrize(
+    "message,budget",
+    [
+        ("Cerco una SUV usata con massimo 80.000 km, budget 20000 euro", 20_000),
+        ("faccio fino a 15.000 km all'anno", None),
+        ("budget 18.500,50 euro", 18_501),
+        ("massimo 25.000 euro", 25_000),
+    ],
+)
+def test_budget_ignores_distances_and_reads_italian_decimals(message, budget):
+    profile = _extract(message)
+    assert (profile.budget_eur.value if profile.budget_eur else None) == budget
+
+
+def test_budget_answer_with_italian_decimals_is_not_inflated():
+    assert _extract("25.000,00", "budget_eur").budget_eur.value == 25_000
+
+
+def test_mileage_limit_and_yearly_distance_stay_separate():
+    profile = _extract("faccio fino a 15.000 km all'anno")
+    assert profile.annual_km.value == 15_000
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("non voglio il cambio automatico, solo manuale", False),
+        ("niente automatico", False),
+        ("solo cambio automatico", True),
+        ("cambio automatico obbligatorio", True),
+        ("automatico, e solo benzina", None),
+    ],
+)
+def test_automatic_requirement_respects_negation(message, expected):
+    profile = _extract(message)
+    value = profile.automatic_required.value if profile.automatic_required else None
+    assert value == expected
+
+
+def test_zero_yearly_distance_is_not_recorded():
+    assert _extract("0 km all'anno").annual_km is None
+
+
+@pytest.mark.parametrize(
+    "answer,millimetres",
+    [("2,50", 2_500), ("250", 2_500), ("2500", 2_500), ("2,5 m", 2_500), ("250 cm", 2_500)],
+)
+def test_garage_answers_read_metres_centimetres_and_millimetres(answer, millimetres):
+    profile = _extract(answer, "garage.useful_width_mm")
+    assert profile.garage.useful_width_mm.value == millimetres
+
+
+def test_garage_answer_below_question_minimum_is_rejected():
+    assert _extract("500 mm", "garage.useful_width_mm").garage.useful_width_mm is None

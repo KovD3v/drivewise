@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from app.schemas.advisor import AdvisorConstraintModes
@@ -311,7 +311,7 @@ def _extract_contextual_answer(
 
     if expected_question_id in GARAGE_DIMENSION_FIELDS:
         millimetres = _standalone_millimetres(normalized)
-        if millimetres is None or millimetres <= 0:
+        if millimetres is None or millimetres < _question_minimum(expected_question_id, 1):
             return
         _set_garage_fact(
             profile,
@@ -419,15 +419,22 @@ def _set_garage_fact(
     updated_fields.append(f"garage.{field_name}")
 
 
+_AMOUNT = r"([0-9][0-9\s.,']*(?:k(?![a-z])|mila)?)"
+_DISTANCE_AFTER = re.compile(r"\s*(?:km|chilometri)\b")
+
+
 def _extract_budget(normalized: str) -> int | None:
+    # Explicit budget or euro amounts win over generic limits such as
+    # "massimo 80.000 km", which usually describe mileage, not money.
     patterns = (
-        r"(?:budget|spendere|massimo|fino a)(?: di| circa| intorno a| sui)?\s*"
-        r"(?:euro|eur)?\s*([0-9][0-9\s.,']*(?:k|mila)?)",
-        r"([0-9][0-9\s.,']*(?:k|mila)?)\s*(?:euro|eur)\b",
+        rf"(?:budget|spendere)(?: di| circa| intorno a| sui)?\s*(?:euro|eur)?\s*{_AMOUNT}",
+        rf"{_AMOUNT}\s*(?:euro|eur)\b",
+        rf"(?:massimo|fino a)(?: di| circa| intorno a| sui)?\s*(?:euro|eur)?\s*{_AMOUNT}",
     )
     for pattern in patterns:
-        match = re.search(pattern, normalized)
-        if match:
+        for match in re.finditer(pattern, normalized):
+            if _DISTANCE_AFTER.match(normalized, match.end(1)):
+                continue
             value = _parse_number(match.group(1))
             if value is not None and value >= 1_000:
                 return value
@@ -436,15 +443,14 @@ def _extract_budget(normalized: str) -> int | None:
 
 def _extract_annual_km(normalized: str) -> int | None:
     patterns = (
-        r"([0-9][0-9\s.,']*(?:k|mila)?)\s*(?:km|chilometri)\s*"
-        r"(?:all anno|annui|l anno|anno)",
-        r"(?:all anno|annui|l anno|anno)\s*"
-        r"([0-9][0-9\s.,']*(?:k|mila)?)\s*(?:km|chilometri)",
+        rf"{_AMOUNT}\s*(?:km|chilometri)\s*(?:all anno|annui|l anno|anno)",
+        rf"(?:all anno|annui|l anno|anno)\s*{_AMOUNT}\s*(?:km|chilometri)",
     )
     for pattern in patterns:
         match = re.search(pattern, normalized)
         if match:
-            return _parse_number(match.group(1))
+            value = _parse_number(match.group(1))
+            return value if value is not None and value > 0 else None
     return None
 
 
@@ -526,10 +532,14 @@ def _extract_automatic_required(normalized: str) -> bool | None:
     ) or re.search(
         r"\bnon\s+(?:e|è)?\s*(?:obbligatorio|necessario)\b.*\bautomatico\b",
         normalized,
-    ):
+    ) or re.search(
+        # "non voglio il cambio automatico", "niente automatico", "senza automatico"
+        r"\b(?:non|niente|senza|no)\b(?:\s+\w+){0,3}\s+automatico\b",
+        normalized,
+    ) or re.search(r"\bsolo\s+(?:cambio\s+)?manuale\b", normalized):
         return False
-    if re.search(
-        r"\b(?:automatico|cambio automatico)\b.*\b(?:obbligatorio|required|necessario|solo)\b",
+    if re.search(r"\bsolo\s+(?:(?:il|un)\s+)?(?:cambio\s+)?automatico\b", normalized) or re.search(
+        r"\b(?:automatico|cambio automatico)\b.*\b(?:obbligatorio|required|necessario)\b",
         normalized,
     ):
         return True
@@ -649,7 +659,19 @@ def _standalone_millimetres(normalized: str) -> int | None:
         return None
 
     raw_value = match.group(1).replace(" ", "").replace("'", "")
-    unit = match.group(2) or "mm"
+    unit = match.group(2)
+    if unit is None:
+        # A bare number is read on the scale a garage answer can plausibly use:
+        # "2,50" is metres, "250" is centimetres, "2500" is millimetres.
+        number = _parse_decimal(raw_value)
+        if number is None:
+            return None
+        if number < 10:
+            unit = "m"
+        elif number < 1_000:
+            unit = "cm"
+        else:
+            unit = "mm"
     if unit == "m":
         try:
             metres = float(raw_value.replace(",", "."))
@@ -689,10 +711,40 @@ def _parse_number(raw_value: str) -> int | None:
             return None
         return int(Decimal(value) * multiplier)
 
-    digits = re.sub(r"[^0-9]", "", value)
-    if not digits:
+    number = _parse_decimal(value)
+    if number is None:
         return None
-    return int(digits) * multiplier
+    return int(number.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def _parse_decimal(raw_value: str) -> Decimal | None:
+    """Read whole quantities: '.' or a ',' before three digits groups thousands,
+    and a ',' before one or two digits marks Italian decimals."""
+    value = raw_value.strip().replace(" ", "").replace("'", "").rstrip(".,")
+    if re.fullmatch(r"[0-9]{1,3}(?:,[0-9]{3})+", value):
+        return Decimal(value.replace(",", ""))
+    if "," in value:
+        integer, _, fraction = value.rpartition(",")
+        if not re.fullmatch(r"[0-9]{1,2}", fraction) or not re.fullmatch(
+            r"[0-9]{1,3}(?:\.[0-9]{3})+|[0-9]+", integer
+        ):
+            return None
+        return Decimal(f"{integer.replace('.', '')}.{fraction}")
+    if re.fullmatch(r"[0-9]{1,3}(?:\.[0-9]{3})+", value):
+        return Decimal(value.replace(".", ""))
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]{1,2})?", value):
+        return Decimal(value)
+    return None
+
+
+def _question_minimum(question_id: str, default: float) -> float:
+    definition = next(
+        (item for item in QUESTION_DEFINITIONS if item.key == question_id), None
+    )
+    constraints = definition.question.constraints if definition else None
+    if constraints is None or constraints.minimum is None:
+        return default
+    return constraints.minimum
 
 
 def _normalize(value: str) -> str:

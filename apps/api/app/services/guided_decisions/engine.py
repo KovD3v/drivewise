@@ -224,6 +224,9 @@ def _garage_compatibility(
     return checks
 
 
+_READY_RANKING_SIGNAL = 0.70
+
+
 def _decision_confidence(
     profile: DecisionProfile,
     preview_ranking: PreviewRanking,
@@ -238,12 +241,13 @@ def _decision_confidence(
             ),
             default=0.0,
         ) / 100
-        ranking_signal = max(0.0, min(1.0, ranking_signal))
+        # A provisional ranking never signals more than a ready one.
+        ranking_signal = max(0.0, min(_READY_RANKING_SIGNAL, ranking_signal))
     else:
         ranking_signal = {
             "blocked": 0.0,
             "insufficient_inventory": 0.15,
-            "ready": 0.70,
+            "ready": _READY_RANKING_SIGNAL,
         }[preview_ranking.status]
     return round(0.85 * profile_signal + 0.15 * ranking_signal, 2)
 

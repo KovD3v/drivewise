@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -78,13 +79,19 @@ def evaluate_constraints(
     transmission = (candidate.get("decision_context") or {}).get("powertrain", {}).get(
         "transmission_type"
     )
-    if request.automatic_required and transmission is None:
-        missing.append("vehicle.transmission")
-    elif request.automatic_required and str(transmission).lower() not in {"automatic", "auto"}:
-        if request.constraint_modes.transmission == "hard":
-            reasons.append("transmission_mismatch")
-        else:
-            tradeoffs.append("transmission_mismatch")
+    if request.automatic_required:
+        is_automatic = transmission_is_automatic(transmission)
+        hard = request.constraint_modes.transmission == "hard"
+        if is_automatic is None:
+            if hard:
+                missing.append("vehicle.transmission")
+            else:
+                tradeoffs.append("transmission_insufficient_data")
+        elif not is_automatic:
+            if hard:
+                reasons.append("transmission_mismatch")
+            else:
+                tradeoffs.append("transmission_mismatch")
 
     if request.garage:
         garage = garage_assessment or garage_fit(request, candidate)
@@ -106,6 +113,26 @@ def evaluate_constraints(
     else:
         status = "eligible"
     return ConstraintEvaluation(status, tuple(reasons), tuple(dict.fromkeys(missing)), tuple(tradeoffs))
+
+
+_AUTOMATIC_TRANSMISSIONS = {
+    "automatic", "auto", "automatico", "dct", "dsg", "dual_clutch", "edc",
+    "cvt", "e_cvt", "ecvt", "torque_converter", "amt", "single_speed",
+    "direct_drive", "reduction_gear",
+}
+_MANUAL_TRANSMISSIONS = {"manual", "manuale"}
+
+
+def transmission_is_automatic(transmission: Any) -> bool | None:
+    """Classify the catalog's free-text transmission; None when it is unknown."""
+    if transmission is None:
+        return None
+    key = re.sub(r"[\s\-]+", "_", str(transmission).strip().lower())
+    if key in _MANUAL_TRANSMISSIONS or key.startswith("manual"):
+        return False
+    if key in _AUTOMATIC_TRANSMISSIONS or key.startswith("automatic"):
+        return True
+    return None
 
 
 def _number(value: Any) -> float | None:
