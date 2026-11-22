@@ -35,7 +35,7 @@ AS_OF = datetime(2026, 9, 7, tzinfo=timezone.utc)
         ("condition", "entrambe", "any"),
         ("category", "utilitaria", "city_car"),
         ("preferred_fuel_type", "benzina", "petrol"),
-        ("priorities", "spazio e consumi", ["running_cost", "space"]),
+        ("priorities", "spazio e consumi", ["space", "running_cost"]),
         ("usage", "famiglia", ["family"]),
         ("usage", "famiglia e autostrada", ["family", "highway"]),
         *[
@@ -279,3 +279,14 @@ def test_garage_answers_read_metres_centimetres_and_millimetres(answer, millimet
 
 def test_garage_answer_below_question_minimum_is_rejected():
     assert _extract("500 mm", "garage.useful_width_mm").garage.useful_width_mm is None
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("preferisco spazio, poi consumi, infine prezzo", ["space", "running_cost", "price"]),
+        ("prezzo, consumi e spazio", ["price", "running_cost", "space"]),
+    ],
+)
+def test_priorities_keep_the_order_the_user_wrote(message, expected):
+    assert _extract(message, "priorities").priorities.value == expected

@@ -595,7 +595,7 @@ def _score_candidate(
             missing_data=("vehicle.consumption_l_100km",),
         ),
         "category_fit": _available(
-            BODY_USE_MATRIX["city" if request.primary_use == "new_driver" else request.primary_use].get(body_style, 0.0)
+            _category_fit(request, body_style=body_style, fuel_type=fuel_type)
         ),
         "usage_fit": assessments["usage_fit"],
         "family_fit": assessments["family_fit"],
@@ -1046,6 +1046,26 @@ def _price_score(price: float, ceiling: float) -> float:
     if ratio <= 1.0:
         return 100 - ((ratio - 0.75) / 0.25) * 30
     return max(0.0, 70 - ((ratio - 1.0) / 0.10) * 70)
+
+
+def _category_fit(
+    request: AdvisorRecommendationRequest,
+    *,
+    body_style: str,
+    fuel_type: str,
+) -> float:
+    """Body-for-use fit, blended with soft body and fuel preferences when given.
+
+    Without preferences this is the plain body-use matrix value, so requests
+    that state none keep their scores.
+    """
+    use_key = "city" if request.primary_use == "new_driver" else request.primary_use
+    parts = [(BODY_USE_MATRIX[use_key].get(body_style, 0.0), 0.60)]
+    if request.preferred_fuel_type is not None:
+        parts.append((100.0 if request.preferred_fuel_type == fuel_type else 0.0, 0.20))
+    if request.preferred_body_style is not None:
+        parts.append((100.0 if request.preferred_body_style == body_style else 0.0, 0.20))
+    return sum(value * weight for value, weight in parts) / sum(weight for _, weight in parts)
 
 
 def _use_case_score(

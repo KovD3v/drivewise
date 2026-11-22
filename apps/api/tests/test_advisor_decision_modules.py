@@ -15,7 +15,7 @@ from app.services.advisor.energy_prices import (
 )
 from app.services.advisor.tco import estimate_tco
 from app.services.advisor.constraints import evaluate_constraints, transmission_is_automatic
-from app.services.advisor.scoring import _tco_assessment
+from app.services.advisor.scoring import _category_fit, _tco_assessment
 from app.services.advisor.garage import family_fit, garage_fit
 from app.services.advisor.powertrain import powertrain_fit
 
@@ -601,3 +601,18 @@ def test_hard_transmission_accepts_dct_and_rejects_manual(candidate):
     assert evaluate_constraints(request, _with_transmission(candidate, "dct")).status == "eligible"
     manual = evaluate_constraints(request, _with_transmission(candidate, "manual"))
     assert manual.reasons == ("transmission_mismatch",)
+
+
+def test_category_fit_follows_soft_body_and_fuel_preferences():
+    plain = _category_fit(v3_request(), body_style="hatchback", fuel_type="petrol")
+    with_matching = _category_fit(
+        v3_request(preferred_body_style="hatchback", preferred_fuel_type="petrol"),
+        body_style="hatchback",
+        fuel_type="petrol",
+    )
+    with_other = _category_fit(
+        v3_request(preferred_body_style="suv", preferred_fuel_type="diesel"),
+        body_style="hatchback",
+        fuel_type="petrol",
+    )
+    assert with_other < plain <= with_matching

@@ -295,7 +295,7 @@ def test_contextual_multi_select_answer_updates_priorities():
     )
 
     assert result.response.updated_fields == ["priorities"]
-    assert result.profile.priorities.value == ["running_cost", "space"]
+    assert result.profile.priorities.value == ["space", "running_cost"]
     assert result.response.next_question is None
 
 

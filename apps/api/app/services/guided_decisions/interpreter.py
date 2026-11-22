@@ -768,13 +768,13 @@ def _first_matching_value(value: str, mapping: dict[str, str]) -> str | None:
 
 
 def _matching_values(value: str, mapping: dict[str, str]) -> list[str]:
-    return _deduplicate(
-        [
-            mapped_value
-            for term, mapped_value in mapping.items()
-            if _contains_term(value, term)
-        ]
-    )
+    """Return mapped values in the order the user wrote them."""
+    positions = []
+    for term, mapped_value in mapping.items():
+        match = re.search(rf"(?<!\w){re.escape(term)}(?!\w)", value)
+        if match:
+            positions.append((match.start(), mapped_value))
+    return _deduplicate([mapped for _, mapped in sorted(positions, key=lambda item: item[0])])
 
 
 def _contains_term(value: str, term: str) -> bool:
