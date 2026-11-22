@@ -34,6 +34,9 @@ variants, offers, and record-level provenance without calling external services.
   detail-only vehicle-spec knowledge fields and relational child records.
 - `apps/api/migrations/0007_https_primary_provenance.sql` validates existing
   primary provenance and rejects non-HTTPS vehicle, spec, and listing URLs.
+- `apps/api/migrations/0008_catalog_evidence.sql` adds nullable identity attributes
+  and immutable snapshots, observations, and fact decisions. See the
+  [catalog v2 contract and compatibility boundary](catalog-v2.md).
 
 Run migrations with:
 

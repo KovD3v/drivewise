@@ -35,6 +35,9 @@ REQUIRED_TABLES = {
     "vehicle_safety_ratings",
     "vehicle_features",
     "vehicle_media_assets",
+    "source_snapshots",
+    "spec_observations",
+    "fact_decisions",
 }
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -57,6 +60,7 @@ def test_migration_files_are_ordered():
         "0005_vehicle_knowledge_profile.sql",
         "0006_guided_decisions.sql",
         "0007_https_primary_provenance.sql",
+        "0008_catalog_evidence.sql",
     ]
 
 
@@ -81,7 +85,7 @@ def test_schema_creates_pgvector_and_required_tables():
     assert "epa_range_miles" not in sql
 
     for table_name in REQUIRED_TABLES:
-        assert f"CREATE TABLE IF NOT EXISTS {table_name}" in sql
+        assert re.search(rf"CREATE TABLE (?:IF NOT EXISTS )?{table_name}\b", sql)
 
 
 def test_seed_contains_five_synthetic_vehicles():

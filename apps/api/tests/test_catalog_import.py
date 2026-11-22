@@ -21,6 +21,7 @@ from app.repositories.vehicles import VehiclesRepository
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "data/fixtures/catalog/catalog-v1.synthetic.json"
+IMPORT_FIXTURE_PATH = ROOT / "data/fixtures/catalog/catalog-v1.import-test.synthetic.json"
 SCRIPT_PATH = ROOT / "apps/api/scripts/import_catalog.py"
 
 
@@ -973,7 +974,7 @@ def test_catalog_write_is_idempotent_updates_and_rolls_back_atomically():
 
 
 def _cleanup_catalog_test_rows(conn) -> None:
-    fixture_hash = compute_catalog_hash(load_catalog(FIXTURE_PATH))
+    fixture_hash = compute_catalog_hash(load_catalog(IMPORT_FIXTURE_PATH))
     conn.execute(
         """
         DELETE FROM import_runs
