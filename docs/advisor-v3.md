@@ -158,6 +158,11 @@ family fit insufficient. Garage fit checks useful length, body width, height,
 door height, and door width against the vehicle width with mirrors folded.
 The current repository does not provide a trusted folded-width metric, so that
 input remains unavailable and the check fails closed until a source supplies it.
+Until then the guided flow still asks the five garage questions, but their
+answers cannot complete the check: garage fit stays `insufficient_data`, and a
+hard garage constraint keeps the ranking provisional. Decision (2026-11-22):
+keep the questions and collect folded-mirror width from manufacturer sources
+rather than remove them.
 Missing measurements are insufficient data. A hard incompatible garage
 excludes the candidate; a soft incompatible garage is a trade-off.
 
