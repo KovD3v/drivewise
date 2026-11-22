@@ -131,7 +131,31 @@ SELECT s.id,
        s.engine_code,
        s.external_references,
        s.identity_evidence,
-       s.legacy_record
+       s.legacy_record,
+       -- Knowledge-profile fields (0005) are exposed for v1 rows only; v2 needs reviewed facts.
+       CASE WHEN s.catalog_version = 1 THEN s.generation_name END AS generation_name,
+       CASE WHEN s.catalog_version = 1 THEN s.restyling_label END AS restyling_label,
+       CASE WHEN s.catalog_version = 1 THEN s.category END AS category,
+       CASE WHEN s.catalog_version = 1 THEN s.doors END AS doors,
+       CASE WHEN s.catalog_version = 1 THEN s.length_mm END AS length_mm,
+       CASE WHEN s.catalog_version = 1 THEN s.width_mm END AS width_mm,
+       CASE WHEN s.catalog_version = 1 THEN s.height_mm END AS height_mm,
+       CASE WHEN s.catalog_version = 1 THEN s.wheelbase_mm END AS wheelbase_mm,
+       CASE WHEN s.catalog_version = 1 THEN s.curb_weight_kg END AS curb_weight_kg,
+       CASE WHEN s.catalog_version = 1 THEN s.gross_weight_kg END AS gross_weight_kg,
+       CASE WHEN s.catalog_version = 1 THEN s.payload_kg END AS payload_kg,
+       CASE WHEN s.catalog_version = 1 THEN s.displacement_cc END AS displacement_cc,
+       CASE WHEN s.catalog_version = 1 THEN s.cylinders END AS cylinders,
+       CASE WHEN s.catalog_version = 1 THEN s.power_kw END AS power_kw,
+       CASE WHEN s.catalog_version = 1 THEN s.torque_nm END AS torque_nm,
+       CASE WHEN s.catalog_version = 1 THEN s.battery_usable_kwh END AS battery_usable_kwh,
+       CASE WHEN s.catalog_version = 1 THEN s.transmission_type END AS transmission_type,
+       CASE WHEN s.catalog_version = 1 THEN s.gear_count END AS gear_count,
+       CASE WHEN s.catalog_version = 1 THEN s.differential_type END AS differential_type,
+       CASE WHEN s.catalog_version = 1 THEN s.acceleration_0_100_s END AS acceleration_0_100_s,
+       CASE WHEN s.catalog_version = 1 THEN s.top_speed_kmh END AS top_speed_kmh,
+       CASE WHEN s.catalog_version = 1 THEN s.braking_100_0_m END AS braking_100_0_m,
+       CASE WHEN s.catalog_version = 1 THEN s.homologation_cycle END AS homologation_cycle
 FROM vehicle_specs s;
 
 -- A shared provenance relation keeps Advisor and Model Analysis on the same rules.

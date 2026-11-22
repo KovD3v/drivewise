@@ -10,12 +10,13 @@ import { AdvisorPage } from './Advisor'
 
 const recommendationResponse: AdvisorRecommendationResponse = {
   run_id: '50000000-0000-4000-8000-000000000001',
-  scoring_version: 'advisor-v2.0',
+  scoring_version: 'advisor-v3.0',
   assumptions: ['14.000 km annui', 'Prezzi energia aggiornati a luglio 2026'],
   excluded_counts_by_reason: {
     stale_offer: 2,
     over_budget_limit: 1,
   },
+  insufficient_data_counts_by_reason: {},
   groups: [
     {
       condition: 'new',
@@ -72,6 +73,25 @@ const recommendationResponse: AdvisorRecommendationResponse = {
             is_active: true,
           },
           score: 91.4,
+          decision_status: 'complete',
+          decision_score: 91.4,
+          decision_confidence: 88.2,
+          structural_fit: 90,
+          preference_fit: 94,
+          pillar_scores: {
+            economics: 90,
+            practicality: 88,
+          },
+          penalties: [],
+          strengths: ['economics'],
+          missing_factors: [],
+          warnings: [],
+          module_versions: { scoring: 'advisor-v3.0' },
+          assumptions: [],
+          score_composition: {
+            structural_fit_weight: 65,
+            preference_fit_weight: 35,
+          },
           component_scores: {
             price_fit: 95,
             use_case_fit: 100,
@@ -134,7 +154,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('submits the Advisor v2 preferences and renders transparent condition groups', async () => {
+test('submits Advisor preferences and renders transparent condition groups', async () => {
   renderWithRouter(<AdvisorPage />)
 
   expect(screen.getByRole('option', { name: 'Ibrido benzina' })).toHaveValue(
@@ -190,7 +210,8 @@ test('submits the Advisor v2 preferences and renders transparent condition group
   ).toHaveAttribute('href', 'https://example.com/offers/panda')
   expect(screen.getByText(/Nessuna offerta usata soddisfa/)).toBeVisible()
   expect(screen.getByText('14.000 km annui')).toBeVisible()
-  expect(screen.getByText('Scoring advisor-v2.0')).toBeVisible()
+  expect(screen.getByText('Scoring advisor-v3.0')).toBeVisible()
+  expect(screen.getByText('Decision Score')).toBeVisible()
   expect(screen.queryByText('Evidence documentale')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Affidabilita')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Sicurezza')).not.toBeInTheDocument()
@@ -212,6 +233,33 @@ test('submits the Advisor v2 preferences and renders transparent condition group
       }),
     )
   })
+})
+
+test('labels an insufficient-data recommendation as provisional Structural Fit', async () => {
+  const response = structuredClone(recommendationResponse)
+  const item = response.groups[0].items[0]
+  item.decision_status = 'insufficient_data'
+  item.decision_score = null
+  item.score = 72
+  item.missing_factors = ['powertrain_fit']
+  item.warnings = ['vehicle.wltp_range_km']
+  response.insufficient_data_counts_by_reason = { powertrain_fit: 1 }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, json: async () => response }),
+  )
+
+  renderWithRouter(<AdvisorPage />)
+
+  fireEvent.change(screen.getByLabelText('Budget massimo'), {
+    target: { value: '20000' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Trova veicoli' }))
+
+  expect(await screen.findByText('Structural Fit provvisorio')).toBeVisible()
+  expect(screen.getByText(/Risultato provvisorio/)).toBeVisible()
+  expect(screen.getAllByText(/powertrain fit/).length).toBeGreaterThan(0)
+  expect(screen.queryByText('Decision Score')).not.toBeInTheDocument()
 })
 
 test('renders a recommendation defensively without provenance or a source URL', async () => {

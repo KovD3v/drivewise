@@ -100,6 +100,9 @@ Move from producing ranked results to helping a user reach, understand, and act 
 - Add a 2–3 offer decision workspace.
 - Add Italian ownership-tax estimates only after reviewed source data is
   supplied.
+- Source the vehicle width with mirrors folded (`width_mirrors_folded_mm`),
+  with provenance, so garage fit can complete; until then garage answers are
+  collected but the check stays `insufficient_data`.
 
 ### Product validation
 
