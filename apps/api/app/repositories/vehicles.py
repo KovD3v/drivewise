@@ -4,6 +4,39 @@ from uuid import UUID
 from app.repositories.filters import VehicleFilters
 
 
+PROFILE_PROVENANCE_FIELDS = (
+    "source_id",
+    "source_key",
+    "source_name",
+    "source_url",
+    "source_license",
+    "observed_at",
+)
+
+
+def _profile_provenance(row: dict[str, Any]) -> dict[str, Any]:
+    return {field: row[field] for field in PROFILE_PROVENANCE_FIELDS}
+
+
+def _group_by_spec_id(rows: list[dict[str, Any]]) -> dict[UUID, list[dict[str, Any]]]:
+    grouped: dict[UUID, list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(row["spec_id"], []).append(row)
+    return grouped
+
+
+def _feature_response(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "feature_key": row["feature_key"],
+        "category": row["category"],
+        "name": row["name"],
+        "availability": row["availability"],
+        "notes": row["notes"],
+        "provenance": _profile_provenance(row),
+    }
+
+
 class VehiclesRepository:
     def __init__(self, conn) -> None:
         self.conn = conn
@@ -113,13 +146,150 @@ class VehiclesRepository:
               co2_g_km,
               euro_emission_standard,
               seats,
-              cargo_volume_liters
+              cargo_volume_liters,
+              generation_name,
+              restyling_label,
+              category,
+              doors,
+              length_mm,
+              width_mm,
+              height_mm,
+              wheelbase_mm,
+              curb_weight_kg,
+              gross_weight_kg,
+              payload_kg,
+              engine_code,
+              displacement_cc,
+              cylinders,
+              power_kw,
+              torque_nm,
+              battery_usable_kwh,
+              transmission_type,
+              gear_count,
+              differential_type,
+              acceleration_0_100_s,
+              top_speed_kmh,
+              braking_100_0_m,
+              homologation_cycle
             FROM vehicle_specs
             WHERE vehicle_id = %s
             ORDER BY is_default DESC, trim, variant_key
             """,
             (vehicle_id,),
         ).fetchall()
+
+        spec_ids = [spec["id"] for spec in specs]
+        maintenance_by_spec = _group_by_spec_id(
+            list(
+                self.conn.execute(
+                    """
+                    SELECT
+                      child.spec_id,
+                      child.id,
+                      child.operation_code,
+                      child.title,
+                      child.interval_km,
+                      child.interval_months,
+                      child.notes,
+                      child.source_id,
+                      source.source_key,
+                      source.name AS source_name,
+                      child.source_url,
+                      source.license AS source_license,
+                      child.observed_at
+                    FROM vehicle_maintenance_items child
+                    JOIN sources source ON source.id = child.source_id
+                    WHERE child.spec_id = ANY(%s)
+                    ORDER BY child.spec_id, child.created_at, child.id
+                    """,
+                    (spec_ids,),
+                ).fetchall()
+            )
+        )
+        safety_ratings_by_spec = _group_by_spec_id(
+            list(
+                self.conn.execute(
+                    """
+                    SELECT
+                      child.spec_id,
+                      child.id,
+                      child.assessment_system,
+                      child.assessment_year,
+                      child.overall_stars,
+                      child.adult_occupant_percent,
+                      child.child_occupant_percent,
+                      child.vulnerable_road_users_percent,
+                      child.safety_assist_percent,
+                      child.source_id,
+                      source.source_key,
+                      source.name AS source_name,
+                      child.source_url,
+                      source.license AS source_license,
+                      child.observed_at
+                    FROM vehicle_safety_ratings child
+                    JOIN sources source ON source.id = child.source_id
+                    WHERE child.spec_id = ANY(%s)
+                    ORDER BY child.spec_id, child.created_at, child.id
+                    """,
+                    (spec_ids,),
+                ).fetchall()
+            )
+        )
+        features_by_spec = _group_by_spec_id(
+            list(
+                self.conn.execute(
+                    """
+                    SELECT
+                      child.spec_id,
+                      child.id,
+                      child.feature_key,
+                      child.category,
+                      child.name,
+                      child.availability,
+                      child.notes,
+                      child.source_id,
+                      source.source_key,
+                      source.name AS source_name,
+                      child.source_url,
+                      source.license AS source_license,
+                      child.observed_at
+                    FROM vehicle_features child
+                    JOIN sources source ON source.id = child.source_id
+                    WHERE child.spec_id = ANY(%s)
+                    ORDER BY child.spec_id, child.created_at, child.id
+                    """,
+                    (spec_ids,),
+                ).fetchall()
+            )
+        )
+        media_by_spec = _group_by_spec_id(
+            list(
+                self.conn.execute(
+                    """
+                    SELECT
+                      child.spec_id,
+                      child.id,
+                      child.asset_key,
+                      child.asset_type,
+                      child.title,
+                      child.url,
+                      child.mime_type,
+                      child.locale,
+                      child.source_id,
+                      source.source_key,
+                      source.name AS source_name,
+                      child.source_url,
+                      source.license AS source_license,
+                      child.observed_at
+                    FROM vehicle_media_assets child
+                    JOIN sources source ON source.id = child.source_id
+                    WHERE child.spec_id = ANY(%s)
+                    ORDER BY child.spec_id, child.created_at, child.id
+                    """,
+                    (spec_ids,),
+                ).fetchall()
+            )
+        )
 
         vehicle_provenance = self.conn.execute(
             """
@@ -180,13 +350,164 @@ class VehiclesRepository:
                 }
             )
 
-        specs_with_provenance = [
-            {
+        specs_with_provenance = []
+        for spec in specs:
+            maintenance = maintenance_by_spec.get(spec["id"], [])
+            ratings = safety_ratings_by_spec.get(spec["id"], [])
+            features = features_by_spec.get(spec["id"], [])
+            media = media_by_spec.get(spec["id"], [])
+            adas = [row for row in features if row["category"] == "adas"]
+            safety_equipment = [
+                row for row in features if row["category"] == "safety"
+            ]
+            technology_comfort = [
+                row
+                for row in features
+                if row["category"] in {"technology", "comfort"}
+            ]
+            power_to_weight = None
+            if spec["power_kw"] is not None and spec["curb_weight_kg"]:
+                power_to_weight = round(
+                    float(spec["power_kw"]) * 1000 / spec["curb_weight_kg"],
+                    2,
+                )
+
+            profile_spec = {
                 **spec,
                 "provenance": provenance_by_spec.get(spec["id"], []),
+                "identity": {
+                    "generation_name": spec["generation_name"],
+                    "restyling_label": spec["restyling_label"],
+                    "category": spec["category"],
+                    "doors": spec["doors"],
+                },
+                "dimensions": {
+                    "length_mm": spec["length_mm"],
+                    "width_mm": spec["width_mm"],
+                    "height_mm": spec["height_mm"],
+                    "wheelbase_mm": spec["wheelbase_mm"],
+                    "curb_weight_kg": spec["curb_weight_kg"],
+                    "gross_weight_kg": spec["gross_weight_kg"],
+                    "payload_kg": spec["payload_kg"],
+                    "seats": spec["seats"],
+                    "cargo_volume_liters": spec["cargo_volume_liters"],
+                },
+                "powertrain": {
+                    "engine_description": spec["engine"],
+                    "engine_code": spec["engine_code"],
+                    "displacement_cc": spec["displacement_cc"],
+                    "cylinders": spec["cylinders"],
+                    "horsepower": spec["horsepower"],
+                    "power_kw": spec["power_kw"],
+                    "torque_nm": spec["torque_nm"],
+                    "fuel_type": spec["fuel_type"],
+                    "battery_total_kwh": spec["battery_kwh"],
+                    "battery_usable_kwh": spec["battery_usable_kwh"],
+                    "wltp_range_km": spec["wltp_range_km"],
+                },
+                "transmission_details": {
+                    "transmission": spec["transmission"],
+                    "transmission_type": spec["transmission_type"],
+                    "gear_count": spec["gear_count"],
+                    "drivetrain": spec["drivetrain"],
+                    "differential_type": spec["differential_type"],
+                },
+                "performance": {
+                    "acceleration_0_100_s": spec["acceleration_0_100_s"],
+                    "top_speed_kmh": spec["top_speed_kmh"],
+                    "braking_100_0_m": spec["braking_100_0_m"],
+                    "power_to_weight_kw_per_t": power_to_weight,
+                },
+                "official_efficiency": {
+                    "homologation_cycle": spec["homologation_cycle"],
+                    "consumption_l_100km": spec["consumption_l_100km"],
+                    "energy_consumption_kwh_100km": spec[
+                        "energy_consumption_kwh_100km"
+                    ],
+                    "co2_g_km": spec["co2_g_km"],
+                    "euro_emission_standard": spec["euro_emission_standard"],
+                },
+                "maintenance_schedule": [
+                    {
+                        "id": row["id"],
+                        "operation_code": row["operation_code"],
+                        "title": row["title"],
+                        "interval_km": row["interval_km"],
+                        "interval_months": row["interval_months"],
+                        "notes": row["notes"],
+                        "provenance": _profile_provenance(row),
+                    }
+                    for row in maintenance
+                ],
+                "safety": {
+                    "ratings": [
+                        {
+                            "id": row["id"],
+                            "assessment_system": row["assessment_system"],
+                            "assessment_year": row["assessment_year"],
+                            "overall_stars": row["overall_stars"],
+                            "adult_occupant_percent": row["adult_occupant_percent"],
+                            "child_occupant_percent": row["child_occupant_percent"],
+                            "vulnerable_road_users_percent": row[
+                                "vulnerable_road_users_percent"
+                            ],
+                            "safety_assist_percent": row["safety_assist_percent"],
+                            "provenance": _profile_provenance(row),
+                        }
+                        for row in ratings
+                    ],
+                    "adas": [
+                        _feature_response(row) for row in adas
+                    ],
+                    "equipment": [
+                        _feature_response(row) for row in safety_equipment
+                    ],
+                },
+                "technology_comfort": [
+                    _feature_response(row) for row in technology_comfort
+                ],
+                "media": [
+                    {
+                        "id": row["id"],
+                        "asset_key": row["asset_key"],
+                        "asset_type": row["asset_type"],
+                        "title": row["title"],
+                        "url": row["url"],
+                        "mime_type": row["mime_type"],
+                        "locale": row["locale"],
+                        "provenance": _profile_provenance(row),
+                    }
+                    for row in media
+                ],
             }
-            for spec in specs
-        ]
+            for field in (
+                "generation_name",
+                "restyling_label",
+                "category",
+                "doors",
+                "length_mm",
+                "width_mm",
+                "height_mm",
+                "wheelbase_mm",
+                "curb_weight_kg",
+                "gross_weight_kg",
+                "payload_kg",
+                "engine_code",
+                "displacement_cc",
+                "cylinders",
+                "power_kw",
+                "torque_nm",
+                "battery_usable_kwh",
+                "transmission_type",
+                "gear_count",
+                "differential_type",
+                "acceleration_0_100_s",
+                "top_speed_kmh",
+                "braking_100_0_m",
+                "homologation_cycle",
+            ):
+                profile_spec.pop(field)
+            specs_with_provenance.append(profile_spec)
 
         return {
             **vehicle,

@@ -1,4 +1,4 @@
-# Tommaso — Attività Backend MVP
+# Tommaso: attività backend MVP
 
 Il piano operativo completo è mantenuto in:
 
@@ -8,11 +8,11 @@ Il piano operativo completo è mantenuto in:
 
 Costruire il primo vertical slice reale:
 
-`Lovable /app/start → FastAPI → Decision Engine v1.0 → ranking JSON → Decision Report`
+`Lovable /app/start → FastAPI → Advisor v3 → ranking JSON → Decision Report`
 
 ## Prima consegna attesa
 1. verificare l'architettura backend già presente;
-2. integrare `decision_engine/` senza riscrivere le formule;
+2. verificare l'integrazione esistente di Advisor v3 senza duplicare le formule;
 3. esporre `GET /api/v1/health` e `GET /api/v1/version`;
 4. esporre `POST /api/v1/decisions`;
 5. restituire Decision Score, Decision Confidence, Pillars, trade-off ed Explainability;

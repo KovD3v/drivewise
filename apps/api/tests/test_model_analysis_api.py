@@ -215,6 +215,18 @@ def test_post_model_analysis_resolves_query_and_returns_completed_contract(
     assert payload["status"] == "completed"
     assert payload["resolved_vehicle"]["id"] == str(FIAT_ID)
     assert payload["resolved_spec"]["id"] == str(FIAT_SPEC_ID)
+    assert not {
+        "identity",
+        "dimensions",
+        "powertrain",
+        "transmission_details",
+        "performance",
+        "official_efficiency",
+        "maintenance_schedule",
+        "safety",
+        "technology_comfort",
+        "media",
+    }.intersection(payload["resolved_spec"])
     assert payload["verdict"] == "interesting_with_checks"
     assert payload["price_assessment"] == "in_range"
     assert payload["estimated_costs"]["market_reference_price_eur"] == 14200.00
