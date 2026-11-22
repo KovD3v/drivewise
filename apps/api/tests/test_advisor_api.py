@@ -346,10 +346,11 @@ def test_model_analysis_repository_uses_broad_exact_spec_query():
 
     assert repository.list_model_analysis_candidates() == []
     sql, params = conn.calls[0]
-    assert params is None
-    assert "LEFT JOIN vehicle_specs" in sql
+    assert len(params) == 2
+    assert "LEFT JOIN catalog_analysis_specs" in sql
     assert "l.spec_id = s.id" in sql
-    assert "l.last_seen_at >=" not in sql
+    assert "l.last_seen_at >=" in sql
+    assert "LEFT JOIN catalog_usable_listings" in sql
     assert "import_run.status = 'completed'" not in sql
 
 
@@ -565,7 +566,7 @@ def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
         return sql[start:end]
 
     aggregates = (
-        ("spec_provenance", "vehicle_spec_provenance", "provenance"),
+        ("spec_provenance", "catalog_read_provenance", "provenance"),
         ("maintenance_items", "vehicle_maintenance_items", "item"),
         ("safety_ratings", "vehicle_safety_ratings", "rating"),
         ("safety_features", "vehicle_features", "feature"),
@@ -591,6 +592,7 @@ def test_candidate_query_keeps_source_aware_children_correlated_and_permitted():
     outer_query = sql[sql.index("FROM listings AS l") :]
     for child_table in (
         "vehicle_spec_provenance",
+        "catalog_read_provenance",
         "vehicle_maintenance_items",
         "vehicle_safety_ratings",
         "vehicle_features",

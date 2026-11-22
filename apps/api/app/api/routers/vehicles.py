@@ -7,6 +7,7 @@ from app.api.dependencies import get_vehicles_repository
 from app.repositories.filters import VehicleFilters
 from app.repositories.vehicles import VehiclesRepository
 from app.schemas.vehicles import (
+    CatalogFact,
     VehicleDetail,
     VehicleResolveRequest,
     VehicleResolveResponse,
@@ -61,3 +62,13 @@ def get_vehicle(
     if vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return vehicle
+
+
+@router.get("/{vehicle_id}/facts", response_model=list[CatalogFact])
+def get_vehicle_facts(
+    vehicle_id: UUID,
+    repository: Annotated[VehiclesRepository, Depends(get_vehicles_repository)],
+) -> list[dict]:
+    if repository.get_vehicle(vehicle_id) is None:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return repository.list_facts(vehicle_id)

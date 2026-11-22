@@ -8,6 +8,7 @@ from app.core.config import get_settings
 
 MIGRATIONS_PATH = Path(__file__).resolve().parents[2] / "migrations"
 RENAMED_MIGRATIONS = {
+    "0006_catalog_publication.sql": "0009_catalog_publication.sql",
     "0005_catalog_evidence.sql": "0008_catalog_evidence.sql",
 }
 

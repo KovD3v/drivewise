@@ -51,3 +51,16 @@ test('renders document detail loader data without embedding metadata', () => {
   expect(screen.queryByText(/private-model/)).not.toBeInTheDocument()
   expect(screen.queryByText(/"embedding"/)).not.toBeInTheDocument()
 })
+
+test('renders unknown catalog v2 identity fields without inventing values', () => {
+  const vehicle = {
+    ...mockVehicleDetails[0],
+    model_year: null,
+    body_style: null,
+    fuel_type: null,
+    specs: [{ ...mockVehicleDetails[0].specs[0], trim: null }],
+  }
+  renderWithRouter(<VehicleDetailPage vehicle={vehicle} />)
+  expect(screen.getByText(/Anno non disponibile/)).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Allestimento non disponibile' })).toBeVisible()
+})

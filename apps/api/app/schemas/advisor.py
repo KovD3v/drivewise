@@ -271,6 +271,8 @@ class AdvisorFactor(BaseModel):
 
 
 class AdvisorMetricProvenance(BaseModel):
+    decision_id: UUID | None = None
+    observation_id: UUID | None = None
     metric: str
     source_name: str
     source_url: str

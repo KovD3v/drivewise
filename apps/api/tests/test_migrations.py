@@ -61,6 +61,7 @@ def test_migration_files_are_ordered():
         "0006_guided_decisions.sql",
         "0007_https_primary_provenance.sql",
         "0008_catalog_evidence.sql",
+        "0009_catalog_publication.sql",
     ]
 
 
