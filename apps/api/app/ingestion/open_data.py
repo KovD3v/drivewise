@@ -34,8 +34,8 @@ MAX_POWERTRAINS = 4
 MAX_RDW_CANDIDATES = 3
 # Type approval knows one class for mild and full hybrids alike. The registry does
 # record the net power of the electric motor. On the 2024 Italian top 100 it is 17 kW
-# or less for 12 V and 48 V systems, and 32 kW or more for cars that can drive on the
-# motor alone; nothing lies between. A value between the two limits decides nothing.
+# or less for 12 V and 48 V systems and 32 kW or more for high-voltage hybrids;
+# nothing lies between. A value between the two limits decides nothing.
 HYBRID_SAMPLE = 5
 MILD_HYBRID_BELOW_KW = Decimal(20)
 FULL_HYBRID_FROM_KW = Decimal(30)
@@ -130,6 +130,12 @@ DATASET_GAPS = [
         "seat_height_mm, fuel_tank_capacity_liters",
         "no_verified_source",
         "One open dataset has them but its origin is unverified.",
+    ),
+    (
+        "two_wheeler",
+        "wet_weight_kg",
+        "not_in_source",
+        "RDW gives mass in running order; it is not verified to equal wet weight.",
     ),
     (
         "two_wheeler",

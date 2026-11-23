@@ -20,6 +20,7 @@ rerun the build, and the diff of this file shows what changed.
 | car | variants | one_version_per_powertrain | Each powertrain shows its most-registered version, not every engine or trim. |
 | two_wheeler | list_price_eur | no_open_source | No free reusable Italian price source. |
 | two_wheeler | seat_height_mm, fuel_tank_capacity_liters | no_verified_source | One open dataset has them but its origin is unverified. |
+| two_wheeler | wet_weight_kg | not_in_source | RDW gives mass in running order; it is not verified to equal wet weight. |
 | two_wheeler | underseat_storage_liters | no_open_source | Only on manufacturer sites. |
 | two_wheeler | italian_availability | hand_made_list | The model list is hand-made; RDW proves the EU approval, not Italian sale. |
 | all | source_review | unsigned | Both sources stay manual_validation_only. |

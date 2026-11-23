@@ -65,6 +65,12 @@
   },
   {
    "applies_to": "two_wheeler",
+   "field": "wet_weight_kg",
+   "reason": "not_in_source",
+   "detail": "RDW gives mass in running order; it is not verified to equal wet weight."
+  },
+  {
+   "applies_to": "two_wheeler",
    "field": "underseat_storage_liters",
    "reason": "no_open_source",
    "detail": "Only on manufacturer sites."

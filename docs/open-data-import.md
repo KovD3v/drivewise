@@ -180,12 +180,22 @@ for up to five registered vehicles of the exact version and applies a rule:
 - every motor **30 kW or more**: full hybrid (`HEV`);
 - anything else, or no value: `powertrain_type` stays unknown.
 
-The limits are a judgement, not a regulation. They rest on the first run: the 68
-hybrids with a value have a motor of 17 kW or less (51 variants, 12 V and 48 V
-systems) or of 32 kW or more (17 variants), and none lies between. `report.json`
-lists the motor power of every hybrid under `electric_motor_kw`, so a person can
-check the rule. The stored responses and their URLs contain the licence plates of
-the sampled Dutch vehicles, which RDW publishes as open data.
+The limits are a judgement, not a regulation, and they were chosen on the same
+cars they classify. On the first run the 68 hybrids with a value have a motor of
+17 kW or less (51 variants, 12 V and 48 V systems) or of 32 kW or more (17
+variants), and none lies between. `report.json` lists the motor power of every
+hybrid under `electric_motor_kw`, so a person can check the rule.
+
+Two things to know when checking it:
+
+- **The registered power is not the brochure power.** The Stellantis 48 V hybrids
+  (Peugeot 208, Jeep Avenger, Fiat 600 and others, 14.6 to 15.6 kW in the register)
+  are advertised with a 21 kW motor and can move on electricity for about one
+  kilometre at low speed. The rule calls them mild, as Italian catalogues do
+  (checked for the Peugeot 208 and the Jeep Avenger on 2026-11-23).
+- **Licence plates.** The stored responses and their URLs contain the plates of
+  the sampled Dutch vehicles, which RDW publishes as open data. Publication copies
+  those URLs into the database.
 
 The approval table `gr7t-qfnb` was tried first and rejected: it has the motor's
 30-minute power for 45 of the 73 hybrids only, and that value does not separate
