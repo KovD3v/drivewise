@@ -48,17 +48,18 @@ person, and the source stays `manual_validation_only` until then.
 
 - [x] Metrics the source may support: `mass_kg` (mass in running order),
       `engine_power_kw` and `engine_displacement_cc` (not for electric cars),
-      `co2_g_km`, `liquid_consumption_l_100km`,
-      `electric_consumption_kwh_100km`, `electric_range_km` (electric cars only).
+      `co2_g_km`, `liquid_consumption_l_100km`, and for electric cars only
+      `electric_consumption_kwh_100km` and `electric_range_km`.
 - [x] Metrics the source must not support: prices, dimensions, seats, cargo
-      volume, power of electric cars, electric range of plug-in hybrids, CO2 and
-      consumption of bi-fuel cars, hybrid type (mild or full).
+      volume, power of electric cars, electric consumption and range of plug-in
+      hybrids, CO2 and consumption of bi-fuel cars, hybrid type (mild or full).
 - [x] Method used to match source records to Drivewise vehicle and variant keys:
       hand-reviewed name table, then the most-registered type-approval version
       per powertrain. See [open-data-import.md](../open-data-import.md).
 - [x] Known completeness or accuracy limitations: values are typed by national
       authorities and contain errors; values held by under 2% of a version's
-      registrations are dropped. One variant stands for a whole powertrain. See
+      registrations are dropped. One variant stands for a whole powertrain, and
+      19 variants are under 10% of theirs. See
       [open-data-gaps.md](../open-data-gaps.md).
 
 ## Freshness

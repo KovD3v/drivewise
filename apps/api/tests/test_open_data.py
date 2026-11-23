@@ -1,8 +1,10 @@
 """The open-data builder runs here against a fake registry; no test touches the network."""
 
+import importlib.util
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -162,12 +164,18 @@ class FakeRegistries:
             ]
         else:
             names = json.dumps(source["query"])
-            buckets = [
-                b
-                for name, bs in EEA_FAMILIES.items()
-                if f'"{name}"' in names
-                for b in bs
-            ]
+            groups: dict[tuple, dict] = {}
+            for name, versions in EEA_FAMILIES.items():
+                for item in versions if f'"{name}"' in names else []:
+                    group = groups.setdefault(
+                        tuple(item["key"][:2]),
+                        {"key": item["key"][:2], "doc_count": 0, "v": {"buckets": []}},
+                    )
+                    group["doc_count"] += item["doc_count"]
+                    group["v"]["buckets"].append({**item, "key": item["key"][2:]})
+            return {
+                "aggregations": {"g": values({}) | {"buckets": list(groups.values())}}
+            }
         return {"aggregations": {"v": {"buckets": buckets}}}
 
     def rdw(self, url: str, query: dict) -> list:
@@ -334,8 +342,7 @@ def test_plug_in_and_electric_cars_carry_their_own_context(run):
         "weighted_combined",
         "weighted",
     )
-    assert plug_in["electric_consumption_kwh_100km"]["value_min"] == "17.3"
-    assert plug_in["electric_consumption_kwh_100km"]["raw_unit"] == "Wh/km"
+    assert "electric_consumption_kwh_100km" not in plug_in
     assert "height_mm" not in plug_in
     electric = facts(bundle, "it-bmw-x1.electric-e.")
     assert electric["co2_g_km"]["value_max"] == "0"
@@ -343,6 +350,8 @@ def test_plug_in_and_electric_cars_carry_their_own_context(run):
         electric["electric_range_km"]["value_min"],
         electric["electric_range_km"]["value_max"],
     ) == ("462", "474")
+    assert electric["electric_consumption_kwh_100km"]["value_min"] == "15.5"
+    assert electric["electric_consumption_kwh_100km"]["raw_unit"] == "Wh/km"
     assert "engine_power_kw" not in electric and "system_power_kw" not in electric
     x1 = report["families"][1]
     gaps = {
@@ -426,3 +435,93 @@ def test_changed_or_non_json_evidence_is_rejected(run):
         open_data.Run(run.root).read(request)
     with pytest.raises(json.JSONDecodeError):
         run.store(request, b"<html>Access Denied</html>", datetime.now(UTC))
+
+
+def test_a_version_that_is_a_small_slice_of_its_powertrain_is_flagged():
+    family = {"key": "audi-q3", "registrations": 1000}
+    fragmented = version(
+        ["E1*2007/46*1900*34", "SDXPAF1", "A"], 60, mass=values({1600: 60})
+    )
+    whole = version(
+        ["E1*2007/46*1900*34", "SDXDBF1", "B"], 300, mass=values({1500: 300})
+    )
+    response = {
+        "aggregations": {
+            "g": values({})
+            | {
+                "buckets": [
+                    # 700 registrations, yet the best-selling version has only 60.
+                    {
+                        "key": ["diesel", "M"],
+                        "doc_count": 700,
+                        "v": {"buckets": [fragmented]},
+                    },
+                    {
+                        "key": ["petrol", "M"],
+                        "doc_count": 300,
+                        "v": {"buckets": [whole]},
+                    },
+                    {"key": ["petrol", "H"], "doc_count": 80, "v": {"buckets": []}},
+                ]
+            }
+        }
+    }
+    kept, skipped = open_data.powertrain_groups(family, response)
+    assert [(g["fuel"], g["registrations"]) for g in kept] == [
+        ("diesel", 700),
+        ("petrol", 300),
+    ]
+    assert kept[0]["versions"][0]["key"] == [
+        "diesel",
+        "M",
+        "E1*2007/46*1900*34",
+        "SDXPAF1",
+        "A",
+    ]
+    assert skipped == [
+        {
+            "fuel": "petrol",
+            "mode": "H",
+            "registrations": 80,
+            "reason": "no_type_approval_version",
+        }
+    ]
+    truncated = {"aggregations": {"g": values({}, other=5) | {"buckets": []}}}
+    with pytest.raises(open_data.OpenDataError, match="too many powertrains"):
+        open_data.powertrain_groups(family, truncated)
+
+
+def test_cli_builds_bundles_and_the_register_from_a_stored_run(run, tmp_path, capsys):
+    path = Path(__file__).resolve().parents[1] / "scripts/build_open_data_catalog.py"
+    spec = importlib.util.spec_from_file_location("build_open_data_catalog", path)
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    names, two_wheelers = tmp_path / "names.json", tmp_path / "two-wheelers.json"
+    names.write_text(json.dumps(NAMES))
+    two_wheelers.write_text(json.dumps(TWO_WHEELERS))
+    arguments = ["--run-dir", str(run.root), "--names", str(names)]
+    arguments += [
+        "--two-wheelers",
+        str(two_wheelers),
+        "--register-dir",
+        str(tmp_path / "docs"),
+    ]
+    assert script.main(["build", *arguments]) == 0
+    assert "cars: 2 vehicles, 4 variants" in capsys.readouterr().out
+    CatalogV2.model_validate_json((run.root / "cars.catalog-v2.json").read_text())
+    CatalogV2.model_validate_json(
+        (run.root / "two-wheelers.catalog-v2.json").read_text()
+    )
+    register = json.loads((tmp_path / "docs/open-data-gaps.json").read_text())
+    assert register["scope"]["car_variants"] == 4
+    assert (
+        (tmp_path / "docs/open-data-gaps.md")
+        .read_text()
+        .startswith("# Open-data import")
+    )
+    # A run with nothing stored fails with one clear line instead of a traceback.
+    assert (
+        script.main(["build", "--run-dir", str(tmp_path / "empty"), *arguments[2:]])
+        == 1
+    )
+    assert "fetch first" in capsys.readouterr().err

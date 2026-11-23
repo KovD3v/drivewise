@@ -104,10 +104,10 @@ the bundle against `artifacts/`.
    without a rule is never imported; it is listed in the register.
 2. **Top 100.** Models are ranked by 2024 Italian registrations after the mapping.
    The first 100 are imported (1,345,260 registrations, 86% of the year).
-3. **Powertrains.** Inside a model, registrations are grouped by EEA fuel and fuel
-   mode. A group is kept when it holds at least 5% of the model's registrations,
-   up to four groups. Methane and E85 are skipped because the catalog has no code
-   for them.
+3. **Powertrains.** Inside a model, EEA counts the registrations per fuel and fuel
+   mode. These totals are exact. A group is kept when it holds at least 5% of the
+   model's registrations, up to four groups. Methane and E85 are skipped because
+   the catalog has no code for them.
 4. **One version per powertrain.** A group's variant is its most-registered
    EU type-approval version (approval number, variant, version). Among the three
    most-registered, the first one that RDW knows completely is preferred.
@@ -115,6 +115,12 @@ the bundle against `artifacts/`.
 So a variant is not a trim. It is "the best-selling approved version of this
 powertrain". Its key ends with a hash of the three approval codes, which are also
 stored as `external_references`.
+
+One version can be a small slice. Volkswagen-group cars spread one powertrain
+over hundreds of approval versions: the best-selling diesel Audi Q3 Sportback
+version has 377 of 5,796 registrations. A version under 10% of its powertrain is
+flagged `version_covers_small_share` in the register. Its values are real, but
+other versions of the same powertrain can differ.
 
 ## How values are decided
 
@@ -142,12 +148,18 @@ Every published value gets one `verified` decision with `actor_kind: rule`,
 | `engine_displacement_cc` | EEA `ec (cm3)` | |
 | `co2_g_km` | EEA `Ewltp (g/km)` | WLTP combined. Usually an interval: it changes with wheels and options |
 | `liquid_consumption_l_100km` | EEA `Fc` | WLTP combined, rounded to 0.1 (EEA stores a 32-bit float) |
-| `electric_consumption_kwh_100km` | EEA `z (Wh/km)` | Divided by 10 |
+| `electric_consumption_kwh_100km` | EEA `z (Wh/km)` | Electric cars only, divided by 10 |
 | `electric_range_km` | EEA `Zr` | Electric cars only |
 | `length_mm`, `body_width_mm`, `height_mm` | RDW `lengte`, `breedte`, `hoogte_voertuig` | Whole centimetres, multiplied by 10; the raw value and unit are kept |
 | `seats` | RDW `aantal_zitplaatsen` | |
 
-Plug-in hybrids use `cycle: weighted_combined` and `battery_condition: weighted`.
+CO2 and fuel consumption of plug-in hybrids use `cycle: weighted_combined` and
+`battery_condition: weighted`: their values (16 to 43 g/km) are the weighted ones.
+
+RDW dimensions were checked against one manufacturer document only, the Toyota
+Yaris Cross price list: length 4,167 mm against 4,170 from RDW, width 1,765
+against 1,770, height 1,595 against 1,600. That fits a rounding up to the next
+centimetre. The other models are **not** checked against manufacturer documents.
 
 RDW values are used only when RDW has registrations of the **same** approval
 number, variant and version, under the same make. A match on the approval number
@@ -159,7 +171,8 @@ alone is not enough, because one approval covers several bodies and engines.
   mild from full hybrids. `powertrain_type` stays unknown for those variants.
 - **LPG cars.** A bi-fuel car has one CO2 and one consumption value per fuel. EEA
   gives one number without naming the fuel, so neither is published.
-- **Plug-in electric range.** EEA does not say which range it reports.
+- **Plug-in electric consumption and range.** EEA does not say whether they are
+  weighted or pure-electric values.
 - **Trim, transmission, drivetrain, body style, generation, model year.** Neither
   source names them.
 
@@ -183,7 +196,7 @@ version is the one sold in Italy.
 ## Before publishing to production
 
 A published catalog v2 identity cannot be changed later, not even from "unknown"
-to a value. The first run on a disposable local database (2026-11-23) showed four
+to a value. The first run on a disposable local database (2026-11-23) showed five
 things to settle first:
 
 1. **Sources are not reviewed.** Until the two reviews are signed, facts have
@@ -196,6 +209,10 @@ things to settle first:
    `several_type_approvals` in the register and need a person to decide.
 4. **The synthetic seed overlaps.** Production holds five synthetic seed vehicles;
    Dacia Sandero, Fiat Panda, Tesla Model 3 and Volkswagen Golf would appear twice.
+5. **Hybrids read as plain petrol or diesel.** The 73 hybrids of unknown type get
+   the legacy `fuel_type` `petrol` (61) or `diesel` (12), because the writer
+   derives it from the unknown `powertrain_type`. The imported Fiat Panda hybrid
+   shows `fuel_type: petrol`.
 
 The two-wheeler bundle published on the local database as it is. In production
 it should wait for the two-wheeler work in pull request #19, which adds the
@@ -206,17 +223,18 @@ filters and metrics the product needs for motorcycles and scooters.
 | | Cars | Two-wheelers |
 | --- | --- | --- |
 | Models | 100 | 20 (12 scooters, 8 motorcycles) |
-| Variants | 215 | 20 |
-| Published values | 1,761 | 140 |
-| Evidence files | 277 | 60 |
+| Variants | 218 | 20 |
+| Values in the bundle | 1,760 | 140 |
+| Evidence files | 279 | 60 |
 
-Share of the 215 car variants with each value: mass 100%, engine power and
-displacement 93%, CO2 93%, width and seats 83%, length, height and consumption
-82%. All 20 two-wheelers have all seven values.
+Share of the 218 car variants with each value: mass 100%, engine power and
+displacement 94%, CO2 93%, consumption, width and seats 83%, length and height
+82%. The 13 electric cars have electric consumption and range. All 20
+two-wheelers have all seven values.
 
-Of the 215 car variants, 179 have an exact RDW match and 36 have none. 70 are
-hybrids of unknown type. The kept powertrains cover 96.6% of the registrations of
-the 100 models.
+Of the 218 car variants, 181 have an exact RDW match and 37 have none. 73 are
+hybrids of unknown type. The kept powertrains cover 98.5% of the registrations of
+the 100 models; the imported versions themselves are 26.7% of them.
 
 Local proof on a disposable PostgreSQL 18: `--check`, `--stage` and `--publish`
 succeeded for both bundles, and a second `--publish` returned `unchanged`.

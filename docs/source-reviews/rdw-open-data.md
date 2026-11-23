@@ -53,10 +53,12 @@ person, and the source stays `manual_validation_only` until then.
 - [x] Method used to match source records to Drivewise vehicle and variant keys:
       the same approval number, variant and version as the EEA record, under the
       same make. See [open-data-import.md](../open-data-import.md).
-- [x] Known completeness or accuracy limitations: whole centimetres; a brochure
-      can differ by a few centimetres. 36 of 215 car variants have no Dutch
-      registration of their exact version. For two-wheelers the Dutch
-      best-selling version may differ from the Italian one.
+- [x] Known completeness or accuracy limitations: whole centimetres. Checked
+      against one manufacturer document only (Toyota Yaris Cross: RDW is 3 to
+      5 mm higher on length, width and height); the other models are not checked.
+      37 of 218 car variants have no Dutch registration of their exact version.
+      For two-wheelers the Dutch best-selling version may differ from the
+      Italian one.
 
 ## Freshness
 

@@ -25,7 +25,9 @@ RDW_VEHICLES = "m9d7-ebf2"
 RDW_APPROVAL_ENERGY = "gr7t-qfnb"
 TOP_FAMILIES = 100
 NAME_BUCKETS = 450
-VERSION_BUCKETS = 60
+POWERTRAIN_BUCKETS = 30
+# A version standing for under a tenth of its powertrain is flagged in the register.
+SMALL_VERSION_SHARE = Decimal("0.10")
 MIN_POWERTRAIN_SHARE = Decimal("0.05")
 MAX_POWERTRAINS = 4
 MAX_RDW_CANDIDATES = 3
@@ -55,7 +57,7 @@ SOURCES = [
         "ranking_permission": "manual_validation_only",
         "url": "https://co2cars.apps.eea.europa.eu/",
         "license": "Free reuse, commercial included, with attribution to the EEA "
-        "(EEA legal notice; CC BY 4.0).",
+        "(EEA legal notice).",
         "notes": f"Italy, registration year {EEA_YEAR}, final data only.",
     },
     {
@@ -101,7 +103,7 @@ DATASET_GAPS = [
         "all",
         "length_mm, body_width_mm, height_mm",
         "centimetre_precision",
-        "RDW stores whole centimetres; a brochure can differ by a few centimetres.",
+        "RDW stores whole centimetres; checked against one brochure only.",
     ),
     (
         "car",
@@ -138,7 +140,7 @@ DATASET_GAPS = [
         "all",
         "attribution",
         "no_ui_location",
-        "CC BY needs a visible EEA credit in the product.",
+        "The EEA terms need a visible credit to the EEA in the product.",
     ),
 ]
 
@@ -233,15 +235,25 @@ def family_request(family: dict) -> Request:
                 ]
             }
         },
+        # Powertrains first, so their totals are exact however many versions exist:
+        # one Audi Q3 powertrain is spread over hundreds of approval versions.
         "aggs": {
-            "v": {
+            "g": {
                 "multi_terms": {
-                    "terms": [{"field": f} for f in ("Ft", "Fm", "TAN", "Va", "Ve")],
-                    "size": VERSION_BUCKETS,
+                    "terms": [{"field": "Ft"}, {"field": "Fm"}],
+                    "size": POWERTRAIN_BUCKETS,
                 },
                 "aggs": {
-                    k: {"terms": {"field": f, "size": VALUE_BUCKETS}}
-                    for k, f in EEA_STATS.items()
+                    "v": {
+                        "multi_terms": {
+                            "terms": [{"field": f} for f in ("TAN", "Va", "Ve")],
+                            "size": MAX_RDW_CANDIDATES,
+                        },
+                        "aggs": {
+                            k: {"terms": {"field": f, "size": VALUE_BUCKETS}}
+                            for k, f in EEA_STATS.items()
+                        },
+                    }
                 },
             }
         },
@@ -462,25 +474,29 @@ POWERTRAINS = {"M": "ICE", "B": "ICE", "H": None, "P": "PHEV", "E": "BEV"}
 
 
 def powertrain_groups(family: dict, response: dict) -> tuple[list[dict], list[dict]]:
-    """Group registered versions by powertrain and keep the groups that matter."""
-    groups: dict[tuple, list[dict]] = {}
-    skipped = []
-    for bucket in response["aggregations"]["v"]["buckets"]:
-        fuel, mode, tan, variant, version = bucket["key"]
-        if not (tan and variant and version):
-            continue
-        groups.setdefault((fuel, mode), []).append(bucket)
-    kept = []
-    for (fuel, mode), buckets in groups.items():
-        registrations = sum(b["doc_count"] for b in buckets)
+    """Keep the powertrains that matter, each with its most-registered versions."""
+    groups = response["aggregations"]["g"]
+    if groups["sum_other_doc_count"] or groups["doc_count_error_upper_bound"]:
+        raise OpenDataError(f"EEA lists too many powertrains for {family['key']}.")
+    skipped, kept = [], []
+    for group in groups["buckets"]:
+        fuel, mode = group["key"]
+        registrations = group["doc_count"]
         info = {"fuel": fuel, "mode": mode, "registrations": registrations}
+        versions = [
+            {**b, "key": [fuel, mode, *b["key"]]}
+            for b in group["v"]["buckets"]
+            if all(b["key"])
+        ]
         if fuel not in FUELS or mode not in POWERTRAINS:
             skipped.append({**info, "reason": "fuel_unsupported"})
         elif Decimal(registrations) / family["registrations"] < MIN_POWERTRAIN_SHARE:
             skipped.append({**info, "reason": "below_share_threshold"})
+        elif not versions:
+            skipped.append({**info, "reason": "no_type_approval_version"})
         else:
-            buckets.sort(key=lambda b: (-b["doc_count"], b["key"]))
-            kept.append({**info, "versions": buckets[:MAX_RDW_CANDIDATES]})
+            versions.sort(key=lambda b: (-b["doc_count"], b["key"]))
+            kept.append({**info, "versions": versions})
     kept.sort(key=lambda g: (-g["registrations"], g["fuel"], g["mode"]))
     for group in kept[MAX_POWERTRAINS:]:
         skipped.append(
@@ -626,6 +642,8 @@ def _plain(value: Decimal) -> str:
 
 class _Bundle:
     def __init__(self, run: Run):
+        if not run.manifest:
+            raise OpenDataError("The run directory holds no responses; fetch first.")
         self.run = run
         self.vehicles, self.variants = [], []
         self.snapshots: dict[str, dict] = {}
@@ -816,7 +834,13 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
     variant_key = f"{vehicle_key}.{slug(fuel)}-{mode.lower()}.{_short('|'.join((tan, variant, version)))}"
     gaps = []
     evidence = [eea_snapshot]
-    locator = f"aggregations.v.buckets[key={json.dumps(bucket['key'])}]"
+    locator = (
+        f"aggregations.g.buckets[key={json.dumps(bucket['key'][:2])}]"
+        f".v.buckets[key={json.dumps(bucket['key'][2:])}]"
+    )
+    if bucket["doc_count"] < group["registrations"] * SMALL_VERSION_SHARE:
+        # The values below are real, but they describe a small slice of the powertrain.
+        gaps.append({"metric": "variant", "reason": "version_covers_small_share"})
 
     def eea(metric, stat, raw_unit, *, context=None, factor=Decimal(1), places=None):
         values = bucket[stat]
@@ -872,7 +896,7 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
                 context=_measured(mode),
                 places=1,
             )
-    if mode in {"E", "P"}:
+    if mode == "E":
         eea(
             "electric_consumption_kwh_100km",
             "electric_consumption",
@@ -880,12 +904,13 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
             context=_measured(mode),
             factor=Decimal("0.1"),
         )
-    if mode == "E":
         eea("electric_range_km", "electric_range", "km", context=_measured(mode))
     elif mode == "P":
-        gaps.append(
-            {"metric": "electric_range_km", "reason": "phev_range_definition_unknown"}
-        )
+        # EEA does not say whether a plug-in's electric values are weighted or not.
+        for metric in ("electric_consumption_kwh_100km", "electric_range_km"):
+            gaps.append(
+                {"metric": metric, "reason": "phev_electric_definition_unknown"}
+            )
     if POWERTRAINS[mode] is None:
         gaps.append({"metric": "powertrain_type", "reason": "hybrid_type_unknown"})
 
@@ -1106,7 +1131,8 @@ GAP_REASONS = {
     "rdw_not_found": "RDW has no registration under this name and displacement.",
     "bev_power_definition_unknown": "EEA does not say which electric power it reports.",
     "bifuel_value_ambiguous": "EEA gives one value without naming the fuel.",
-    "phev_range_definition_unknown": "EEA does not say which electric range it reports.",
+    "phev_electric_definition_unknown": "EEA does not say whether a plug-in's electric "
+    "consumption and range are weighted or pure-electric values.",
     "hybrid_type_unknown": "EEA does not separate mild from full hybrids.",
     "registry_values_disagree": "Registrations of this version disagree by over 5%.",
     "too_many_values": "Too many different values to tell real ones from errors.",
@@ -1114,6 +1140,9 @@ GAP_REASONS = {
     "cover two generations or bodies. Review before treating it as one car.",
     "centimetre_precision": "The registry stores whole centimetres.",
     "one_version_per_powertrain": "Only the most-registered version is imported.",
+    "version_covers_small_share": "The imported version is under 10% of its "
+    "powertrain's registrations; other versions can differ.",
+    "no_type_approval_version": "EEA has no complete type-approval codes for it.",
     "fuel_unsupported": "The catalog has no code for this fuel (methane, E85).",
     "below_share_threshold": "Under 5% of the model's registrations.",
     "beyond_powertrain_limit": "Beyond the four most-registered powertrains.",
