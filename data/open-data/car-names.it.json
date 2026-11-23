@@ -1,0 +1,1904 @@
+{
+ "schema_version": 1,
+ "market": "IT",
+ "note": "Hand-reviewed mapping from EEA (Mk, Cn) commercial names to a make and model. An exact name wins over a prefix. Names that match no rule are never imported; they are listed in the gap register.",
+ "families": [
+  {
+   "make": "Fiat",
+   "model": "Panda",
+   "eea": [
+    {
+     "mk": "FIAT",
+     "names": [
+      "PANDA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Fiat",
+   "model": "500",
+   "eea": [
+    {
+     "mk": "FIAT",
+     "names": [
+      "FIAT 500",
+      "500"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Fiat",
+   "model": "500X",
+   "eea": [
+    {
+     "mk": "FIAT",
+     "names": [
+      "500X"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Fiat",
+   "model": "Tipo",
+   "eea": [
+    {
+     "mk": "FIAT",
+     "names": [
+      "FIAT TIPO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Fiat",
+   "model": "600",
+   "eea": [
+    {
+     "mk": "FIAT",
+     "names": [
+      "600"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "Yaris Cross",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA YARIS CROSS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "Yaris",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA YARIS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "Aygo X",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA AYGO X"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "C-HR",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA C-HR"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "Corolla",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA COROLLA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "RAV4",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA RAV4"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "T-Roc",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "T-ROC"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "T-Cross",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "T-CROSS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "Tiguan",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "TIGUAN"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "Golf",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "GOLF"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "Polo",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "POLO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "Taigo",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "TAIGO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "Passat",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "PASSAT"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "Caddy",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "names": [
+      "CADDY"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volkswagen",
+   "model": "ID.3",
+   "eea": [
+    {
+     "mk": "VOLKSWAGEN",
+     "prefixes": [
+      "ID.3 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Dacia",
+   "model": "Sandero",
+   "eea": [
+    {
+     "mk": "DACIA",
+     "names": [
+      "SANDERO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Dacia",
+   "model": "Duster",
+   "eea": [
+    {
+     "mk": "DACIA",
+     "names": [
+      "DUSTER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Dacia",
+   "model": "Jogger",
+   "eea": [
+    {
+     "mk": "DACIA",
+     "names": [
+      "JOGGER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Dacia",
+   "model": "Spring",
+   "eea": [
+    {
+     "mk": "DACIA",
+     "names": [
+      "SPRING"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Clio",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "CLIO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Captur",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "CAPTUR"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Austral",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "AUSTRAL"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Twingo",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "TWINGO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Trafic",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "TRAFIC"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Arkana",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "ARKANA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Espace",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "ESPACE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Renault",
+   "model": "Symbioz",
+   "eea": [
+    {
+     "mk": "RENAULT",
+     "names": [
+      "SYMBIOZ"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Peugeot",
+   "model": "208",
+   "eea": [
+    {
+     "mk": "PEUGEOT",
+     "names": [
+      "208"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Peugeot",
+   "model": "2008",
+   "eea": [
+    {
+     "mk": "PEUGEOT",
+     "names": [
+      "2008"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Peugeot",
+   "model": "3008",
+   "eea": [
+    {
+     "mk": "PEUGEOT",
+     "names": [
+      "3008"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Peugeot",
+   "model": "308",
+   "eea": [
+    {
+     "mk": "PEUGEOT",
+     "names": [
+      "308"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Peugeot",
+   "model": "5008",
+   "eea": [
+    {
+     "mk": "PEUGEOT",
+     "names": [
+      "5008"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Jeep",
+   "model": "Avenger",
+   "eea": [
+    {
+     "mk": "JEEP",
+     "names": [
+      "AVENGER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Jeep",
+   "model": "Compass",
+   "eea": [
+    {
+     "mk": "JEEP",
+     "names": [
+      "COMPASS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Jeep",
+   "model": "Renegade",
+   "eea": [
+    {
+     "mk": "JEEP",
+     "names": [
+      "RENEGADE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Ford",
+   "model": "Puma",
+   "eea": [
+    {
+     "mk": "FORD",
+     "names": [
+      "PUMA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Ford",
+   "model": "Kuga",
+   "eea": [
+    {
+     "mk": "FORD",
+     "names": [
+      "KUGA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Ford",
+   "model": "Focus",
+   "eea": [
+    {
+     "mk": "FORD",
+     "names": [
+      "FOCUS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Ford",
+   "model": "Tourneo Courier",
+   "eea": [
+    {
+     "mk": "FORD",
+     "names": [
+      "TOURNEO COURIER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Ford",
+   "model": "Tourneo Custom",
+   "eea": [
+    {
+     "mk": "FORD",
+     "names": [
+      "TOURNEO CUSTOM"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Ford",
+   "model": "Fiesta",
+   "eea": [
+    {
+     "mk": "FORD",
+     "names": [
+      "FIESTA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "X1",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "X1 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "iX1",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "IX1 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "X2",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "X2 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "X3",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "X3 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "X4",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "X4 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "X5",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "X5 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "X6",
+   "eea": [
+    {
+     "mk": "BMW",
+     "prefixes": [
+      "X6 "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "Serie 1",
+   "eea": [
+    {
+     "mk": "BMW",
+     "names": [
+      "118D",
+      "116D",
+      "120",
+      "118I",
+      "120D",
+      "116I",
+      "M135I XDRIVE",
+      "128TI",
+      "120D XDRIVE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "Serie 2 Active Tourer",
+   "eea": [
+    {
+     "mk": "BMW",
+     "names": [
+      "218D ACTIVE TOURER",
+      "218I ACTIVE TOURER",
+      "225E XDRIVE ACTIVE TOURER",
+      "220I ACTIVE TOURER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "Serie 3",
+   "eea": [
+    {
+     "mk": "BMW",
+     "names": [
+      "320D XDRIVE",
+      "320D",
+      "318D",
+      "316D",
+      "320E",
+      "330D XDRIVE",
+      "330E XDRIVE",
+      "330E",
+      "M340D XDRIVE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "Serie 4",
+   "eea": [
+    {
+     "mk": "BMW",
+     "names": [
+      "420D XDRIVE",
+      "420D",
+      "430D XDRIVE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "BMW",
+   "model": "Serie 5",
+   "eea": [
+    {
+     "mk": "BMW",
+     "names": [
+      "520D XDRIVE",
+      "520D",
+      "540D XDRIVE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "Q2",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "Q2"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "Q3",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "Q3",
+      "Q3 E-TRON"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "Q3 Sportback",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "Q3 SPORTBACK",
+      "Q3 SPORTBACK E-TRON"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "A1",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "A1 ALLSTREET",
+      "A1 SPORTBACK"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "A3",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "A3 SPORTBACK",
+      "A3 40 TFSIE",
+      "A3 45 TFSIE",
+      "A3 ALLSTREET",
+      "A3 LIMOUSINE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "A4",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "A4 AVANT",
+      "A4 ALLROAD QUATTRO",
+      "A4 LIMOUSINE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "Q5",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "Q5",
+      "Q5 50 TFSI E",
+      "Q5 55 TFSI E"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "Q5 Sportback",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "Q5 SPORTBACK",
+      "Q5 SPORTBACK 50 TFSI E",
+      "Q5 SPORTBACK 55 TFSI E"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Audi",
+   "model": "Q8",
+   "eea": [
+    {
+     "mk": "AUDI",
+     "names": [
+      "Q8",
+      "Q8 55 TFSI E"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Citroën",
+   "model": "C3",
+   "eea": [
+    {
+     "mk": "CITROEN",
+     "names": [
+      "C3",
+      "E-C3"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Citroën",
+   "model": "C3 Aircross",
+   "eea": [
+    {
+     "mk": "CITROEN",
+     "names": [
+      "C3 AIRCROSS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Citroën",
+   "model": "C4",
+   "eea": [
+    {
+     "mk": "CITROEN",
+     "names": [
+      "C4",
+      "E-C4"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Citroën",
+   "model": "C5 Aircross",
+   "eea": [
+    {
+     "mk": "CITROEN",
+     "names": [
+      "C5 AIRCROSS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Hyundai",
+   "model": "i10",
+   "eea": [
+    {
+     "mk": "HYUNDAI",
+     "names": [
+      "I10",
+      "I10 BI-FUEL"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Hyundai",
+   "model": "Tucson",
+   "eea": [
+    {
+     "mk": "HYUNDAI",
+     "names": [
+      "TUCSON IX35"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Hyundai",
+   "model": "i20",
+   "eea": [
+    {
+     "mk": "HYUNDAI",
+     "names": [
+      "I20",
+      "I20 BI-FUEL"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Hyundai",
+   "model": "Kona",
+   "eea": [
+    {
+     "mk": "HYUNDAI",
+     "names": [
+      "KONA KAUAI"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Hyundai",
+   "model": "Bayon",
+   "eea": [
+    {
+     "mk": "HYUNDAI",
+     "names": [
+      "BAYON",
+      "BAYON BI-FUEL"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "GLA",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "GLA "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "GLC",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "GLC "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "GLB",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "GLB "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "CLA",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "CLA "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "Classe A",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "A "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "Classe B",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "B "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "Classe C",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "C "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "Classe E",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "E "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "Classe V",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "names": [
+      "V-KLASSE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "EQA",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "prefixes": [
+      "EQA "
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "GLE Coupé",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "names": [
+      "GLE 350 DE 4MATIC COUPE",
+      "GLE 300 D 4MATIC COUPE",
+      "GLE 450 D 4MATIC COUPE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mercedes-Benz",
+   "model": "GLE",
+   "eea": [
+    {
+     "mk": "MERCEDES-BENZ",
+     "names": [
+      "GLE 350 DE 4MATIC",
+      "GLE 300 D 4MATIC",
+      "GLE 450 D 4MATIC"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Kia",
+   "model": "Sportage",
+   "eea": [
+    {
+     "mk": "KIA",
+     "names": [
+      "SPORTAGE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Kia",
+   "model": "Picanto",
+   "eea": [
+    {
+     "mk": "KIA",
+     "names": [
+      "PICANTO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Kia",
+   "model": "Stonic",
+   "eea": [
+    {
+     "mk": "KIA",
+     "names": [
+      "STONIC"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Kia",
+   "model": "Niro",
+   "eea": [
+    {
+     "mk": "KIA",
+     "names": [
+      "NIRO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Kia",
+   "model": "XCeed",
+   "eea": [
+    {
+     "mk": "KIA",
+     "names": [
+      "XCEED"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Opel",
+   "model": "Corsa",
+   "eea": [
+    {
+     "mk": "OPEL",
+     "names": [
+      "CORSA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Opel",
+   "model": "Mokka",
+   "eea": [
+    {
+     "mk": "OPEL",
+     "names": [
+      "MOKKA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Opel",
+   "model": "Crossland",
+   "eea": [
+    {
+     "mk": "OPEL",
+     "names": [
+      "CROSSLAND"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Opel",
+   "model": "Grandland",
+   "eea": [
+    {
+     "mk": "OPEL",
+     "names": [
+      "GRANDLAND"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Opel",
+   "model": "Astra",
+   "eea": [
+    {
+     "mk": "OPEL",
+     "names": [
+      "ASTRA",
+      "ASTRA SPORTS TOURER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "MG",
+   "model": "ZS",
+   "eea": [
+    {
+     "mk": "MG",
+     "names": [
+      "MG ZS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "MG",
+   "model": "HS",
+   "eea": [
+    {
+     "mk": "MG",
+     "names": [
+      "MG HS",
+      "MG EHS PLUG-IN HYBRID"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "MG",
+   "model": "MG3",
+   "eea": [
+    {
+     "mk": "MG",
+     "names": [
+      "MG3 HYBRID+"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "MG",
+   "model": "MG4",
+   "eea": [
+    {
+     "mk": "MG",
+     "names": [
+      "MG4 ELECTRIC"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Škoda",
+   "model": "Fabia",
+   "eea": [
+    {
+     "mk": "SKODA",
+     "names": [
+      "FABIA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Škoda",
+   "model": "Kamiq",
+   "eea": [
+    {
+     "mk": "SKODA",
+     "names": [
+      "KAMIQ"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Škoda",
+   "model": "Karoq",
+   "eea": [
+    {
+     "mk": "SKODA",
+     "names": [
+      "KAROQ"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Škoda",
+   "model": "Kodiaq",
+   "eea": [
+    {
+     "mk": "SKODA",
+     "names": [
+      "KODIAQ"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Škoda",
+   "model": "Superb",
+   "eea": [
+    {
+     "mk": "SKODA",
+     "names": [
+      "SUPERB"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Škoda",
+   "model": "Octavia",
+   "eea": [
+    {
+     "mk": "SKODA",
+     "names": [
+      "OCTAVIA",
+      "OCTAVIA RS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Suzuki",
+   "model": "Vitara",
+   "eea": [
+    {
+     "mk": "SUZUKI",
+     "names": [
+      "VITARA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Suzuki",
+   "model": "Swift",
+   "eea": [
+    {
+     "mk": "SUZUKI",
+     "names": [
+      "SWIFT"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Suzuki",
+   "model": "Ignis",
+   "eea": [
+    {
+     "mk": "SUZUKI",
+     "names": [
+      "IGNIS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Suzuki",
+   "model": "S-Cross",
+   "eea": [
+    {
+     "mk": "SUZUKI",
+     "names": [
+      "SX4 SUZUKI SX4 S-C",
+      "S-CROSS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Nissan",
+   "model": "Qashqai",
+   "eea": [
+    {
+     "mk": "NISSAN",
+     "names": [
+      "NISSAN QASHQAI"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Nissan",
+   "model": "Juke",
+   "eea": [
+    {
+     "mk": "NISSAN",
+     "names": [
+      "NISSAN JUKE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Nissan",
+   "model": "X-Trail",
+   "eea": [
+    {
+     "mk": "NISSAN",
+     "names": [
+      "NISSAN X-TRAIL"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Lancia",
+   "model": "Ypsilon",
+   "eea": [
+    {
+     "mk": "LANCIA",
+     "names": [
+      "YPSILON"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "DR",
+   "model": "5.0",
+   "eea": [
+    {
+     "mk": "DR",
+     "names": [
+      "DR 5.0"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "DR",
+   "model": "6.0",
+   "eea": [
+    {
+     "mk": "DR",
+     "names": [
+      "DR 6.0",
+      "DR 6.0 H"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "DR",
+   "model": "3.0",
+   "eea": [
+    {
+     "mk": "DR",
+     "names": [
+      "DR3.0",
+      "DR 3.0"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "EVO",
+   "model": "5",
+   "eea": [
+    {
+     "mk": "DR",
+     "names": [
+      "EVO 5"
+     ]
+    },
+    {
+     "mk": "EVO",
+     "names": [
+      "EVO 5"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "EVO",
+   "model": "3",
+   "eea": [
+    {
+     "mk": "DR",
+     "names": [
+      "EVO3"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Alfa Romeo",
+   "model": "Tonale",
+   "eea": [
+    {
+     "mk": "ALFA ROMEO",
+     "names": [
+      "TONALE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Alfa Romeo",
+   "model": "Stelvio",
+   "eea": [
+    {
+     "mk": "ALFA ROMEO",
+     "names": [
+      "STELVIO"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Alfa Romeo",
+   "model": "Junior",
+   "eea": [
+    {
+     "mk": "ALFA ROMEO",
+     "names": [
+      "ALFA ROMEO JUNIOR"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volvo",
+   "model": "XC40",
+   "eea": [
+    {
+     "mk": "VOLVO",
+     "names": [
+      "XC40"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volvo",
+   "model": "XC60",
+   "eea": [
+    {
+     "mk": "VOLVO",
+     "names": [
+      "XC60"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Volvo",
+   "model": "EX30",
+   "eea": [
+    {
+     "mk": "VOLVO",
+     "names": [
+      "EX30"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Cupra",
+   "model": "Formentor",
+   "eea": [
+    {
+     "mk": "CUPRA",
+     "prefixes": [
+      "FORMENTOR"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Cupra",
+   "model": "Leon",
+   "eea": [
+    {
+     "mk": "CUPRA",
+     "prefixes": [
+      "CUPRA LEON"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Tesla",
+   "model": "Model 3",
+   "eea": [
+    {
+     "mk": "TESLA",
+     "names": [
+      "MODEL 3"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Tesla",
+   "model": "Model Y",
+   "eea": [
+    {
+     "mk": "TESLA",
+     "names": [
+      "MODEL Y"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mazda",
+   "model": "CX-30",
+   "eea": [
+    {
+     "mk": "MAZDA",
+     "names": [
+      "MAZDA CX-30"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mazda",
+   "model": "Mazda2 Hybrid",
+   "eea": [
+    {
+     "mk": "MAZDA",
+     "names": [
+      "MAZDA2 HYBRID"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mazda",
+   "model": "Mazda2",
+   "eea": [
+    {
+     "mk": "MAZDA",
+     "names": [
+      "MAZDA2"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mazda",
+   "model": "CX-5",
+   "eea": [
+    {
+     "mk": "MAZDA",
+     "names": [
+      "MAZDA CX-5"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mini",
+   "model": "Cooper",
+   "eea": [
+    {
+     "mk": "MINI",
+     "names": [
+      "COOPER",
+      "COOPER C",
+      "COOPER S",
+      "COOPER SE",
+      "COOPER E",
+      "JOHN COOPER WORKS"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Mini",
+   "model": "Countryman",
+   "eea": [
+    {
+     "mk": "MINI",
+     "prefixes": [
+      "COUNTRYMAN "
+     ]
+    },
+    {
+     "mk": "MINI",
+     "names": [
+      "JCW COUNTRYMAN ALL4"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Seat",
+   "model": "Arona",
+   "eea": [
+    {
+     "mk": "SEAT",
+     "names": [
+      "ARONA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Seat",
+   "model": "Ibiza",
+   "eea": [
+    {
+     "mk": "SEAT",
+     "names": [
+      "IBIZA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Seat",
+   "model": "Leon",
+   "eea": [
+    {
+     "mk": "SEAT",
+     "names": [
+      "SEAT LEON SP",
+      "SEAT LEON"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Land Rover",
+   "model": "Range Rover Evoque",
+   "eea": [
+    {
+     "mk": "LAND ROVER",
+     "names": [
+      "RANGE ROVER EVOQUE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Land Rover",
+   "model": "Range Rover Sport",
+   "eea": [
+    {
+     "mk": "LAND ROVER",
+     "names": [
+      "RANGE ROVER SPORT"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Land Rover",
+   "model": "Defender",
+   "eea": [
+    {
+     "mk": "LAND ROVER",
+     "names": [
+      "DEFENDER"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Honda",
+   "model": "HR-V",
+   "eea": [
+    {
+     "mk": "HONDA",
+     "names": [
+      "HR-V"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Honda",
+   "model": "ZR-V",
+   "eea": [
+    {
+     "mk": "HONDA",
+     "names": [
+      "ZR-V"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Porsche",
+   "model": "Macan",
+   "eea": [
+    {
+     "mk": "PORSCHE",
+     "prefixes": [
+      "MACAN"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Porsche",
+   "model": "Cayenne",
+   "eea": [
+    {
+     "mk": "PORSCHE",
+     "prefixes": [
+      "CAYENNE"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Lexus",
+   "model": "LBX",
+   "eea": [
+    {
+     "mk": "LEXUS",
+     "names": [
+      "LEXUS LBX"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Lexus",
+   "model": "NX",
+   "eea": [
+    {
+     "mk": "LEXUS",
+     "names": [
+      "LEXUS NX350H",
+      "LEXUS NX450H+"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "DS",
+   "model": "DS 7",
+   "eea": [
+    {
+     "mk": "DS",
+     "names": [
+      "DS7"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Omoda",
+   "model": "5",
+   "eea": [
+    {
+     "mk": "OMODA",
+     "names": [
+      "OMODA5",
+      "OMODA 5"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Maserati",
+   "model": "Grecale",
+   "eea": [
+    {
+     "mk": "MASERATI",
+     "prefixes": [
+      "GRECALE"
+     ]
+    }
+   ]
+  }
+ ]
+}

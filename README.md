@@ -91,6 +91,10 @@ python apps/api/scripts/plan_firecrawl.py --sources data/sources.example.json
 
 `FIRECRAWL_API_KEY` is optional for planning and is never printed. The command only reports whether a key is configured.
 
+The [open-data import](docs/open-data-import.md) builds catalog v2 bundles from two
+public registries (EEA and RDW) with no key and no cost. What it cannot fill is
+listed in [docs/open-data-gaps.md](docs/open-data-gaps.md).
+
 The [manufacturer collection agent](docs/scraping.md) uses OpenRouter with Tinyfish
 Search/Fetch by default. Firecrawl is an optional acquisition alternative, and
 Tinyfish Agent navigation can be enabled separately. It produces catalog v2 bundles
