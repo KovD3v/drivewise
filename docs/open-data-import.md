@@ -206,15 +206,17 @@ needed. After publication, catalog v2 treats three kinds of data differently:
   identity rests on) cannot be changed by the import, not even from "unknown" to a
   value. A correction needs a hand-written, reviewed migration.
 - **Evidence** (stored responses, observations, decisions) is append-only.
-  Database triggers reject updates and deletions, so a wrong publication is undone
-  by restoring a backup.
+  Database triggers reject updates and deletions. A wrong value is retracted by a
+  superseding decision. A wrong vehicle or variant row needs a reviewed migration
+  or a backup restore.
 
 **The builder cannot yet update what it published.** Measured on a disposable
 local database (2026-11-23): after publishing the car bundle, one changed RDW
 response (one more registered Fiat Panda) changed the evidence ID of that variant,
 and the import rejected the whole rebuilt bundle with `Published identity differs
-at identity_evidence`. A new EEA year changes the evidence of every model in the
-same way. Before the first production publication the builder must keep the
+at identity_evidence`. Read in the code, not run: a new EEA year changes the
+evidence of every model in the same way, and the builder emits no superseding
+decisions. Before the first production publication the builder must keep the
 identity evidence of what is already published and emit superseding decisions.
 
 The same run also showed five things to settle first:
