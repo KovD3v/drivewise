@@ -627,10 +627,16 @@ def test_two_wheelers_are_listed_typed_and_detailed(conn, tmp_path):
             assert len(listed()) == len(cars) + 2
             assert client.get("/vehicles?vehicle_type=truck").status_code == 422
 
-            def two_wheel(canonical_key):
+            def spec(canonical_key):
                 response = client.get(f"/vehicles/{vehicle_id(conn, canonical_key)}")
                 assert response.status_code == 200
-                return response.json()["specs"][0]["two_wheel"]
+                return response.json()["specs"][0]
+
+            def two_wheel(canonical_key):
+                return spec(canonical_key)["two_wheel"]
+
+            assert spec(RIDGE)["powertrain"]["displacement_cc"] == 689
+            assert spec(GLIDE)["powertrain"]["displacement_cc"] == 278
 
             assert two_wheel(RIDGE) == {
                 "seat_height_mm": 795,
@@ -649,6 +655,7 @@ def test_two_wheelers_are_listed_typed_and_detailed(conn, tmp_path):
                 "UPDATE sources SET ranking_permission = 'not_permitted' WHERE source_key = 'synthetic-v2'"
             )
             assert set(two_wheel(RIDGE).values()) == {None}
+            assert spec(RIDGE)["powertrain"]["displacement_cc"] is None
     finally:
         app.dependency_overrides.clear()
 

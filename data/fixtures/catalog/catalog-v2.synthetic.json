@@ -439,6 +439,40 @@
       "evidence_excerpt": "Synthetic test only: underseat_storage_liters = 35",
       "evidence_locator": "table 2, row 26",
       "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000027",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "engine_displacement_cc",
+      "raw_value": "689",
+      "raw_unit": "cm3",
+      "value_min": 689,
+      "value_max": 689,
+      "unit": "cm3",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: engine_displacement_cc = 689",
+      "evidence_locator": "table 2, row 27",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000028",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "engine_displacement_cc",
+      "raw_value": "278",
+      "raw_unit": "cm3",
+      "value_min": 278,
+      "value_max": 278,
+      "unit": "cm3",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: engine_displacement_cc = 278",
+      "evidence_locator": "table 2, row 28",
+      "extractor_version": "synthetic-v1"
     }
   ],
   "decisions": [
@@ -614,6 +648,42 @@
       "selected_observation_id": "00000000-0000-0000-0000-000000000026",
       "evidence_ids": [
         "00000000-0000-0000-0000-000000000026"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000047",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "engine_displacement_cc",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000027",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000027"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000048",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "engine_displacement_cc",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000028",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000028"
       ],
       "reason": "Synthetic example: one declared two-wheel value.",
       "actor_kind": "human",

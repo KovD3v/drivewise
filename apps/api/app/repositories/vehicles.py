@@ -197,20 +197,29 @@ class VehiclesRepository:
 
         spec_ids = [spec["id"] for spec in specs]
         two_wheel_by_spec: dict[UUID, dict[str, Any]] = {}
+        displacement_by_spec: dict[UUID, Any] = {}
+        # Displacement means the same for every type; v2 rows expose it from facts.
+        fact_metrics = ["engine_displacement_cc"]
         if vehicle["vehicle_type"] in TWO_WHEEL_TYPES:
-            # The scalar view already keeps only eligible, single-context point values.
-            for row in self.conn.execute(
-                """
-                SELECT spec_id, metric, value_min
-                FROM catalog_scalar_facts
-                WHERE spec_id = ANY(%s) AND metric = ANY(%s)
-                  AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
-                """,
-                (spec_ids, list(TWO_WHEEL_METRICS)),
-            ).fetchall():
-                two_wheel_by_spec.setdefault(row["spec_id"], {})[
-                    TWO_WHEEL_METRICS[row["metric"]]
-                ] = row["value_min"]
+            fact_metrics += list(TWO_WHEEL_METRICS)
+        # The scalar view already keeps only eligible, single-context point values.
+        for row in self.conn.execute(
+            """
+            SELECT spec_id, metric, value_min
+            FROM catalog_scalar_facts
+            WHERE spec_id = ANY(%s) AND metric = ANY(%s)
+              AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
+              AND (metric <> 'engine_displacement_cc'
+                   OR value_min = trunc(value_min))
+            """,
+            (spec_ids, fact_metrics),
+        ).fetchall():
+            if row["metric"] == "engine_displacement_cc":
+                displacement_by_spec[row["spec_id"]] = int(row["value_min"])
+                continue
+            two_wheel_by_spec.setdefault(row["spec_id"], {})[
+                TWO_WHEEL_METRICS[row["metric"]]
+            ] = row["value_min"]
         maintenance_by_spec = _group_by_spec_id(
             list(
                 self.conn.execute(
@@ -427,7 +436,11 @@ class VehiclesRepository:
                 "powertrain": {
                     "engine_description": spec["engine"],
                     "engine_code": spec["engine_code"],
-                    "displacement_cc": spec["displacement_cc"],
+                    "displacement_cc": (
+                        spec["displacement_cc"]
+                        if spec["displacement_cc"] is not None
+                        else displacement_by_spec.get(spec["id"])
+                    ),
                     "cylinders": spec["cylinders"],
                     "horsepower": spec["horsepower"],
                     "power_kw": spec["power_kw"],

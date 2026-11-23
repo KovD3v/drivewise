@@ -221,6 +221,10 @@ adds the following groups:
   Ranges and competing contexts stay in `GET /vehicles/{vehicle_id}/facts`.
   The block carries no scores.
 
+For catalog v2 specs, `powertrain.displacement_cc` comes from an eligible,
+exact, whole-number `engine_displacement_cc` fact; other v2 profile fields
+stay `null` until a reviewed projection exists.
+
 `maintenance_schedule` items contain `id`, `operation_code`, `title`,
 `interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings
 contain `id`, `assessment_system`, `assessment_year`, `overall_stars`,

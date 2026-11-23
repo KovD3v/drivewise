@@ -274,7 +274,8 @@ For motorcycles and scooters, `GET /vehicles/{id}` adds a `two_wheel` block per
 spec from the same scalar rule: seat height, wet weight (`mass_kg` with
 `method: wet`), fuel tank and underseat storage. A seat range, or a dry and a wet
 mass for the same variant, therefore yields null there; the facts API keeps both.
-Precise
+For every v2 spec, an exact whole-number `engine_displacement_cc` fact also fills
+`powertrain.displacement_cc` in that response. Precise
 power, battery, dimensions and other metrics remain in the facts API; ambiguous
 legacy horsepower/battery fields remain null for v2 records.
 
