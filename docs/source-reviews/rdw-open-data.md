@@ -22,6 +22,8 @@ person, and the source stays `manual_validation_only` until then.
       `https://opendata.rdw.nl/api/views/m9d7-ebf2.json` and
       `https://opendata.rdw.nl/api/views/gr7t-qfnb.json` (read 2026-11-23). Both
       declare licence "Public Domain" and attribution "Team Open Data RDW".
+      `https://opendata.rdw.nl/api/views/8ys7-d773.json` (read 2026-11-23) also
+      declares "Public Domain"; its attribution field is empty.
 - [ ] Review date:
 - [ ] Reviewer name:
 - [ ] The terms permit Drivewise to store reviewed snapshots.
@@ -38,7 +40,12 @@ person, and the source stays `manual_validation_only` until then.
       access method: `https://opendata.rdw.nl/robots.txt` (read 2026-11-23) sets
       `Crawl-delay: 1` and disallows only filtered `/browse` pages. The import
       calls the documented `/resource/<dataset>.json` API.
-- [x] Automated-access notes, including rate limits: about 380 requests per run,
+- [ ] Licence plates in stored evidence are acceptable. Draft note: to tell mild
+      from full hybrids the import reads up to five registered vehicles per
+      hybrid version. Their Dutch licence plates are in the stored responses and
+      in the request URLs, which the catalog stores as evidence. RDW publishes
+      plates as open data; no owner data is read.
+- [x] Automated-access notes, including rate limits: about 520 requests per run,
       one per second, no account or app token. The first run on 2026-11-23 went
       faster, at about 0.6 seconds per request; the pause is now one second.
 
@@ -46,7 +53,9 @@ person, and the source stays `manual_validation_only` until then.
 
 - [x] Metrics the source may support: `length_mm`, `body_width_mm`, `height_mm`,
       `seats` for cars; the same plus `mass_kg`, `engine_displacement_cc` and
-      `engine_power_kw` for two-wheelers.
+      `engine_power_kw` for two-wheelers. It also decides one identity field: mild
+      or full hybrid, from the electric motor's net power, by the rule in
+      [open-data-import.md](../open-data-import.md).
 - [x] Metrics the source must not support: prices (the Dutch catalogue price is
       not an Italian price), CO2 and consumption of cars (EEA is the Italian
       source), anything matched by approval number alone.

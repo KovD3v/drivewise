@@ -1,6 +1,6 @@
 {
  "version": "open-data-v1",
- "data_retrieved_at": "2026-11-23T19:40:33+00:00",
+ "data_retrieved_at": "2026-11-23T20:34:19+00:00",
  "scope": {
   "market": "IT",
   "eea_year": 2024,
@@ -177,7 +177,7 @@
    "applies_to": "car",
    "field": "powertrain_type",
    "reason": "hybrid_type_unknown",
-   "count": 73
+   "count": 5
   },
   {
    "applies_to": "car",
@@ -199,13 +199,6 @@
   }
  ],
  "gaps": [
-  {
-   "type": "car",
-   "model": "Fiat Panda",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
   {
    "type": "car",
    "model": "Fiat Panda",
@@ -240,13 +233,6 @@
    "variant": "lpg (B)",
    "field": "liquid_consumption_l_100km",
    "reason": "bifuel_value_ambiguous"
-  },
-  {
-   "type": "car",
-   "model": "Jeep Avenger",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -272,13 +258,6 @@
   {
    "type": "car",
    "model": "Toyota Yaris Cross",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Toyota Yaris Cross",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -296,20 +275,6 @@
    "variant": "lpg (B)",
    "field": "liquid_consumption_l_100km",
    "reason": "bifuel_value_ambiguous"
-  },
-  {
-   "type": "car",
-   "model": "Renault Clio",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Peugeot 208",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -338,13 +303,6 @@
    "variant": "petrol (H)",
    "field": "variant",
    "reason": "version_covers_small_share"
-  },
-  {
-   "type": "car",
-   "model": "Lancia Ypsilon",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -405,13 +363,6 @@
   {
    "type": "car",
    "model": "Toyota Yaris",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Toyota Yaris",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -433,23 +384,9 @@
   {
    "type": "car",
    "model": "Renault Captur",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Renault Captur",
    "variant": "petrol/electric (P)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Ford Puma",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -485,13 +422,6 @@
    "variant": "lpg (B)",
    "field": "liquid_consumption_l_100km",
    "reason": "bifuel_value_ambiguous"
-  },
-  {
-   "type": "car",
-   "model": "Dacia Duster",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -559,30 +489,9 @@
   {
    "type": "car",
    "model": "Peugeot 2008",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Peugeot 2008",
    "variant": "electric (E)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Kia Sportage",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Kia Sportage",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -611,13 +520,6 @@
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "BMW X1",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -650,13 +552,6 @@
   {
    "type": "car",
    "model": "Volkswagen Tiguan",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Volkswagen Tiguan",
    "variant": "petrol/electric (P)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -677,24 +572,10 @@
   },
   {
    "type": "car",
-   "model": "Nissan Qashqai",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
    "model": "Fiat 500",
    "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
-  },
-  {
-   "type": "car",
-   "model": "Fiat 500",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -716,13 +597,6 @@
    "variant": "lpg (B)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Toyota C-HR",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -825,13 +699,6 @@
   {
    "type": "car",
    "model": "Jeep Compass",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Jeep Compass",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -874,13 +741,6 @@
   {
    "type": "car",
    "model": "Alfa Romeo Tonale",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Alfa Romeo Tonale",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -891,13 +751,6 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Volkswagen Golf",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -940,13 +793,6 @@
    "variant": "diesel (M)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
-  },
-  {
-   "type": "car",
-   "model": "Mercedes-Benz GLA",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1000,13 +846,6 @@
   {
    "type": "car",
    "model": "Jeep Renegade",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Jeep Renegade",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -1045,13 +884,6 @@
    "variant": "petrol (M)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
-  },
-  {
-   "type": "car",
-   "model": "Ford Kuga",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1098,30 +930,9 @@
   {
    "type": "car",
    "model": "Nissan Juke",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Nissan Juke",
    "variant": "diesel (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Hyundai Tucson",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Hyundai Tucson",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1150,13 +961,6 @@
    "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
-  },
-  {
-   "type": "car",
-   "model": "Peugeot 3008",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1175,23 +979,9 @@
   {
    "type": "car",
    "model": "Ford Focus",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Ford Focus",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Suzuki Vitara",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1224,23 +1014,9 @@
   {
    "type": "car",
    "model": "Fiat 500X",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Fiat 500X",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Audi A3",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1269,13 +1045,6 @@
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Suzuki Swift",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1325,20 +1094,6 @@
    "variant": "diesel (M)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
-  },
-  {
-   "type": "car",
-   "model": "Cupra Formentor",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Suzuki Ignis",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1346,13 +1101,6 @@
    "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
-  },
-  {
-   "type": "car",
-   "model": "Hyundai i20",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1580,13 +1328,6 @@
   },
   {
    "type": "car",
-   "model": "Toyota Corolla",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
    "model": "Opel Mokka",
    "variant": "diesel (M)",
    "field": "powertrain",
@@ -1612,13 +1353,6 @@
    "variant": "petrol (M)",
    "field": "variant",
    "reason": "version_covers_small_share"
-  },
-  {
-   "type": "car",
-   "model": "Mercedes-Benz GLC",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1654,13 +1388,6 @@
    "variant": "diesel (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Volvo XC40",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1724,20 +1451,6 @@
    "variant": "petrol (M)",
    "field": "variant",
    "reason": "version_covers_small_share"
-  },
-  {
-   "type": "car",
-   "model": "BMW Serie 1",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "BMW Serie 1",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1840,13 +1553,6 @@
   {
    "type": "car",
    "model": "Škoda Octavia",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Škoda Octavia",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -1903,23 +1609,9 @@
   {
    "type": "car",
    "model": "Fiat Tipo",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Fiat Tipo",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Renault Austral",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1934,20 +1626,6 @@
    "variant": "lpg (B)",
    "field": "liquid_consumption_l_100km",
    "reason": "bifuel_value_ambiguous"
-  },
-  {
-   "type": "car",
-   "model": "Kia Stonic",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Fiat 600",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -1969,13 +1647,6 @@
    "variant": "diesel (H)",
    "field": "variant",
    "reason": "version_covers_small_share"
-  },
-  {
-   "type": "car",
-   "model": "BMW X3",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2016,13 +1687,6 @@
    "type": "car",
    "model": "Audi A4",
    "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Audi A4",
-   "variant": "diesel (H)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
   },
@@ -2050,16 +1714,16 @@
   {
    "type": "car",
    "model": "Audi A4",
-   "variant": "petrol (H)",
-   "field": "variant",
-   "reason": "version_covers_small_share"
+   "variant": "diesel (H)",
+   "field": "powertrain_type",
+   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
    "model": "Audi A4",
    "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
+   "field": "variant",
+   "reason": "version_covers_small_share"
   },
   {
    "type": "car",
@@ -2077,24 +1741,10 @@
   },
   {
    "type": "car",
-   "model": "Dacia Jogger",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
    "model": "Hyundai Kona",
    "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
-  },
-  {
-   "type": "car",
-   "model": "Hyundai Kona",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2126,13 +1776,6 @@
   },
   {
    "type": "car",
-   "model": "Suzuki S-Cross",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
    "model": "Peugeot 308",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
@@ -2144,13 +1787,6 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Peugeot 308",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2205,13 +1841,6 @@
    "type": "car",
    "model": "BMW X2",
    "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "BMW X2",
-   "variant": "diesel (H)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
   },
@@ -2239,7 +1868,7 @@
   {
    "type": "car",
    "model": "BMW X2",
-   "variant": "petrol (H)",
+   "variant": "diesel (H)",
    "field": "powertrain_type",
    "reason": "hybrid_type_unknown"
   },
@@ -2249,13 +1878,6 @@
    "variant": "diesel (H)",
    "field": "variant",
    "reason": "version_covers_small_share"
-  },
-  {
-   "type": "car",
-   "model": "BMW Serie 3",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2295,20 +1917,6 @@
   {
    "type": "car",
    "model": "Mini Countryman",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Mini Countryman",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Mini Countryman",
    "variant": "diesel (H)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -2333,6 +1941,13 @@
    "variant": "diesel (H)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Mini Countryman",
+   "variant": "diesel (H)",
+   "field": "powertrain_type",
+   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2351,13 +1966,6 @@
   {
    "type": "car",
    "model": "Toyota RAV4",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Toyota RAV4",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -2382,20 +1990,6 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Volvo XC60",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Volvo XC60",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2431,20 +2025,6 @@
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Citroën C4",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Mazda CX-30",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2491,13 +2071,6 @@
   {
    "type": "car",
    "model": "Mercedes-Benz Classe A",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Mercedes-Benz Classe A",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -2508,13 +2081,6 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Cupra Leon",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2571,13 +2137,6 @@
    "variant": "diesel (M)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
-  },
-  {
-   "type": "car",
-   "model": "Citroën C5 Aircross",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2662,13 +2221,6 @@
    "variant": "electric (E)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
-  },
-  {
-   "type": "car",
-   "model": "MG MG3",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2792,23 +2344,9 @@
   {
    "type": "car",
    "model": "Škoda Kodiaq",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Škoda Kodiaq",
    "variant": "petrol/electric (P)",
    "field": "powertrain",
    "reason": "below_share_threshold"
-  },
-  {
-   "type": "car",
-   "model": "Audi Q5 Sportback",
-   "variant": "diesel (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2837,6 +2375,13 @@
    "variant": "diesel (H)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Audi Q5 Sportback",
+   "variant": "diesel (H)",
+   "field": "powertrain_type",
+   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2863,13 +2408,6 @@
    "type": "car",
    "model": "Audi Q5 Sportback",
    "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Audi Q5 Sportback",
-   "variant": "petrol (H)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
   },
@@ -2893,6 +2431,13 @@
    "variant": "petrol (H)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Audi Q5 Sportback",
+   "variant": "petrol (H)",
+   "field": "powertrain_type",
+   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2952,24 +2497,10 @@
   },
   {
    "type": "car",
-   "model": "Hyundai Bayon",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
-  },
-  {
-   "type": "car",
    "model": "Peugeot 5008",
    "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
-  },
-  {
-   "type": "car",
-   "model": "Peugeot 5008",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",
@@ -2984,13 +2515,6 @@
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
-  },
-  {
-   "type": "car",
-   "model": "Nissan X-Trail",
-   "variant": "petrol (H)",
-   "field": "powertrain_type",
-   "reason": "hybrid_type_unknown"
   },
   {
    "type": "car",

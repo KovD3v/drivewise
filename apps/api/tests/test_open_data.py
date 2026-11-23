@@ -186,6 +186,17 @@ class FakeRegistries:
 
     def rdw(self, url: str, query: dict) -> list:
         where = query["$where"][0]
+        if open_data.RDW_FUEL in url:
+            # The registry publishes the electric motor per registered vehicle.
+            assert "brandstof_omschrijving='Elektriciteit'" in where
+            return [
+                {"kenteken": plate, "netto_max_vermogen_elektrisch": "2.07"}
+                for plate in ("H001AA", "H002AA")
+                if plate in where
+            ]
+        if query["$select"][0] == "kenteken":
+            assert "e3*2007/46*0064*72" in where
+            return [{"kenteken": "H001AA"}, {"kenteken": "H002AA"}]
         if open_data.RDW_APPROVAL_ENERGY in url:
             assert "e13*168/2013*02373*01" in where
             return [
@@ -319,8 +330,10 @@ def test_car_values_drop_entry_errors_and_keep_real_spread(run):
     assert '"155": 1' in hybrid["body_width_mm"]["evidence_excerpt"]
     assert hybrid["seats"]["value_min"] == "4"
     variants = {v["variant_key"].split(".")[1]: v for v in bundle["variants"]}
-    # EEA cannot tell a mild from a full hybrid, so the type stays unknown.
-    assert variants["petrol-h"]["powertrain_type"] is None
+    # EEA cannot tell a mild from a full hybrid; the registered motor power can.
+    assert variants["petrol-h"]["powertrain_type"] == "MHEV"
+    assert len(variants["petrol-h"]["evidence_snapshot_ids"]) == 4
+    assert report["families"][0]["variants"][0]["electric_motor_kw"] == ["2.07"]
     assert variants["petrol-h"]["fuel"] == "petrol"
     assert variants["lpg-b"]["fuel"] == "petrol_lpg"
     assert {"namespace": "eu-type-approval", "value": "E3*2007/46*0064*72"} in variants[
@@ -386,6 +399,23 @@ def test_plug_in_and_electric_cars_carry_their_own_context(run):
 )
 def test_settle(counts, unlisted, single, expected):
     assert open_data.settle(counts, unlisted=unlisted, single_valued=single) == expected
+
+
+@pytest.mark.parametrize(
+    ("motors", "expected"),
+    [
+        (["2.07", "2.07"], "MHEV"),
+        (["15.60", None], "MHEV"),
+        (["36.00", "51.00"], "HEV"),
+        (["24.60"], None),  # between the limits: a person decides
+        (["15.60", "32.00"], None),  # the sample disagrees
+        ([None], None),
+        ([], None),
+    ],
+)
+def test_hybrid_kind_follows_the_registered_motor_power(motors, expected):
+    rows = [{"netto_max_vermogen_elektrisch": m} if m else {} for m in motors]
+    assert open_data.hybrid_kind(rows)[0] == expected
 
 
 def test_two_wheelers_match_approval_codes_without_leading_zeros(run):

@@ -23,6 +23,7 @@ EEA_URL = "https://co2cars.apps.eea.europa.eu/tools/api"
 RDW_URL = "https://opendata.rdw.nl/resource"
 RDW_VEHICLES = "m9d7-ebf2"
 RDW_APPROVAL_ENERGY = "gr7t-qfnb"
+RDW_FUEL = "8ys7-d773"
 TOP_FAMILIES = 100
 NAME_BUCKETS = 450
 POWERTRAIN_BUCKETS = 30
@@ -31,6 +32,13 @@ SMALL_VERSION_SHARE = Decimal("0.10")
 MIN_POWERTRAIN_SHARE = Decimal("0.05")
 MAX_POWERTRAINS = 4
 MAX_RDW_CANDIDATES = 3
+# Type approval knows one class for mild and full hybrids alike. The registry does
+# record the net power of the electric motor. On the 2024 Italian top 100 it is 17 kW
+# or less for 12 V and 48 V systems, and 32 kW or more for cars that can drive on the
+# motor alone; nothing lies between. A value between the two limits decides nothing.
+HYBRID_SAMPLE = 5
+MILD_HYBRID_BELOW_KW = Decimal(20)
+FULL_HYBRID_FROM_KW = Decimal(30)
 VALUE_BUCKETS = 40
 # A value held by under 2% of a version's registrations is treated as an entry error.
 RARE_SHARE = Decimal("0.02")
@@ -293,6 +301,42 @@ def rdw_car_request(tan: str, variant: str, version: str) -> Request:
     )
 
 
+def hybrid_plates_request(tan: str, variant: str, version: str) -> Request:
+    """A few registered vehicles of one version: fuel data is published per vehicle."""
+    return Request(
+        f"rdw/hybrid-plates-{_short('|'.join((tan, variant, version)))}.json",
+        _rdw_url(
+            RDW_VEHICLES,
+            {
+                "$select": "kenteken",
+                "$where": _version_where(tan, variant, version),
+                "$order": "kenteken",
+                "$limit": HYBRID_SAMPLE,
+            },
+        ),
+    )
+
+
+def hybrid_motor_request(
+    tan: str, variant: str, version: str, plates: list[str]
+) -> Request:
+    listed = ",".join(_soql(plate) for plate in plates)
+    return Request(
+        f"rdw/hybrid-motor-{_short('|'.join((tan, variant, version)))}.json",
+        _rdw_url(
+            RDW_FUEL,
+            {
+                "$select": "kenteken,klasse_hybride_elektrisch_voertuig,"
+                "netto_max_vermogen_elektrisch",
+                "$where": f"kenteken in ({listed}) "
+                "AND brandstof_omschrijving='Elektriciteit'",
+                "$order": "kenteken",
+                "$limit": 50,
+            },
+        ),
+    )
+
+
 def two_wheel_versions_request(entry: dict) -> Request:
     fields = "typegoedkeuringsnummer,variant,uitvoering"
     where = (
@@ -476,7 +520,7 @@ FUELS = {
     "diesel/electric": "diesel",
 }
 # EEA fuel mode: M mono-fuel, B bi-fuel, H hybrid without plug, P plug-in, E electric.
-# "H" covers mild and full hybrids alike, so the hybrid type stays unknown.
+# "H" covers mild and full hybrids alike; hybrid_kind() tells them apart where it can.
 POWERTRAINS = {"M": "ICE", "B": "ICE", "H": None, "P": "PHEV", "E": "BEV"}
 
 
@@ -573,6 +617,36 @@ def choose_version(
     return group["versions"][0], None, []
 
 
+def plan_hybrid(
+    run: Run, bucket: dict, rdw_request: Request | None
+) -> tuple[list[Request], list[Request]]:
+    """(stored requests that tell the hybrid kind, requests still to fetch)."""
+    if rdw_request is None:
+        return [], []
+    approval = bucket["key"][2:]
+    plates_request = hybrid_plates_request(*approval)
+    if not run.has(plates_request):
+        return [], [plates_request]
+    plates = [row["kenteken"] for row in run.read(plates_request)]
+    if not plates:
+        return [], []
+    motor_request = hybrid_motor_request(*approval, plates)
+    if not run.has(motor_request):
+        return [], [motor_request]
+    return [plates_request, motor_request], []
+
+
+def hybrid_kind(rows: list[dict]) -> tuple[str | None, list[Decimal]]:
+    """Mild or full hybrid, when every sampled motor lies on one side of the limits."""
+    field = "netto_max_vermogen_elektrisch"
+    powers = sorted({_number(row[field]) for row in rows if row.get(field)})
+    if powers and powers[-1] < MILD_HYBRID_BELOW_KW:
+        return "MHEV", powers
+    if powers and powers[0] >= FULL_HYBRID_FROM_KW:
+        return "HEV", powers
+    return None, powers
+
+
 def plan_two_wheeler(run: Run, entry: dict) -> tuple[dict | None, list[Request]]:
     versions = two_wheel_versions_request(entry)
     if not run.has(versions):
@@ -605,7 +679,10 @@ def plan(run: Run, name_map: dict, two_wheelers: dict) -> Iterator[Request]:
                 continue
             groups, _ = powertrain_groups(family, run.read(request))
             for group in groups:
-                yield from choose_version(run, family, group)[2]
+                bucket, rdw_request, missing = choose_version(run, family, group)
+                yield from missing
+                if not missing and group["mode"] == "H":
+                    yield from plan_hybrid(run, bucket, rdw_request)[1]
     for entry in two_wheelers["models"]:
         yield from plan_two_wheeler(run, entry)[1]
 
@@ -1005,9 +1082,6 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
             gaps.append(
                 {"metric": metric, "reason": "phev_electric_definition_unknown"}
             )
-    if POWERTRAINS[mode] is None:
-        gaps.append({"metric": "powertrain_type", "reason": "hybrid_type_unknown"})
-
     rdw_match = "none"
     if rdw_request is None:
         for metric in ("length_mm", "body_width_mm", "height_mm", "seats"):
@@ -1042,12 +1116,24 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
                 },
                 locator=f"rows[*].{field}",
             )
+    powertrain, motor_kw = POWERTRAINS[mode], []
+    if mode == "H":
+        requests, missing = plan_hybrid(bundle.run, bucket, rdw_request)
+        if missing:
+            raise OpenDataError("RDW hybrid responses are missing; fetch first.")
+        if requests:
+            powertrain, motor_kw = hybrid_kind(bundle.run.read(requests[-1]))
+        if powertrain:
+            # The kind is part of the identity, so its evidence is identity evidence.
+            evidence += [bundle.snapshot(r, "rdw-open-data") for r in requests]
+        else:
+            gaps.append({"metric": "powertrain_type", "reason": "hybrid_type_unknown"})
     bundle.variants.append(
         {
             "variant_key": variant_key,
             "vehicle_key": vehicle_key,
             "trim": None,
-            "powertrain_type": POWERTRAINS[mode],
+            "powertrain_type": powertrain,
             "fuel": FUELS[fuel],
             "transmission": None,
             "drivetrain": None,
@@ -1063,6 +1149,8 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
         "variant_key": variant_key,
         "fuel": fuel,
         "fuel_mode": mode,
+        "powertrain_type": powertrain,
+        "electric_motor_kw": [_plain(power) for power in motor_kw],
         "type_approval": [tan, variant, version],
         "registrations_of_version": bucket["doc_count"],
         "registrations_of_powertrain": group["registrations"],
@@ -1227,7 +1315,7 @@ GAP_REASONS = {
     "bifuel_value_ambiguous": "EEA gives one value without naming the fuel.",
     "phev_electric_definition_unknown": "EEA does not say whether a plug-in's electric "
     "consumption and range are weighted or pure-electric values.",
-    "hybrid_type_unknown": "EEA does not separate mild from full hybrids.",
+    "hybrid_type_unknown": "No registry value tells whether this hybrid is mild or full.",
     "registry_values_disagree": "Registrations of this version disagree by over 5%.",
     "too_many_values": "Too many different values to tell real ones from errors.",
     "several_type_approvals": "Variants come from several type approvals: the name may "

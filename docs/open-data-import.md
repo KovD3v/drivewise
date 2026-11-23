@@ -39,8 +39,8 @@ mirrors, seat height, fuel tank size or under-seat storage.
 | What it is | One record per new car registered in the EU, reported by each country | The Dutch vehicle register and its type-approval tables |
 | Licence | Free reuse, commercial included, with attribution to the EEA ([legal notice](https://www.eea.europa.eu/en/legal-notice)) | Public domain, declared in each dataset's metadata |
 | Endpoint | `https://co2cars.apps.eea.europa.eu/tools/api` (Elasticsearch query in the URL) | `https://opendata.rdw.nl/resource/<dataset>.json` (Socrata) |
-| Datasets | Italy, registration year 2024, final status | `m9d7-ebf2` registered vehicles; `gr7t-qfnb` type-approval engine data |
-| Used for | Which cars sell in Italy, mass, engine power, displacement, CO2, consumption, electric range | Car length, width, height and seats; everything for two-wheelers |
+| Datasets | Italy, registration year 2024, final status | `m9d7-ebf2` registered vehicles; `gr7t-qfnb` type-approval engine data; `8ys7-d773` fuel and motor data per registered vehicle |
+| Used for | Which cars sell in Italy, mass, engine power, displacement, CO2, consumption, electric range | Car length, width, height and seats; mild or full hybrid; everything for two-wheelers |
 | Access rule | No robots file | `robots.txt` asks for one request per second |
 
 Both sources stay `manual_validation_only` until a person signs their review:
@@ -63,7 +63,7 @@ so never rename a run folder after its bundle is published.
 ROOT=data/private/catalog
 RUN=$ROOT/open-data-2026-11-23
 
-# 1. Download. About 480 requests, 10 minutes. Safe to repeat: it resumes.
+# 1. Download. About 620 requests, 11 minutes. Safe to repeat: it resumes.
 uv run --frozen --project apps/api python apps/api/scripts/build_open_data_catalog.py \
   fetch --run-dir "$RUN"
 
@@ -169,10 +169,32 @@ RDW values are used only when RDW has registrations of the **same** approval
 number, variant and version, under the same make. A match on the approval number
 alone is not enough, because one approval covers several bodies and engines.
 
+### Mild or full hybrid
+
+Type approval has one class for every hybrid without a plug, and EEA marks them
+all `H`. RDW records the net power of the electric motor of each registered
+vehicle (`8ys7-d773`, field `netto_max_vermogen_elektrisch`). The builder reads it
+for up to five registered vehicles of the exact version and applies a rule:
+
+- every motor **below 20 kW**: mild hybrid (`MHEV`);
+- every motor **30 kW or more**: full hybrid (`HEV`);
+- anything else, or no value: `powertrain_type` stays unknown.
+
+The limits are a judgement, not a regulation. They rest on the first run: the 68
+hybrids with a value have a motor of 17 kW or less (51 variants, 12 V and 48 V
+systems) or of 32 kW or more (17 variants), and none lies between. `report.json`
+lists the motor power of every hybrid under `electric_motor_kw`, so a person can
+check the rule. The stored responses and their URLs contain the licence plates of
+the sampled Dutch vehicles, which RDW publishes as open data.
+
+The approval table `gr7t-qfnb` was tried first and rejected: it has the motor's
+30-minute power for 45 of the 73 hybrids only, and that value does not separate
+the two kinds (a mild Mercedes GLC has 10.0 kW, a full Hyundai Kona 10.1 kW).
+
 ### What is left empty on purpose
 
-- **Hybrid type.** EEA marks a hybrid without a plug as `H` and does not separate
-  mild from full hybrids. `powertrain_type` stays unknown for those variants.
+- **Hybrid kind without a Dutch registration.** The rule above needs a registered
+  vehicle of the exact version. Without one, `powertrain_type` stays unknown.
 - **LPG cars.** A bi-fuel car has one CO2 and one consumption value per fuel. EEA
   gives one number without naming the fuel, so neither is published.
 - **Plug-in electric consumption and range.** EEA does not say whether they are
@@ -223,22 +245,37 @@ rejected with `Published identity differs at identity_evidence`. Built with
 a superseding decision, 1,759 unchanged values added no rows, and a repeat returned
 `unchanged`.
 
-The same run also showed five things to settle first:
+Things to settle before the first production publication, as measured on a
+disposable local database (2026-11-23):
 
 1. **Sources are not reviewed.** Until the two reviews are signed, facts have
-   `eligible: false` and the Advisor ignores the new vehicles.
-2. **`GET /vehicles/{id}` shows empty fields.** Catalog v2 values appear only in
-   `GET /vehicles/{id}/facts`. The legacy fields of the detail response
-   (dimensions, consumption, price) stay null for these vehicles.
-3. **16 models may mix two generations.** Their variants come from different type
+   `eligible: false`. The Advisor ignores the new vehicles and
+   `GET /vehicles/{id}` shows none of their values.
+2. **The detail response needs the branch `feat/vehicle-detail-facts`.** On `main`
+   a v2 vehicle shows only seats and exact consumption, CO2 and range. That branch
+   (on top of pull request #19) also fills length, width, height, displacement
+   and, for cars with one engine, power. With the sources marked reviewed on the
+   local database only, it showed for the 218 car variants: width 181, length
+   179, height 178, displacement 205 (every car with an engine), power 108 (every
+   car that is not a hybrid or electric), consumption 63 and CO2 57. A hybrid
+   shows no power, because EEA gives the engine's power and not the system's.
+3. **A range is not shown in the detail response.** The legacy fields hold one
+   number. Consumption is a range for 110 of 181 variants and CO2 for 138 of 203,
+   so those stay empty there and are readable only in
+   `GET /vehicles/{id}/facts`. Plug-in hybrids never show consumption or CO2 in
+   the legacy fields, because their values are weighted. Showing ranges is a
+   product and contract decision.
+4. **Generation and model year are empty.** Neither source names them. They are
+   identity fields, so publishing freezes them empty until a reviewed migration.
+5. **16 models may mix two generations.** Their variants come from different type
    approvals (for example the old and the new Lancia Ypsilon). They are flagged
    `several_type_approvals` in the register and need a person to decide.
-4. **The synthetic seed overlaps.** Production holds five synthetic seed vehicles;
+6. **The synthetic seed overlaps.** Production holds five synthetic seed vehicles;
    Dacia Sandero, Fiat Panda, Tesla Model 3 and Volkswagen Golf would appear twice.
-5. **Hybrids read as plain petrol or diesel.** The 73 hybrids of unknown type get
-   the legacy `fuel_type` `petrol` (61) or `diesel` (12), because the writer
-   derives it from the unknown `powertrain_type`. The imported Fiat Panda hybrid
-   shows `fuel_type: petrol`.
+7. **Five hybrids have no kind.** They read as plain `diesel` (4) or `petrol` (1)
+   and show no consumption or CO2 in the legacy fields. The 8 diesel mild hybrids
+   also read `diesel`, because the legacy `fuel_type` has no value for them;
+   their `powertrain_type` is `MHEV`.
 
 The two-wheeler bundle published on the local database as it is. In production
 it should wait for the two-wheeler work in pull request #19, which adds the
@@ -251,15 +288,15 @@ filters and metrics the product needs for motorcycles and scooters.
 | Models | 100 | 20 (12 scooters, 8 motorcycles) |
 | Variants | 218 | 20 |
 | Values in the bundle | 1,760 | 140 |
-| Evidence files | 279 | 60 |
+| Evidence files | 415 | 60 |
 
 Share of the 218 car variants with each value: mass 100%, engine power and
 displacement 94%, CO2 93%, consumption, width and seats 83%, length and height
 82%. The 13 electric cars have electric consumption and range. All 20
 two-wheelers have all seven values.
 
-Of the 218 car variants, 181 have an exact RDW match and 37 have none. 73 are
-hybrids of unknown type. The kept powertrains cover 98.5% of the registrations of
+Of the 218 car variants, 181 have an exact RDW match and 37 have none. Of the 73
+hybrids without a plug, 51 are mild, 17 are full and 5 have no kind. The kept powertrains cover 98.5% of the registrations of
 the 100 models; the imported versions themselves are 26.7% of them.
 
 Local proof on a disposable PostgreSQL 18: `--check`, `--stage` and `--publish`
