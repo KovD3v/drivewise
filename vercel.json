@@ -1,0 +1,21 @@
+{
+  "regions": ["fra1"],
+  "services": {
+    "web": {
+      "root": "apps/web/",
+      "framework": "tanstack-start",
+      "bindings": [
+        { "type": "service", "service": "api", "format": "url", "env": "API_INTERNAL_URL" }
+      ]
+    },
+    "api": {
+      "root": "apps/api/",
+      "framework": "fastapi",
+      "entrypoint": "app.main:app"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ]
+}

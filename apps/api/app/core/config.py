@@ -21,6 +21,9 @@ class Settings:
     database_url: str = DEFAULT_DATABASE_URL
     api_cors_origins: tuple[str, ...] = DEFAULT_API_CORS_ORIGINS
     firecrawl_api_key: str | None = None
+    # Path prefix the API is served under when it shares a domain with the
+    # frontend (for example "/api"). Requests without the prefix still match.
+    api_root_path: str = ""
 
 
 def load_env_file(
@@ -69,4 +72,5 @@ def get_settings() -> Settings:
         database_url=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL),
         api_cors_origins=api_cors_origins,
         firecrawl_api_key=os.getenv("FIRECRAWL_API_KEY") or None,
+        api_root_path=os.getenv("API_ROOT_PATH", "").rstrip("/"),
     )
