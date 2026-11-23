@@ -9,40 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdvisorRouteImport } from './routes/advisor'
-import { Route as DocumentsRouteImport } from './routes/documents'
-import { Route as ListingsRouteImport } from './routes/listings'
-import { Route as ModelAnalysisRouteImport } from './routes/model-analysis'
-import { Route as SearchRouteImport } from './routes/search'
 import { Route as VehiclesRouteImport } from './routes/vehicles'
-import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
-import { Route as ListingsListingIdRouteImport } from './routes/listings_.$listingId'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as ModelAnalysisRouteImport } from './routes/model-analysis'
+import { Route as ListingsRouteImport } from './routes/listings'
+import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as AdvisorRouteImport } from './routes/advisor'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesVehicleIdRouteImport } from './routes/vehicles_.$vehicleId'
+import { Route as ListingsListingIdRouteImport } from './routes/listings_.$listingId'
+import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdvisorRoute = AdvisorRouteImport.update({
-  id: '/advisor',
-  path: '/advisor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentsRoute = DocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ListingsRoute = ListingsRouteImport.update({
-  id: '/listings',
-  path: '/listings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ModelAnalysisRoute = ModelAnalysisRouteImport.update({
-  id: '/model-analysis',
-  path: '/model-analysis',
+const VehiclesRoute = VehiclesRouteImport.update({
+  id: '/vehicles',
+  path: '/vehicles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -50,14 +30,34 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VehiclesRoute = VehiclesRouteImport.update({
-  id: '/vehicles',
-  path: '/vehicles',
+const ModelAnalysisRoute = ModelAnalysisRouteImport.update({
+  id: '/model-analysis',
+  path: '/model-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
-  id: '/documents_/$documentId',
-  path: '/documents/$documentId',
+const ListingsRoute = ListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorRoute = AdvisorRouteImport.update({
+  id: '/advisor',
+  path: '/advisor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VehiclesVehicleIdRoute = VehiclesVehicleIdRouteImport.update({
+  id: '/vehicles_/$vehicleId',
+  path: '/vehicles/$vehicleId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
@@ -65,9 +65,9 @@ const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
   path: '/listings/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VehiclesVehicleIdRoute = VehiclesVehicleIdRouteImport.update({
-  id: '/vehicles_/$vehicleId',
-  path: '/vehicles/$vehicleId',
+const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
+  id: '/documents_/$documentId',
+  path: '/documents/$documentId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -162,39 +162,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/advisor': {
-      id: '/advisor'
-      path: '/advisor'
-      fullPath: '/advisor'
-      preLoaderRoute: typeof AdvisorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documents': {
-      id: '/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof DocumentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/listings': {
-      id: '/listings'
-      path: '/listings'
-      fullPath: '/listings'
-      preLoaderRoute: typeof ListingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/model-analysis': {
-      id: '/model-analysis'
-      path: '/model-analysis'
-      fullPath: '/model-analysis'
-      preLoaderRoute: typeof ModelAnalysisRouteImport
+    '/vehicles': {
+      id: '/vehicles'
+      path: '/vehicles'
+      fullPath: '/vehicles'
+      preLoaderRoute: typeof VehiclesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -204,18 +176,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vehicles': {
-      id: '/vehicles'
-      path: '/vehicles'
-      fullPath: '/vehicles'
-      preLoaderRoute: typeof VehiclesRouteImport
+    '/model-analysis': {
+      id: '/model-analysis'
+      path: '/model-analysis'
+      fullPath: '/model-analysis'
+      preLoaderRoute: typeof ModelAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/documents_/$documentId': {
-      id: '/documents_/$documentId'
-      path: '/documents/$documentId'
-      fullPath: '/documents/$documentId'
-      preLoaderRoute: typeof DocumentsDocumentIdRouteImport
+    '/listings': {
+      id: '/listings'
+      path: '/listings'
+      fullPath: '/listings'
+      preLoaderRoute: typeof ListingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor': {
+      id: '/advisor'
+      path: '/advisor'
+      fullPath: '/advisor'
+      preLoaderRoute: typeof AdvisorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vehicles_/$vehicleId': {
+      id: '/vehicles_/$vehicleId'
+      path: '/vehicles/$vehicleId'
+      fullPath: '/vehicles/$vehicleId'
+      preLoaderRoute: typeof VehiclesVehicleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/listings_/$listingId': {
@@ -225,11 +225,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vehicles_/$vehicleId': {
-      id: '/vehicles_/$vehicleId'
-      path: '/vehicles/$vehicleId'
-      fullPath: '/vehicles/$vehicleId'
-      preLoaderRoute: typeof VehiclesVehicleIdRouteImport
+    '/documents_/$documentId': {
+      id: '/documents_/$documentId'
+      path: '/documents/$documentId'
+      fullPath: '/documents/$documentId'
+      preLoaderRoute: typeof DocumentsDocumentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
