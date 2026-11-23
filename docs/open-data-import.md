@@ -195,9 +195,29 @@ version is the one sold in Italy.
 
 ## Before publishing to production
 
-A published catalog v2 identity cannot be changed later, not even from "unknown"
-to a value. The first run on a disposable local database (2026-11-23) showed five
-things to settle first:
+Nothing is frozen before publication: the bundles can be rebuilt as often as
+needed. After publication, catalog v2 treats three kinds of data differently:
+
+- **Values** (mass, power, consumption and so on) can be corrected. A later bundle
+  adds a new decision that supersedes the old one, and the old one stays in the
+  history.
+- **Identity** (make, model, generation, phase, body, year, market, powertrain,
+  fuel, transmission, drivetrain, type-approval references and the evidence the
+  identity rests on) cannot be changed by the import, not even from "unknown" to a
+  value. A correction needs a hand-written, reviewed migration.
+- **Evidence** (stored responses, observations, decisions) is append-only.
+  Database triggers reject updates and deletions, so a wrong publication is undone
+  by restoring a backup.
+
+**The builder cannot yet update what it published.** Measured on a disposable
+local database (2026-11-23): after publishing the car bundle, one changed RDW
+response (one more registered Fiat Panda) changed the evidence ID of that variant,
+and the import rejected the whole rebuilt bundle with `Published identity differs
+at identity_evidence`. A new EEA year changes the evidence of every model in the
+same way. Before the first production publication the builder must keep the
+identity evidence of what is already published and emit superseding decisions.
+
+The same run also showed five things to settle first:
 
 1. **Sources are not reviewed.** Until the two reviews are signed, facts have
    `eligible: false` and the Advisor ignores the new vehicles.
@@ -240,6 +260,9 @@ Local proof on a disposable PostgreSQL 18: `--check`, `--stage` and `--publish`
 succeeded for both bundles, and a second `--publish` returned `unchanged`.
 
 ## Updating
+
+These steps work while nothing is published. After a publication they are blocked
+by the limit described in "Before publishing to production".
 
 - **New EEA year.** Change `EEA_YEAR` in
   [`open_data.py`](../apps/api/app/ingestion/open_data.py) when the year has final
