@@ -28,7 +28,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 settings = get_settings()
-app = FastAPI(title="Drivewise API", lifespan=lifespan)
+app = FastAPI(
+    title="Drivewise API", lifespan=lifespan, root_path=settings.api_root_path
+)
 
 app.add_middleware(
     CORSMiddleware,

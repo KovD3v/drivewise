@@ -11,6 +11,11 @@ import {
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000'
 
 function getApiBaseUrl() {
+  // The server cannot fetch a relative base such as "/api", so server rendering
+  // uses the absolute URL Vercel injects for the API service at runtime.
+  if (import.meta.env.SSR && process.env.API_INTERNAL_URL) {
+    return process.env.API_INTERNAL_URL.replace(/\/$/, '')
+  }
   return import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
 }
 
