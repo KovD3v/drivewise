@@ -56,6 +56,36 @@
       "evidence_snapshot_ids": [
         "00000000-0000-0000-0000-000000000001"
       ]
+    },
+    {
+      "canonical_key": "it-acme-ridge-2026",
+      "model_family_key": "acme-ridge",
+      "make": "Acme",
+      "model": "Ridge",
+      "vehicle_type": "motorcycle",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "naked",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "canonical_key": "it-acme-glide-2026",
+      "model_family_key": "acme-glide",
+      "make": "Acme",
+      "model": "Glide",
+      "vehicle_type": "scooter",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "scooter",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
     }
   ],
   "variants": [
@@ -115,6 +145,30 @@
       "fuel": "electricity",
       "transmission": "automatic",
       "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "vehicle_key": "it-acme-ridge-2026",
+      "trim": "700",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "manual",
+      "drivetrain": null,
+      "evidence_snapshot_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "it-acme-glide-2026-petrol",
+      "vehicle_key": "it-acme-glide-2026",
+      "trim": "300",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "cvt",
+      "drivetrain": null,
       "evidence_snapshot_ids": [
         "00000000-0000-0000-0000-000000000001"
       ]
@@ -264,6 +318,127 @@
       "evidence_excerpt": "Synthetic test only: length_mm = 4200",
       "evidence_locator": "table 1, row 16",
       "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "seat_height_mm",
+      "raw_value": "795",
+      "raw_unit": "mm",
+      "value_min": 795,
+      "value_max": 795,
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: seat_height_mm = 795",
+      "evidence_locator": "table 2, row 20",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000021",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "mass_kg",
+      "raw_value": "189",
+      "raw_unit": "kg",
+      "value_min": 189,
+      "value_max": 189,
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic test only: mass_kg = 189",
+      "evidence_locator": "table 2, row 21",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000022",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "14",
+      "raw_unit": "l",
+      "value_min": 14,
+      "value_max": 14,
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: fuel_tank_capacity_liters = 14",
+      "evidence_locator": "table 2, row 22",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000023",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "seat_height_mm",
+      "raw_value": "780",
+      "raw_unit": "mm",
+      "value_min": 780,
+      "value_max": 780,
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: seat_height_mm = 780",
+      "evidence_locator": "table 2, row 23",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000024",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "mass_kg",
+      "raw_value": "162",
+      "raw_unit": "kg",
+      "value_min": 162,
+      "value_max": 162,
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic test only: mass_kg = 162",
+      "evidence_locator": "table 2, row 24",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000025",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "12",
+      "raw_unit": "l",
+      "value_min": 12,
+      "value_max": 12,
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: fuel_tank_capacity_liters = 12",
+      "evidence_locator": "table 2, row 25",
+      "extractor_version": "synthetic-v1"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000026",
+      "snapshot_id": "00000000-0000-0000-0000-000000000001",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "underseat_storage_liters",
+      "raw_value": "35",
+      "raw_unit": "l",
+      "value_min": 35,
+      "value_max": 35,
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic test only: underseat_storage_liters = 35",
+      "evidence_locator": "table 2, row 26",
+      "extractor_version": "synthetic-v1"
     }
   ],
   "decisions": [
@@ -317,6 +492,134 @@
       "actor_id": "fixture-reviewer",
       "policy_version": "fixture-v1",
       "decided_at": "2026-09-02T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000040",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000020",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000020"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000041",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000021",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000021"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000042",
+      "variant_key": "it-acme-ridge-2026-petrol",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000022",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000022"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000043",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000023",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000023"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000044",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000024",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000024"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000045",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000025",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000025"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000046",
+      "variant_key": "it-acme-glide-2026-petrol",
+      "metric": "underseat_storage_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "00000000-0000-0000-0000-000000000026",
+      "evidence_ids": [
+        "00000000-0000-0000-0000-000000000026"
+      ],
+      "reason": "Synthetic example: one declared two-wheel value.",
+      "actor_kind": "human",
+      "actor_id": "fixture-reviewer",
+      "policy_version": "fixture-v1",
+      "decided_at": "2026-09-01T13:00:00Z"
     }
   ]
 }

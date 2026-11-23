@@ -65,6 +65,14 @@ globally unique commercial identifiers.
 | Dimensions | `length_mm`, `body_width_mm`, `width_with_mirrors_mm`, `height_mm`: mm |
 | Practicality | `seats`: integer count; `cargo_volume_liters`: l; `mass_kg`: kg |
 | Charging | `ac_charge_power_kw`, `dc_peak_charge_power_kw`: kW |
+| Two-wheel | `seat_height_mm`: mm; `fuel_tank_capacity_liters`, `underseat_storage_liters`: l |
+
+`vehicle_type` is `car`, `motorcycle` or `scooter`; variant fields are shared.
+Two-wheel wet weight is not a separate metric: it is `mass_kg` with
+`context.method: wet` (a dry mass uses another method). An adjustable seat height
+is an interval. Licence category (AM, A1, A2, A) is not in the contract because
+metrics are numeric; subjective scores such as agility or comfort are never
+catalog facts.
 
 An exact measurement uses equal `value_min` and `value_max`. Intervals stay
 intervals. Original value/unit, source excerpt/locator and extractor version are
@@ -108,6 +116,9 @@ source independence detection, an agent or an automatic truth classifier.
 adds nullable vehicle type/generation/phase and variant powertrain/validity
 attributes. It does not infer them from existing labels. UUIDs, legacy values
 and source permissions are preserved.
+[`0010_two_wheel_metrics.sql`](../apps/api/migrations/0010_two_wheel_metrics.sql)
+extends the SQL metric domain and unit check with the two-wheel metrics. The unit
+check now also rejects a unit for a metric it does not list.
 
 | New table | Responsibility |
 | --- | --- |
@@ -258,11 +269,19 @@ context covering the whole variant. Intervals, multiple contexts and configured
 measurements stay available in the facts API but are not flattened. Consumption,
 range and CO₂ require WLTP combined and a known non-PHEV powertrain; cargo requires
 `method: VDA` and `seating_configuration: all_seats_up`. The legacy scalar mapping
-covers seats, cargo, liquid/electric consumption, WLTP range and CO₂. Precise
+covers seats, cargo, liquid/electric consumption, WLTP range and CO₂.
+For motorcycles and scooters, `GET /vehicles/{id}` adds a `two_wheel` block per
+spec from the same scalar rule: seat height, wet weight (`mass_kg` with
+`method: wet`), fuel tank and underseat storage. A seat range, or a dry and a wet
+mass for the same variant, therefore yields null there; the facts API keeps both.
+Precise
 power, battery, dimensions and other metrics remain in the facts API; ambiguous
 legacy horsepower/battery fields remain null for v2 records.
 
 Advisor and Model Analysis use the shared provenance and eligible scalar views.
+They, and Guided Decisions, rank cars only: rows whose `vehicle_type` is not
+`car` (legacy v1 rows without a type count as cars) never become candidates, and
+Recommendations count them under `unsupported_vehicle_type`.
 Model Analysis now also excludes unreviewed, inactive, expired and stale offers,
 and does not use an unreviewed vehicle base price. Missing age/identity inputs
 produce no maintenance estimate. Recommendations persist decision/observation IDs

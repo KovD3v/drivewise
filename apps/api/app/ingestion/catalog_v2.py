@@ -24,6 +24,7 @@ from app.ingestion.catalog import CatalogValidationError, SourceRecord
 Key = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9._-]*$", max_length=240)]
 Text = Annotated[str, Field(min_length=1, max_length=500)]
 Number = Annotated[Decimal, Field(allow_inf_nan=False)]
+VehicleType = Literal["car", "motorcycle", "scooter"]
 Metric = Literal[
     "engine_power_kw",
     "system_power_kw",
@@ -45,6 +46,10 @@ Metric = Literal[
     "mass_kg",
     "ac_charge_power_kw",
     "dc_peak_charge_power_kw",
+    # Two-wheel registry (motorcycle, scooter); wet weight is mass_kg, method "wet".
+    "seat_height_mm",
+    "fuel_tank_capacity_liters",
+    "underseat_storage_liters",
 ]
 # The unit is part of the metric definition, never guessed from a source label.
 METRIC_UNITS = {
@@ -68,6 +73,9 @@ METRIC_UNITS = {
     "mass_kg": "kg",
     "ac_charge_power_kw": "kW",
     "dc_peak_charge_power_kw": "kW",
+    "seat_height_mm": "mm",
+    "fuel_tank_capacity_liters": "l",
+    "underseat_storage_liters": "l",
 }
 MEASURED_METRICS = {
     "liquid_consumption_l_100km",
@@ -123,7 +131,7 @@ class VehicleIdentity(ContractModel):
     model_family_key: Key
     make: Text
     model: Text
-    vehicle_type: Literal["car", "motorcycle", "scooter"]
+    vehicle_type: VehicleType
     generation_key: Key | None
     phase_key: Key | None
     body_style: Key | None

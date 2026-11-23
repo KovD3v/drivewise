@@ -19,13 +19,14 @@ FIXTURE = ROOT / "data/fixtures/catalog/catalog-v2.synthetic.json"
 
 def test_v2_represents_identity_uncertainty_and_keeps_conflict_history():
     payload = load_catalog_v2(FIXTURE)
-    first, second, unknown_year = payload.vehicles
+    first, second, unknown_year = payload.vehicles[:3]
     assert first.model == second.model and first.model_year == second.model_year
     assert first.generation_key != second.generation_key
     assert unknown_year.model_year is None
     assert payload.variants[1].trim == payload.variants[2].trim
     assert payload.variants[1].powertrain_type != payload.variants[2].powertrain_type
-    assert payload.observations[-1].value_max > payload.observations[-1].value_min
+    length = next(o for o in payload.observations if o.metric == "length_mm")
+    assert length.value_max > length.value_min
     assert payload.decisions[1].supersedes_id == payload.decisions[0].id
     assert payload.decisions[0].status == "verified"
     assert payload.decisions[1].status == "conflicted"
@@ -244,6 +245,8 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
                 "SELECT id, variant_key, horsepower, battery_kwh FROM vehicle_specs ORDER BY id"
             ).fetchall()
             conn.execute((MIGRATIONS_PATH / "0008_catalog_evidence.sql").read_text())
+            # 0010 only extends the 0008 metric registry, so it applies here too.
+            conn.execute((MIGRATIONS_PATH / "0010_two_wheel_metrics.sql").read_text())
             assert (
                 conn.execute(
                     "SELECT id, variant_key, horsepower, battery_kwh FROM vehicle_specs ORDER BY id"
@@ -374,3 +377,31 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
                             "spec_observations",
                             {**observation, "id": uuid4(), "unit": "wrong"},
                         )
+
+
+def test_v2_fixture_covers_two_wheelers_and_enforces_their_units():
+    payload = load_catalog_v2(FIXTURE)
+    assert {v.vehicle_type for v in payload.vehicles} == {
+        "car",
+        "motorcycle",
+        "scooter",
+    }
+    assert {"seat_height_mm", "fuel_tank_capacity_liters", "underseat_storage_liters"} <= {
+        o.metric for o in payload.observations
+    }
+    for metric, wrong_unit in [
+        ("seat_height_mm", "cm"),
+        ("underseat_storage_liters", "dm3"),
+    ]:
+        raw = json.loads(FIXTURE.read_text())
+        observation = next(o for o in raw["observations"] if o["metric"] == metric)
+        observation["unit"] = wrong_unit
+        with pytest.raises(ValidationError, match=f"{metric} requires unit"):
+            CatalogV2.model_validate(raw)
+    # Wet weight is mass_kg with its definition, never an undefined mass.
+    raw = json.loads(FIXTURE.read_text())
+    mass = next(o for o in raw["observations"] if o["metric"] == "mass_kg")
+    assert mass["context"]["method"] == "wet"
+    del mass["context"]["method"]
+    with pytest.raises(ValidationError, match="mass requires"):
+        CatalogV2.model_validate(raw)

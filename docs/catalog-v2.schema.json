@@ -58,7 +58,10 @@
             "cargo_volume_liters",
             "mass_kg",
             "ac_charge_power_kw",
-            "dc_peak_charge_power_kw"
+            "dc_peak_charge_power_kw",
+            "seat_height_mm",
+            "fuel_tank_capacity_liters",
+            "underseat_storage_liters"
           ],
           "title": "Metric",
           "type": "string"
@@ -507,7 +510,10 @@
             "cargo_volume_liters",
             "mass_kg",
             "ac_charge_power_kw",
-            "dc_peak_charge_power_kw"
+            "dc_peak_charge_power_kw",
+            "seat_height_mm",
+            "fuel_tank_capacity_liters",
+            "underseat_storage_liters"
           ],
           "title": "Metric",
           "type": "string"
@@ -614,12 +620,15 @@
         "electric_range_km": "km",
         "engine_displacement_cc": "cm3",
         "engine_power_kw": "kW",
+        "fuel_tank_capacity_liters": "l",
         "height_mm": "mm",
         "length_mm": "mm",
         "liquid_consumption_l_100km": "l/100km",
         "mass_kg": "kg",
+        "seat_height_mm": "mm",
         "seats": "count",
         "system_power_kw": "kW",
+        "underseat_storage_liters": "l",
         "width_with_mirrors_mm": "mm"
       }
     },

@@ -2,6 +2,12 @@ from dataclasses import dataclass
 from uuid import UUID
 
 
+# Legacy (catalog v1) rows have no vehicle_type; their contract is car-only.
+EFFECTIVE_VEHICLE_TYPE_SQL = "COALESCE(v.vehicle_type, 'car')"
+# Car decision flows (advisor, model analysis, guided decisions) rank cars only.
+CAR_ONLY_SQL = f"({EFFECTIVE_VEHICLE_TYPE_SQL} = 'car')"
+
+
 @dataclass(frozen=True)
 class VehicleFilters:
     make: str | None = None
@@ -10,6 +16,7 @@ class VehicleFilters:
     body_style: str | None = None
     market: str | None = None
     max_price_eur: float | None = None
+    vehicle_type: str | None = None
     limit: int = 50
     offset: int = 0
 

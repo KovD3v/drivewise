@@ -151,6 +151,12 @@ export function mockSpecDetail(
     safety: { ratings: [], adas: [], equipment: [] },
     technology_comfort: [],
     media: [],
+    two_wheel: {
+      seat_height_mm: null,
+      wet_weight_kg: null,
+      fuel_tank_capacity_liters: null,
+      underseat_storage_liters: null,
+    },
   }
 }
 
