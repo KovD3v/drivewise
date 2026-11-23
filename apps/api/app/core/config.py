@@ -11,7 +11,13 @@ DEFAULT_API_CORS_ORIGINS = (
 )
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 ENV_FILE_KEYS = frozenset(
-    {"APP_ENV", "DATABASE_URL", "API_CORS_ORIGINS", "FIRECRAWL_API_KEY"}
+    {
+        "APP_ENV",
+        "DATABASE_URL",
+        "API_CORS_ORIGINS",
+        "API_ROOT_PATH",
+        "FIRECRAWL_API_KEY",
+    }
 )
 
 

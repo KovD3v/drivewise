@@ -1,4 +1,6 @@
-from app.core.config import get_settings
+import os
+
+from app.core.config import get_settings, load_env_file
 from app.core.database_url import contains_placeholder_database_url
 
 
@@ -64,3 +66,18 @@ def test_api_root_path_defaults_to_none_and_drops_a_trailing_slash(monkeypatch):
     monkeypatch.setenv("API_ROOT_PATH", "/api/")
     assert get_settings().api_root_path == "/api"
     get_settings.cache_clear()
+
+
+def test_api_root_path_is_read_from_the_env_file(monkeypatch, tmp_path):
+    monkeypatch.delenv("API_ROOT_PATH", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text("API_ROOT_PATH=/api\n")
+
+    load_env_file(env_file)
+    get_settings.cache_clear()
+    try:
+        assert get_settings().api_root_path == "/api"
+    finally:
+        # load_env_file wrote to os.environ directly, so remove it the same way.
+        os.environ.pop("API_ROOT_PATH", None)
+        get_settings.cache_clear()
