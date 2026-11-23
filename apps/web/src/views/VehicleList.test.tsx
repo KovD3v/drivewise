@@ -1,11 +1,12 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { test, expect, vi } from 'vitest'
 
+import { mockVehicle } from '../api/mockData'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { VehicleListPage } from './VehicleList'
 
 const vehiclesResponse = [
-  {
+  mockVehicle({
     id: '00000000-0000-4000-8000-000000000001',
     canonical_key: 'fiat-panda-2024-it',
     model_family_key: 'fiat-panda',
@@ -16,7 +17,7 @@ const vehiclesResponse = [
     fuel_type: 'mild_hybrid_petrol',
     market: 'IT',
     base_price_eur: 15500,
-  },
+  }),
 ]
 
 test('renders loader data and submits URL filter state', () => {

@@ -33,6 +33,10 @@ const recommendationResponse: AdvisorRecommendationResponse = {
             fuel_type: 'mild_hybrid_petrol',
             market: 'IT',
             base_price_eur: 15500,
+            vehicle_type: 'car',
+            generation_key: null,
+            phase_key: null,
+            catalog_version: 1,
           },
           selected_spec: {
             id: '20000000-0000-4000-8000-000000000001',
@@ -54,6 +58,14 @@ const recommendationResponse: AdvisorRecommendationResponse = {
             euro_emission_standard: 'Euro 6e',
             seats: 4,
             cargo_volume_liters: 225,
+            catalog_version: 1,
+            powertrain_type: null,
+            fuel: null,
+            engine_code: null,
+            valid_from: null,
+            valid_to: null,
+            external_references: [],
+            provenance: [],
           },
           offer: {
             id: '30000000-0000-4000-8000-000000000001',
@@ -113,6 +125,9 @@ const recommendationResponse: AdvisorRecommendationResponse = {
             {
               component: 'space',
               message: 'Il bagagliaio e sotto la fascia piu versatile.',
+              metric: null,
+              value: null,
+              threshold: null,
               contribution: 11.1,
             },
           ],
@@ -128,6 +143,8 @@ const recommendationResponse: AdvisorRecommendationResponse = {
               source_name: 'EEA passenger-car data',
               source_url: 'https://example.com/eea',
               observed_at: '2026-06-25',
+              decision_id: null,
+              observation_id: null,
             },
           ],
         },
@@ -265,8 +282,10 @@ test('labels an insufficient-data recommendation as provisional Structural Fit',
 test('renders a recommendation defensively without provenance or a source URL', async () => {
   const response = structuredClone(recommendationResponse)
   response.groups[0].items[0].provenance = []
-  response.groups[0].items[0].offer.source_url = null
-  delete response.groups[0].items[0].offer.last_seen_at
+  // Simulates a payload that breaks the contract, so the offer is loosened here.
+  const offer: Record<string, unknown> = response.groups[0].items[0].offer
+  offer.source_url = null
+  delete offer.last_seen_at
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({ ok: true, json: async () => response }),

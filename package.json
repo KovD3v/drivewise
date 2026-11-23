@@ -9,6 +9,10 @@
     "dev:web": "bun run --cwd apps/web dev",
     "build:web": "bun run --cwd apps/web build",
     "test:web": "bun run --cwd apps/web test",
-    "typecheck:web": "bun run --cwd apps/web typecheck"
+    "typecheck:web": "bun run --cwd apps/web typecheck",
+    "dev:api": "uv run --project apps/api uvicorn app.main:app --reload --app-dir apps/api",
+    "test:api": "uv run --frozen --project apps/api --extra dev pytest apps/api -q",
+    "lint:api": "uv run --frozen --project apps/api --extra dev ruff check apps/api",
+    "gen:api-types": "bun run --cwd apps/web gen:api-types"
   }
 }

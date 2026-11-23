@@ -2,10 +2,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.base import ApiModel
 
 
-class DocumentRead(BaseModel):
+class DocumentRead(ApiModel):
     id: UUID
     source_id: UUID
     vehicle_id: UUID | None = None

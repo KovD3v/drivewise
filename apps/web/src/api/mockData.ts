@@ -2,8 +2,157 @@ import type {
   IngestedDocument,
   ListingWithVehicle,
   VehicleDetail,
+  VehicleSpec,
   VehicleSummary,
 } from './drivewise'
+
+// The API returns many catalog fields these fixtures do not exercise.
+// The factories fill them with the values the API sends for a v1 record.
+type VehicleDefaults = 'vehicle_type' | 'generation_key' | 'phase_key' | 'catalog_version'
+type SpecDefaults =
+  | 'catalog_version'
+  | 'powertrain_type'
+  | 'fuel'
+  | 'engine_code'
+  | 'valid_from'
+  | 'valid_to'
+  | 'external_references'
+  | 'variant_key'
+  | 'is_default'
+  | 'body_style'
+  | 'fuel_type'
+  | 'list_price_eur'
+  | 'energy_consumption_kwh_100km'
+  | 'provenance'
+type ListingDefaults =
+  | 'spec_id'
+  | 'source_key'
+  | 'source_name'
+  | 'source_license'
+  | 'source_ranking_permission'
+  | 'source_url'
+  | 'first_seen_at'
+  | 'last_seen_at'
+  | 'valid_until'
+  | 'is_active'
+  | 'content_hash'
+  | 'spec'
+
+export function mockVehicle(
+  vehicle: Omit<VehicleSummary, VehicleDefaults> & Partial<VehicleSummary>,
+): VehicleSummary {
+  return {
+    vehicle_type: 'car',
+    generation_key: null,
+    phase_key: null,
+    catalog_version: 1,
+    ...vehicle,
+  }
+}
+
+export function mockSpec(
+  spec: Omit<VehicleSpec, SpecDefaults> & Partial<VehicleSpec>,
+): VehicleSpec {
+  return {
+    catalog_version: 1,
+    powertrain_type: null,
+    fuel: null,
+    engine_code: null,
+    valid_from: null,
+    valid_to: null,
+    external_references: [],
+    variant_key: null,
+    is_default: true,
+    body_style: null,
+    fuel_type: null,
+    list_price_eur: null,
+    energy_consumption_kwh_100km: null,
+    provenance: [],
+    ...spec,
+  }
+}
+
+export function mockListing(
+  listing: Omit<ListingWithVehicle, ListingDefaults> & Partial<ListingWithVehicle>,
+): ListingWithVehicle {
+  return {
+    spec_id: null,
+    source_key: null,
+    source_name: null,
+    source_license: null,
+    source_ranking_permission: null,
+    source_url: null,
+    first_seen_at: null,
+    last_seen_at: null,
+    valid_until: null,
+    is_active: true,
+    content_hash: null,
+    spec: null,
+    ...listing,
+  }
+}
+
+type VehicleSpecDetail = VehicleDetail['specs'][number]
+
+// Builds the nested knowledge profile the detail endpoint returns from the flat
+// spec fields; fields the fixture does not know stay null, as in the API.
+export function mockSpecDetail(
+  spec: Omit<VehicleSpec, SpecDefaults> & Partial<VehicleSpec>,
+): VehicleSpecDetail {
+  const flat = mockSpec(spec)
+  return {
+    ...flat,
+    identity: { generation_name: null, restyling_label: null, category: null, doors: null },
+    dimensions: {
+      length_mm: null,
+      width_mm: null,
+      height_mm: null,
+      wheelbase_mm: null,
+      curb_weight_kg: null,
+      gross_weight_kg: null,
+      payload_kg: null,
+      seats: flat.seats,
+      cargo_volume_liters: flat.cargo_volume_liters,
+    },
+    powertrain: {
+      engine_description: flat.engine,
+      engine_code: flat.engine_code,
+      displacement_cc: null,
+      cylinders: null,
+      horsepower: flat.horsepower,
+      power_kw: null,
+      torque_nm: null,
+      fuel_type: flat.fuel_type,
+      battery_total_kwh: flat.battery_kwh,
+      battery_usable_kwh: null,
+      wltp_range_km: flat.wltp_range_km,
+    },
+    transmission_details: {
+      transmission: flat.transmission,
+      transmission_type: null,
+      gear_count: null,
+      drivetrain: flat.drivetrain,
+      differential_type: null,
+    },
+    performance: {
+      acceleration_0_100_s: null,
+      top_speed_kmh: null,
+      braking_100_0_m: null,
+      power_to_weight_kw_per_t: null,
+    },
+    official_efficiency: {
+      homologation_cycle: null,
+      consumption_l_100km: flat.consumption_l_100km,
+      energy_consumption_kwh_100km: flat.energy_consumption_kwh_100km,
+      co2_g_km: flat.co2_g_km,
+      euro_emission_standard: flat.euro_emission_standard,
+    },
+    maintenance_schedule: [],
+    safety: { ratings: [], adas: [], equipment: [] },
+    technology_comfort: [],
+    media: [],
+  }
+}
 
 export const mockVehicles: VehicleSummary[] = [
   {
@@ -66,13 +215,14 @@ export const mockVehicles: VehicleSummary[] = [
     market: 'EU',
     base_price_eur: 42990,
   },
-]
+].map(mockVehicle)
 
 export const mockVehicleDetails: VehicleDetail[] = [
   {
     ...mockVehicles[0],
+    provenance: [],
     specs: [
-      {
+      mockSpecDetail({
         id: '20000000-0000-4000-8000-000000000001',
         trim: '1.0 FireFly Hybrid',
         drivetrain: 'fwd',
@@ -86,13 +236,14 @@ export const mockVehicleDetails: VehicleDetail[] = [
         euro_emission_standard: 'Euro 6e',
         seats: 4,
         cargo_volume_liters: 225,
-      },
+      }),
     ],
   },
   {
     ...mockVehicles[1],
+    provenance: [],
     specs: [
-      {
+      mockSpecDetail({
         id: '20000000-0000-4000-8000-000000000002',
         trim: '1.5 Hybrid Active',
         drivetrain: 'fwd',
@@ -106,13 +257,14 @@ export const mockVehicleDetails: VehicleDetail[] = [
         euro_emission_standard: 'Euro 6e',
         seats: 5,
         cargo_volume_liters: 286,
-      },
+      }),
     ],
   },
   {
     ...mockVehicles[2],
+    provenance: [],
     specs: [
-      {
+      mockSpecDetail({
         id: '20000000-0000-4000-8000-000000000003',
         trim: '1.5 TSI',
         drivetrain: 'fwd',
@@ -126,13 +278,14 @@ export const mockVehicleDetails: VehicleDetail[] = [
         euro_emission_standard: 'Euro 6e',
         seats: 5,
         cargo_volume_liters: 381,
-      },
+      }),
     ],
   },
   {
     ...mockVehicles[3],
+    provenance: [],
     specs: [
-      {
+      mockSpecDetail({
         id: '20000000-0000-4000-8000-000000000004',
         trim: 'Eco-G 100',
         drivetrain: 'fwd',
@@ -146,13 +299,14 @@ export const mockVehicleDetails: VehicleDetail[] = [
         euro_emission_standard: 'Euro 6e',
         seats: 5,
         cargo_volume_liters: 328,
-      },
+      }),
     ],
   },
   {
     ...mockVehicles[4],
+    provenance: [],
     specs: [
-      {
+      mockSpecDetail({
         id: '20000000-0000-4000-8000-000000000005',
         trim: 'Rear-Wheel Drive',
         drivetrain: 'rwd',
@@ -166,7 +320,7 @@ export const mockVehicleDetails: VehicleDetail[] = [
         euro_emission_standard: null,
         seats: 5,
         cargo_volume_liters: 594,
-      },
+      }),
     ],
   },
 ]
@@ -237,7 +391,7 @@ export const mockListings: ListingWithVehicle[] = [
     listed_at: '2026-01-24',
     vehicle: mockVehicles[4],
   },
-]
+].map(mockListing)
 
 export const mockDocuments: IngestedDocument[] = [
   {

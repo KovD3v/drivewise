@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: pgvector/pgvector:pg16
+        image: pgvector/pgvector:pg18
         env:
           POSTGRES_DB: drivewise_test
           POSTGRES_PASSWORD: postgres
@@ -35,7 +35,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version-file: apps/api/.python-version
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -69,3 +69,11 @@ jobs:
 
       - name: Build
         run: bun run build:web
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Check generated API types
+        run: |
+          bun run gen:api-types
+          git diff --exit-code apps/web/src/api/schema.gen.ts
