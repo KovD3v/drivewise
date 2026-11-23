@@ -276,6 +276,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Version */
+        get: operations["version_version_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1947,6 +1964,19 @@ export interface components {
             /** Transmission Type */
             transmission_type: string | null;
         };
+        /** VersionResponse */
+        VersionResponse: {
+            /** Api Version */
+            api_version: string | null;
+            /** Git Commit */
+            git_commit: string | null;
+            /** Schema Version */
+            schema_version: string | null;
+            /** Scoring Version */
+            scoring_version: string;
+            /** Service */
+            service: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2467,6 +2497,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    version_version_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResponse"];
                 };
             };
         };
