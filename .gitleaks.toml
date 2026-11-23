@@ -4,5 +4,10 @@
 useDefault = true
 
 [allowlist]
-description = "Synthetic ACME catalog keys in test fixtures"
-regexes = ['''it-acme-[a-z0-9-]+''', '''metro-g[0-9]+-[a-z0-9-]+''']
+description = "Catalog keys in test fixtures"
+regexes = [
+  '''it-acme-[a-z0-9-]+''',
+  '''metro-g[0-9]+-[a-z0-9-]+''',
+  # Public catalog key of a real model, used as a scraping fixture.
+  '''toyota-yaris-xp210-[a-z0-9-]+''',
+]

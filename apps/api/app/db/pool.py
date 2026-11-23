@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from queue import Empty, LifoQueue
 from threading import Lock
+from time import monotonic
 
 import psycopg
 from psycopg.rows import dict_row
@@ -15,10 +16,20 @@ class DatabaseConfigurationError(RuntimeError):
 
 
 class DatabaseConnectionPool:
-    def __init__(self, settings: Settings, max_size: int = 5) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        max_size: int = 5,
+        max_idle_seconds: float = 60.0,
+    ) -> None:
         self.settings = settings
         self.max_size = max_size
-        self._available: LifoQueue[psycopg.Connection] = LifoQueue(maxsize=max_size)
+        # Serverless instances freeze and Neon suspends idle computes, so a
+        # connection left idle can be dead without psycopg noticing.
+        self.max_idle_seconds = max_idle_seconds
+        self._available: LifoQueue[tuple[psycopg.Connection, float]] = LifoQueue(
+            maxsize=max_size
+        )
         self._created = 0
         self._closed = False
         self._lock = Lock()
@@ -41,7 +52,7 @@ class DatabaseConnectionPool:
         self._closed = True
         while True:
             try:
-                conn = self._available.get_nowait()
+                conn, _ = self._available.get_nowait()
             except Empty:
                 break
             conn.close()
@@ -51,10 +62,14 @@ class DatabaseConnectionPool:
 
     def _acquire(self) -> psycopg.Connection:
         self._closed = False
-        try:
-            return self._available.get_nowait()
-        except Empty:
-            pass
+        while True:
+            try:
+                conn, released_at = self._available.get_nowait()
+            except Empty:
+                break
+            if monotonic() - released_at <= self.max_idle_seconds:
+                return conn
+            self._discard(conn)
 
         with self._lock:
             if self._created < self.max_size:
@@ -74,21 +89,23 @@ class DatabaseConnectionPool:
                     self._created -= 1
                 raise
 
-        return self._available.get()
+        conn, _ = self._available.get()
+        return conn
 
     def _release(self, conn: psycopg.Connection) -> None:
         if conn.closed or self._closed:
-            conn.close()
-            with self._lock:
-                self._created -= 1
+            self._discard(conn)
             return
 
         try:
-            self._available.put_nowait(conn)
+            self._available.put_nowait((conn, monotonic()))
         except Exception:
-            conn.close()
-            with self._lock:
-                self._created -= 1
+            self._discard(conn)
+
+    def _discard(self, conn: psycopg.Connection) -> None:
+        conn.close()
+        with self._lock:
+            self._created -= 1
 
     def _ensure_configured(self) -> None:
         if contains_placeholder_database_url(self.settings.database_url):

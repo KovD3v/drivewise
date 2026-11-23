@@ -15,6 +15,7 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     tanstackStart(),
+    // Produces the server output Vercel deploys; without it the site is a 404.
     nitro(),
     viteReact(),
   ],

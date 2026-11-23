@@ -7,7 +7,7 @@
  * (es. getVehicleById -> GET /api/vehicles/:id) senza toccare i componenti:
  * tutte le funzioni sono già asincrone e restituiscono DTO serializzabili.
  */
-import { fetchVehicles, fetchVehicle, isApiNotFoundError, type VehicleSummary, type VehicleDetail } from "@/api/drivewise";
+import { fetchVehicles, fetchVehicle, isApiNotFoundError, type VehicleSummary } from "@/api/drivewise";
 import vehiclesJson from "@/data/drivewise/functional-v1/vehicles.json";
 import theftReferenceJson from "@/data/drivewise/functional-v1/theft_reference_italy_2024.json";
 
@@ -105,8 +105,10 @@ export const theftReference = theftReferenceJson as unknown as TheftReference;
 // Catalog v2 leaves an unreviewed body style empty; show it, but never offer it as a filter.
 const UNKNOWN_CATEGORY = "Categoria non indicata";
 
-export function fromApiVehicle(v: VehicleSummary | VehicleDetail): Vehicle {
-  const spec = 'specs' in v ? v.specs[0] : undefined;
+// Accepts a list item, a detail or an advisor result: only the boot volume is read from a spec.
+type ApiVehicle = VehicleSummary & { specs?: { cargo_volume_liters: number | null }[] };
+export function fromApiVehicle(v: ApiVehicle): Vehicle {
+  const spec = v.specs?.[0];
   return {
     id: v.id, vehicle_type: 'car', brand: v.make, model: v.model, category: v.body_style ?? UNKNOWN_CATEGORY,
     pricing: { new_price_estimate: v.base_price_eur, currency: 'EUR' },

@@ -1,12 +1,11 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel
-
+from app.schemas.base import ApiModel
 from app.schemas.vehicles import VehicleSpec, VehicleSummary
 
 
-class ListingWithVehicle(BaseModel):
+class ListingWithVehicle(ApiModel):
     id: UUID
     vehicle_id: UUID
     spec_id: UUID | None = None

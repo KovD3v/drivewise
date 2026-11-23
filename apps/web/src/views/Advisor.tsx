@@ -556,14 +556,14 @@ function OfferFacts({ item }: { item: AdvisorRecommendationItem }) {
 function ComponentScores({
   scores,
 }: {
-  scores: Record<AdvisorScoreComponent, number | null>
+  scores: Partial<Record<AdvisorScoreComponent, number | null>>
 }) {
   return (
     <section className="component-scores" aria-label="Punteggi per componente">
       <h5>Punteggi</h5>
       <div className="score-list">
         {componentOrder.map((component) => {
-          const score = scores[component]
+          const score = scores[component] ?? null
           const boundedScore = score === null ? undefined : Math.min(100, Math.max(0, score))
           return (
             <div className="score-row" key={component}>

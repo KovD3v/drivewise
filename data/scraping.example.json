@@ -1,0 +1,41 @@
+{
+  "target": {
+    "model_family_key": "toyota-yaris",
+    "make": "Toyota",
+    "model": "Yaris",
+    "market": "IT",
+    "sold_from": "2010-01-01",
+    "instructions": "First validation job: examine MY17 and MY20 ordinary Yaris packets. Start with one clearly identified Italian variant per generation. Keep GR Yaris separate. Provisional specifications cannot be verified. Expand the target in later jobs after reviewing this pilot.",
+    "metrics": [
+      "engine_power_kw", "system_power_kw", "engine_displacement_cc", "cylinders",
+      "length_mm", "body_width_mm", "width_with_mirrors_mm", "height_mm", "seats",
+      "cargo_volume_liters", "mass_kg", "liquid_consumption_l_100km", "co2_g_km"
+    ]
+  },
+  "sources": [
+    {
+      "record": {
+        "source_key": "toyota-italia-newsroom",
+        "name": "Toyota Italia newsroom",
+        "source_type": "manual_seed",
+        "market": "IT",
+        "ranking_permission": "manual_validation_only",
+        "url": "https://newsroom.toyota.it/",
+        "license": "Review required; public access does not establish catalog reuse rights.",
+        "notes": "Operator-seeded manufacturer publications. The agent cannot grant ranking permission."
+      },
+      "allowed_hosts": ["newsroom.toyota.it"],
+      "seed_urls": [
+        "https://newsroom.toyota.it/nuova-yaris-librido-contagia-la-citta/",
+        "https://newsroom.toyota.it/nuova-toyota-yaris-inizia-la-vendita/"
+      ]
+    }
+  ],
+  "limits": {
+    "max_model_calls": 24,
+    "max_browser_calls": 12,
+    "max_output_tokens": 8000,
+    "max_context_bytes": 240000,
+    "max_document_chars": 200000
+  }
+}

@@ -207,7 +207,7 @@ function SearchResultCard({
         {Object.entries(item.metadata).map(([key, value]) => (
           <div key={key}>
             <dt>{key}</dt>
-            <dd>{value ?? 'none'}</dd>
+            <dd>{String(value ?? 'none')}</dd>
           </div>
         ))}
       </dl>
