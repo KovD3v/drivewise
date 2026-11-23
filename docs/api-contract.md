@@ -221,9 +221,13 @@ adds the following groups:
   Ranges and competing contexts stay in `GET /vehicles/{vehicle_id}/facts`.
   The block carries no scores.
 
-For catalog v2 specs, `powertrain.displacement_cc` comes from an eligible,
-exact, whole-number `engine_displacement_cc` fact; other v2 profile fields
-stay `null` until a reviewed projection exists.
+For catalog v2 specs, these fields come from eligible, exact facts:
+`powertrain.displacement_cc`, `dimensions.length_mm`, `dimensions.width_mm`
+(body width) and `dimensions.height_mm`, as whole numbers, and
+`powertrain.power_kw` (system power, or engine power when the powertrain is
+`ICE`). A value published as a range, a value from a source that is not
+reviewed, and every other v2 profile field (curb weight included) stay `null`;
+ranges are in `GET /vehicles/{vehicle_id}/facts`.
 
 `maintenance_schedule` items contain `id`, `operation_code`, `title`,
 `interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings

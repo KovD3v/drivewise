@@ -274,10 +274,16 @@ For motorcycles and scooters, `GET /vehicles/{id}` adds a `two_wheel` block per
 spec from the same scalar rule: seat height, wet weight (`mass_kg` with
 `method: wet`), fuel tank and underseat storage. A seat range, or a dry and a wet
 mass for the same variant, therefore yields null there; the facts API keeps both.
-For every v2 spec, an exact whole-number `engine_displacement_cc` fact also fills
-`powertrain.displacement_cc` in that response. Precise
-power, battery, dimensions and other metrics remain in the facts API; ambiguous
-legacy horsepower/battery fields remain null for v2 records.
+For every v2 spec, that response also fills the legacy fields that mean the same
+as a fact, from the same scalar rule: `powertrain.displacement_cc`
+(`engine_displacement_cc`), `dimensions.length_mm`, `dimensions.width_mm`
+(`body_width_mm`) and `dimensions.height_mm`, as whole numbers only.
+`powertrain.power_kw` is the power of the whole vehicle: it takes
+`system_power_kw`, or `engine_power_kw` only when the powertrain is `ICE`.
+`dimensions.curb_weight_kg` stays null, because no mass method of a fact is
+defined as curb weight. Battery, mirrors-included width and other metrics remain
+in the facts API; ambiguous legacy horsepower/battery fields remain null for v2
+records.
 
 Advisor and Model Analysis use the shared provenance and eligible scalar views.
 They, and Guided Decisions, rank cars only: rows whose `vehicle_type` is not
