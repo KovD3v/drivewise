@@ -15,6 +15,7 @@ from app.ingestion import open_data
 
 DATA = PROJECT_ROOT / "data" / "open-data"
 USER_AGENT = "open-data-catalog-builder/1 (python-urllib)"
+CARS, TWO_WHEELERS = "cars.catalog-v2.json", "two-wheelers.catalog-v2.json"
 
 
 def http_get(url: str, *, attempts: int = 4, pause: float = 1.0) -> bytes:
@@ -59,6 +60,12 @@ def main(argv=None) -> int:
         type=Path,
         help="Also write the gap register here (the committed copy lives in docs/).",
     )
+    parser.add_argument(
+        "--previous",
+        type=Path,
+        help="The run directory whose bundles are already published. The new bundles "
+        "then keep its vehicles, variants and history, and add only what changed.",
+    )
     args = parser.parse_args(argv)
     name_map = json.loads(args.names.read_text())
     two_wheelers = json.loads(args.two_wheelers.read_text())
@@ -71,11 +78,34 @@ def main(argv=None) -> int:
         cars, car_report = open_data.build_cars(run, name_map)
         bikes, bike_report = open_data.build_two_wheelers(run, two_wheelers)
         register = open_data.gap_register(run, car_report, bike_report)
-        outputs = {
-            "cars.catalog-v2.json": cars,
-            "two-wheelers.catalog-v2.json": bikes,
-            "report.json": {"cars": car_report, "two_wheelers": bike_report},
-        }
+        report = {"cars": car_report, "two_wheelers": bike_report}
+        if args.previous:
+            if args.previous.resolve().parent != run.artifact_root:
+                raise open_data.OpenDataError(
+                    "Keep the previous run next to the new one: evidence paths are "
+                    "relative to their common folder."
+                )
+            report["update"] = {}
+            for label, name in (("cars", CARS), ("two_wheelers", TWO_WHEELERS)):
+                earlier = args.previous / name
+                if not earlier.exists():
+                    continue
+                fresh = cars if label == "cars" else bikes
+                merged, update = open_data.continue_bundle(
+                    json.loads(earlier.read_text()), fresh
+                )
+                report["update"][label] = update
+                if label == "cars":
+                    cars = merged
+                else:
+                    bikes = merged
+                print(
+                    f"{label} update: {len(update['revised'])} values revised, "
+                    f"{update['unchanged']} unchanged, "
+                    f"{len(update['new_variants'])} new variants, "
+                    f"{len(update['identity_differs'])} identities differ"
+                )
+        outputs = {CARS: cars, TWO_WHEELERS: bikes, "report.json": report}
         for name, data in outputs.items():
             if data is not None:
                 _write(args.run_dir / name, _json(data))
@@ -96,6 +126,7 @@ def main(argv=None) -> int:
             f"gaps: {len(register['gaps'])} per-model, "
             f"{len(register['dataset_gaps'])} for every model"
         )
+        print(f"artifact root for the import: {run.artifact_root}")
         return 0
     except (open_data.OpenDataError, ValidationError, OSError, ValueError) as error:
         print(

@@ -8,10 +8,16 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from test_catalog_v2_publication import conn, publish  # noqa: F401
 
 from app.ingestion import open_data
+from app.ingestion.catalog import CatalogValidationError
 from app.ingestion.catalog_v2 import CatalogV2
-from app.ingestion.catalog_v2_writer import verify_artifacts
+from app.ingestion.catalog_v2_writer import (
+    publish_catalog_v2,
+    stage_catalog_v2,
+    verify_artifacts,
+)
 
 NAMES = {
     "families": [
@@ -272,7 +278,7 @@ def test_fetch_is_resumable_and_build_never_touches_the_network(run):
     first = open_data.build_cars(run, NAMES)
     assert first == open_data.build_cars(open_data.Run(run.root), NAMES)
     bundle = CatalogV2.model_validate(first[0])
-    verify_artifacts(bundle, run.artifacts)
+    verify_artifacts(bundle, run.artifact_root)
     assert {s.ranking_permission for s in bundle.sources} == {"manual_validation_only"}
 
 
@@ -489,6 +495,101 @@ def test_a_version_that_is_a_small_slice_of_its_powertrain_is_flagged():
     truncated = {"aggregations": {"g": values({}, other=5) | {"buckets": []}}}
     with pytest.raises(open_data.OpenDataError, match="too many powertrains"):
         open_data.powertrain_groups(family, truncated)
+
+
+class LaterRegistries(FakeRegistries):
+    """A later download: every EEA answer differs in its timing, one Panda grew."""
+
+    def __call__(self, url: str) -> bytes:
+        data = json.loads(super().__call__(url))
+        if isinstance(data, dict):
+            data["took"] = self.calls
+        for row in data if isinstance(data, list) else []:
+            if row.get("merk") == "FIAT":
+                row["lengte"] = "368"
+        return json.dumps(data).encode()
+
+
+@pytest.fixture
+def later(run):
+    later = open_data.Run(run.root.parent / "run-later")
+    open_data.fetch(
+        later,
+        NAMES,
+        TWO_WHEELERS,
+        LaterRegistries(),
+        now=lambda: datetime(2026, 12, 23, tzinfo=UTC),
+    )
+    return later
+
+
+def test_a_later_run_continues_the_earlier_bundle(run, later):
+    first, _ = open_data.build_cars(run, NAMES)
+    fresh, _ = open_data.build_cars(later, NAMES)
+    # Rebuilt alone, the later bundle rests every identity on new evidence.
+    assert fresh["vehicles"] != first["vehicles"]
+
+    merged, update = open_data.continue_bundle(first, fresh)
+
+    assert merged["vehicles"] == first["vehicles"]
+    assert merged["variants"] == first["variants"]
+    assert merged["decisions"][:-1] == first["decisions"]
+    revised = merged["decisions"][-1]
+    (old,) = [
+        d
+        for d in first["decisions"]
+        if d["metric"] == "length_mm" and "it-fiat-panda.petrol-h." in d["variant_key"]
+    ]
+    assert revised["supersedes_id"] == old["id"]
+    assert update["revised"] == [
+        {
+            "variant_key": old["variant_key"],
+            "metric": "length_mm",
+            "from": "365",
+            "to": "368",
+        }
+    ]
+    assert update["unchanged"] == len(first["decisions"]) - 1
+    assert update["new_variants"] == update["identity_differs"] == []
+    # Evidence of both runs resolves from their common folder.
+    verify_artifacts(CatalogV2.model_validate(merged), run.artifact_root)
+    assert open_data.continue_bundle(merged, fresh)[0] == merged
+    # A model that enters the list later is added next to the published ones.
+    panda_only, _ = open_data.build_cars(run, {"families": NAMES["families"][:1]})
+    grown, update = open_data.continue_bundle(panda_only, fresh)
+    assert update["new_vehicles"] == ["it-bmw-x1"]
+    assert [v["canonical_key"] for v in grown["vehicles"]] == [
+        "it-fiat-panda",
+        "it-bmw-x1",
+    ]
+
+
+def test_a_continued_bundle_publishes_over_the_earlier_one(conn, run, later):  # noqa: F811
+    first, _ = open_data.build_cars(run, NAMES)
+    fresh, _ = open_data.build_cars(later, NAMES)
+    merged, _ = open_data.continue_bundle(first, fresh)
+    root = run.artifact_root
+    publish(conn, first, root)
+
+    def length():
+        return conn.execute(
+            "SELECT f.value_min FROM catalog_current_facts f "
+            "JOIN vehicle_specs s ON s.id = f.spec_id "
+            "WHERE f.metric = 'length_mm' "
+            "AND s.variant_key LIKE 'it-fiat-panda.petrol-h.%'"
+        ).fetchone()["value_min"]
+
+    assert length() == 3650
+    # The rebuilt bundle alone is refused: it would rewrite published identities.
+    batch = stage_catalog_v2(conn, CatalogV2.model_validate(fresh), artifact_root=root)
+    with pytest.raises(CatalogValidationError, match="Published identity differs"):
+        publish_catalog_v2(conn, batch, artifact_root=root)
+    assert length() == 3650
+
+    publish(conn, merged, root)
+    assert length() == 3680
+    batch = stage_catalog_v2(conn, CatalogV2.model_validate(merged), artifact_root=root)
+    assert publish_catalog_v2(conn, batch, artifact_root=root) == "unchanged"
 
 
 def test_cli_builds_bundles_and_the_register_from_a_stored_run(run, tmp_path, capsys):

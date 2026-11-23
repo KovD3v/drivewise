@@ -54,11 +54,14 @@ The EEA year is fixed to 2024 because it is the latest year with final data
 
 ## Run it
 
-All commands run from the repository root. Pick a run directory under the
-git-ignored `data/private/catalog/`.
+All commands run from the repository root. Runs sit side by side in the
+git-ignored `data/private/catalog/`, one folder per download. That common folder
+is the artifact root: evidence paths in a bundle start with the run's folder name,
+so never rename a run folder after its bundle is published.
 
 ```sh
-RUN=data/private/catalog/open-data-2026-11-23
+ROOT=data/private/catalog
+RUN=$ROOT/open-data-2026-11-23
 
 # 1. Download. About 480 requests, 10 minutes. Safe to repeat: it resumes.
 uv run --frozen --project apps/api python apps/api/scripts/build_open_data_catalog.py \
@@ -70,13 +73,13 @@ uv run --frozen --project apps/api python apps/api/scripts/build_open_data_catal
 
 # 3. Check the bundle against its evidence, offline.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --check "$RUN/cars.catalog-v2.json" --artifact-root "$RUN/artifacts"
+  --check "$RUN/cars.catalog-v2.json" --artifact-root "$ROOT"
 
 # 4. Stage, then publish, on the database in DATABASE_URL.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --stage "$RUN/cars.catalog-v2.json" --artifact-root "$RUN/artifacts"
+  --stage "$RUN/cars.catalog-v2.json" --artifact-root "$ROOT"
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --publish <BATCH_ID> --artifact-root "$RUN/artifacts"
+  --publish <BATCH_ID> --artifact-root "$ROOT"
 ```
 
 The run directory holds:
@@ -92,8 +95,9 @@ The run directory holds:
 
 `fetch` is the only step that uses the network. `build` reads only the run
 directory and checks each file against its hash, so the same run directory always
-gives the same bundle, byte for byte. Keep the run directory: publication verifies
-the bundle against `artifacts/`.
+gives the same bundle, byte for byte. Keep every published run directory: each
+publication verifies its bundle against the stored responses, and a later run
+continues the earlier bundle.
 
 ## How cars are chosen
 
@@ -210,14 +214,14 @@ needed. After publication, catalog v2 treats three kinds of data differently:
   superseding decision. A wrong vehicle or variant row needs a reviewed migration
   or a backup restore.
 
-**The builder cannot yet update what it published.** Measured on a disposable
-local database (2026-11-23): after publishing the car bundle, one changed RDW
-response (one more registered Fiat Panda) changed the evidence ID of that variant,
-and the import rejected the whole rebuilt bundle with `Published identity differs
-at identity_evidence`. Read in the code, not run: a new EEA year changes the
-evidence of every model in the same way, and the builder emits no superseding
-decisions. Before the first production publication the builder must keep the
-identity evidence of what is already published and emit superseding decisions.
+**A later download must continue the published bundle, not replace it.** Every
+download gives new evidence: an EEA response carries its own timing, and RDW counts
+change daily. Measured on a disposable local database (2026-11-23): after
+publishing the car bundle, a bundle rebuilt alone from a later download was
+rejected with `Published identity differs at identity_evidence`. Built with
+`--previous` (see "Updating"), the same download published: 1 changed value became
+a superseding decision, 1,759 unchanged values added no rows, and a repeat returned
+`unchanged`.
 
 The same run also showed five things to settle first:
 
@@ -263,18 +267,44 @@ succeeded for both bundles, and a second `--publish` returned `unchanged`.
 
 ## Updating
 
-These steps work while nothing is published. After a publication they are blocked
-by the limit described in "Before publishing to production".
+Before anything is published, rebuild freely. After a publication, download into a
+new run folder next to the published one and build with `--previous`:
+
+```sh
+NEW=$ROOT/open-data-2027-06-01
+uv run --frozen --project apps/api python apps/api/scripts/build_open_data_catalog.py \
+  fetch --run-dir "$NEW"
+uv run --frozen --project apps/api python apps/api/scripts/build_open_data_catalog.py \
+  build --run-dir "$NEW" --previous "$RUN" --register-dir docs
+```
+
+The new bundles then contain the whole history:
+
+- **Published vehicles and variants** are kept exactly as they are, with the
+  evidence they were published on.
+- **A changed value** becomes a new decision that supersedes the old one.
+- **An unchanged value** adds nothing.
+- **A value the new run cannot decide** keeps its published decision.
+- **New models and new versions** are added next to the published ones.
+
+`report.json` lists all of this under `update`. An entry under `identity_differs`
+means the new run would describe a published vehicle or variant differently (for
+example after a change to the name table). The published identity stays; changing
+it needs a reviewed migration. Publish the new bundles with the same import
+commands and the same `--artifact-root`. The gap register describes the new run
+only.
+
+What to change for each kind of update:
 
 - **New EEA year.** Change `EEA_YEAR` in
   [`open_data.py`](../apps/api/app/ingestion/open_data.py) when the year has final
-  data, fetch into a new run directory, and review the unmapped names. A model
-  whose best-selling version changed gets a new variant key; the old variant stays.
+  data, and review the unmapped names. A model whose best-selling version changed
+  gets a new variant key; the old variant stays published.
 - **More models.** Raise `TOP_FAMILIES`, or add rules to the name table.
 - **More two-wheelers.** Add entries to the two-wheeler table. Check the exact RDW
   name and displacement first, because one name can cover a 50 cc and a 125 cc.
-- **A changed rule.** Bump `VERSION`. It is part of every evidence ID, so facts
-  from the new rule never overwrite the old ones silently.
+- **A changed rule.** Bump `VERSION`. It is part of every evidence ID, so the
+  values of the new rule become new decisions instead of rewriting old ones.
 
 The name list reads the 450 most-registered `(make, name)` pairs. Names below that
 rank (22,729 registrations in 2024, 1.5%) are neither mapped nor listed.

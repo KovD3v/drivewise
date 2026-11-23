@@ -371,10 +371,14 @@ def two_wheel_power_request(
 
 
 class Run:
-    """A run directory: raw responses under artifacts/, described by manifest.json."""
+    """A run directory: raw responses under artifacts/, described by manifest.json.
+
+    Runs sit side by side in one folder, the artifact root. Evidence paths start with
+    the run's folder name, so a later run never collides with a published one."""
 
     def __init__(self, root: Path):
         self.root = root
+        self.artifact_root = root.resolve().parent
         self.artifacts = root / "artifacts"
         self.manifest_path = root / "manifest.json"
         self.manifest: dict[str, dict] = (
@@ -397,6 +401,9 @@ class Run:
         if hashlib.sha256(data).hexdigest() != entry["sha256"]:
             raise OpenDataError(f"Artifact {request.artifact_path} changed on disk.")
         return json.loads(data)
+
+    def evidence_path(self, request: Request) -> str:
+        return f"{self.root.resolve().name}/artifacts/{request.artifact_path}"
 
     def store(self, request: Request, data: bytes, retrieved_at: datetime) -> None:
         json.loads(data)  # a non-JSON error page must never become evidence
@@ -652,14 +659,15 @@ class _Bundle:
 
     def snapshot(self, request: Request, source_key: str) -> str:
         entry = self.run.manifest[request.artifact_path]
-        snapshot_id = _uuid("snapshot", request.artifact_path, entry["sha256"])
+        path = self.run.evidence_path(request)
+        snapshot_id = _uuid("snapshot", path, entry["sha256"])
         self.snapshots[snapshot_id] = {
             "id": snapshot_id,
             "source_key": source_key,
             "url": request.url,
             "retrieved_at": entry["retrieved_at"],
             "content_sha256": entry["sha256"],
-            "artifact_path": request.artifact_path,
+            "artifact_path": path,
             "media_type": "application/json",
             "evidence_kind": "sourced",
         }
@@ -747,6 +755,92 @@ class _Bundle:
         }
         # Validating here means a bundle on disk has always passed the contract.
         return CatalogV2.model_validate(bundle).model_dump(mode="json")
+
+
+BUNDLE_PARTS = (
+    "sources",
+    "vehicles",
+    "variants",
+    "snapshots",
+    "observations",
+    "decisions",
+)
+
+
+def _scope(record: dict) -> tuple:
+    context = json.dumps(record["context"], sort_keys=True)
+    return record["variant_key"], record["metric"], context
+
+
+def _interval(observation: dict) -> tuple:
+    return _number(observation["value_min"]), _number(observation["value_max"])
+
+
+def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
+    """Continue an earlier bundle with the bundle of a later run.
+
+    Catalog v2 freezes a published vehicle or variant together with its evidence, and
+    wants the whole history of a fact in one chain. So every earlier record is kept as
+    it is, new vehicles and variants are added, and a fresh value becomes a decision
+    that supersedes the earlier one only where the value changed."""
+    fresh = fresh or {part: [] for part in BUNDLE_PARTS}
+    merged = {"schema_version": 2}
+    merged.update({part: list(previous[part]) for part in BUNDLE_PARTS})
+    report = {
+        "new_vehicles": [],
+        "new_variants": [],
+        "identity_differs": [],
+        "revised": [],
+        "unchanged": 0,
+        "kept_without_fresh_value": 0,
+    }
+    for part, key in (("vehicles", "canonical_key"), ("variants", "variant_key")):
+        published = {record[key]: record for record in previous[part]}
+        for record in fresh[part]:
+            earlier = published.get(record[key])
+            if earlier is None:
+                merged[part].append(record)
+                report[f"new_{part}"].append(record[key])
+            elif {**earlier, "evidence_snapshot_ids": None} != {
+                **record,
+                "evidence_snapshot_ids": None,
+            }:
+                # The earlier identity wins; a person decides whether it needs a migration.
+                report["identity_differs"].append(record[key])
+    observations = {o["id"]: o for o in previous["observations"]}
+    heads = {_scope(decision): decision for decision in previous["decisions"]}
+    fresh_observations = {o["id"]: o for o in fresh["observations"]}
+    refreshed = set()
+    for decision in fresh["decisions"]:
+        scope = _scope(decision)
+        refreshed.add(scope)
+        observation = fresh_observations[decision["selected_observation_id"]]
+        head = heads.get(scope)
+        if head is not None:
+            selected = observations.get(head["selected_observation_id"])
+            if selected and _interval(selected) == _interval(observation):
+                report["unchanged"] += 1
+                continue
+            decision = {**decision, "supersedes_id": head["id"]}
+            report["revised"].append(
+                {
+                    "variant_key": scope[0],
+                    "metric": scope[1],
+                    "from": selected and selected["raw_value"],
+                    "to": observation["raw_value"],
+                }
+            )
+        merged["observations"].append(observation)
+        merged["decisions"].append(decision)
+    report["kept_without_fresh_value"] = len(set(heads) - refreshed)
+    used = {o["snapshot_id"] for o in merged["observations"]}
+    for record in [*merged["vehicles"], *merged["variants"]]:
+        used.update(record["evidence_snapshot_ids"])
+    snapshots = {s["id"]: s for s in [*previous["snapshots"], *fresh["snapshots"]]}
+    merged["snapshots"] = [snapshots[snapshot_id] for snapshot_id in sorted(used)]
+    sources = {s["source_key"]: s for s in [*fresh["sources"], *previous["sources"]]}
+    merged["sources"] = [sources[key] for key in sorted(sources)]
+    return CatalogV2.model_validate(merged).model_dump(mode="json"), report
 
 
 def _measured(mode: str) -> dict:
