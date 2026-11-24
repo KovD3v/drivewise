@@ -468,6 +468,14 @@ def test_a_later_bundle_fills_an_unknown_body_style_with_its_evidence(
             lambda d: d["vehicles"][0].update(evidence_snapshot_ids=[COACHWORK]),
             "differs at body_style",
         ),
+        # Repeating a stored snapshot brings no new source for the body style.
+        (
+            None,
+            lambda d: d["vehicles"][0].update(
+                evidence_snapshot_ids=[REGISTRY, REGISTRY]
+            ),
+            "differs at body_style",
+        ),
         # Every published variant must carry the filled body style.
         (
             None,

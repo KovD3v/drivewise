@@ -116,7 +116,8 @@ def _fills_body_style(row, values, differing, *, table) -> bool:
     stored, bundled = list(row["identity_evidence"]), list(values["identity_evidence"])
     if bundled[: len(stored)] != stored:
         return False
-    return table == "vehicle_specs" or len(bundled) > len(stored)
+    # A repeated snapshot is no new source, so the appended part must bring one.
+    return table == "vehicle_specs" or bool(set(bundled[len(stored) :]) - set(stored))
 
 
 def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
