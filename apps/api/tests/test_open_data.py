@@ -36,7 +36,12 @@ TWO_WHEELERS = {
             "rdw_merk": "PIAGGIO",
             "rdw_handelsbenaming": "LIBERTY 125 ABS",
             "displacement_cc": 124,
-            "motospecdb": "piaggio-liberty-125-test",
+            "motospecdb": {
+                "slug": "piaggio-liberty-125-test",
+                "model": "Liberty 125 (Test Gen)",
+                "years_covered": "2021\u2013Present",
+                "chassis_codes": ["TST1"],
+            },
         },
         {
             "slug": "ghost-125",
@@ -936,39 +941,76 @@ def test_motospecdb_supplies_measured_two_wheel_facts_only(run):
     assert report["models"][0]["motospecdb"] == "piaggio-liberty-125-test"
 
 
+def reviewed(found: dict) -> dict:
+    """The link a person writes after checking the entry: its slug and what it said."""
+    return {k: found[k] for k in ("slug", "model", "years_covered", "chassis_codes")}
+
+
+ASTER = bike("x", "Aster 300", "2021–Present", ["AS3"])
+
+
 @pytest.mark.parametrize(
     "found,link,reason",
     [
-        (bike("x", "Aster 300", "2021–Present", ["AS3"]), "x", None),
+        (ASTER, reviewed(ASTER), None),
         # Variants or generations joined in one entry: refused.
         (
             bike("x", "Aster 300 / Aster 300 S", "2021–Present", ["AS3"]),
-            "x",
+            None,
             "motospecdb_combined_entry",
         ),
         (
             bike("x", "Aster 300", "2017–Present", ["AS1", "AS3"]),
-            "x",
+            None,
             "motospecdb_combined_entry",
         ),
-        # Years that miss the registrations read, unless the chassis code is the name.
+        # Years that miss the registrations read.
         (
             bike("x", "Aster 300", "2025–Present", ["AS3"]),
-            "x",
+            None,
             "motospecdb_years_differ",
         ),
-        (bike("x", "Aster 300", "2018-2023", ["AS3"]), "x", "motospecdb_years_differ"),
-        (bike("x", "Aster 300", "2025–Present", ["ASTER 300"]), "x", None),
+        (bike("x", "Aster 300", "2018-2023", ["AS3"]), None, "motospecdb_years_differ"),
+        # A chassis code equal to the commercial name does not prove the generation.
         (
-            {**bike("x", "Aster 300", "2021–Present", ["AS3"]), "brand": "Other"},
-            "x",
+            bike("x", "Aster 300", "2001-2008", ["ASTER 300"]),
+            None,
+            "motospecdb_years_differ",
+        ),
+        (
+            {**ASTER, "brand": "Other"},
+            None,
             "motospecdb_brand_differs",
         ),
+        # The source changed the entry after the review: the link must be reviewed again.
+        (
+            bike("x", "Aster 300 & Aster Touring", "2021–Present", ["AS3"]),
+            reviewed(ASTER),
+            "motospecdb_link_changed",
+        ),
+        (
+            bike("x", "Aster 300", "2001-2008", ["AS3"]),
+            reviewed(ASTER),
+            "motospecdb_link_changed",
+        ),
+        # A bare slug records no review of what the entry said.
+        (ASTER, "x", "motospecdb_link_unbound"),
         # A name match without a reviewed link is never made.
-        (bike("x", "Aster 300", "2021–Present", ["AS3"]), None, "motospecdb_no_entry"),
+        (ASTER, "none", "motospecdb_no_entry"),
+        # CC BY needs the model page; the reason cites the manual: both must be there.
+        ({**ASTER, "urls": {}}, None, "motospecdb_attribution_missing"),
+        (
+            {**ASTER, "manual_source_citation": None},
+            None,
+            "motospecdb_attribution_missing",
+        ),
     ],
 )
 def test_a_motospecdb_entry_must_fit_one_model(found, link, reason):
+    if link is None:
+        link = reviewed(found)
+    elif link == "none":
+        link = None
     entry = {"make": "Piaggio", "rdw_handelsbenaming": "ASTER 300", "motospecdb": link}
     match, refused = open_data.motospecdb_entry(entry, [found], 2026)
     assert refused == reason

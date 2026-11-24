@@ -54,9 +54,11 @@ person, and the source stays `manual_validation_only` until then.
 - [x] Method used to match source records to Drivewise vehicle and variant keys:
       a hand-checked link in
       [`two-wheelers.it.json`](../../data/open-data/two-wheelers.it.json), then
-      rules the builder applies: same make; the entry names one variant (no
-      "A / B" model and at most one chassis code); its years cover the Dutch
-      registrations read, or its chassis code equals the Dutch commercial name.
+      rules the builder applies: same make; the entry still states the model,
+      years and chassis codes recorded in the link when it was checked; the entry
+      names one variant (no "A / B" model and at most one chassis code); its years
+      cover the Dutch registrations read; it carries its model page and its
+      owner's manual citation.
       See [open-data-import.md](../open-data-import.md).
 - [x] Known completeness or accuracy limitations: the provenance of the values is
       unknown beyond the publisher's own citation of owner's manuals; nothing was

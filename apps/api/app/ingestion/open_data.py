@@ -495,32 +495,45 @@ MOTOSPECDB_FACTS = (
 _YEARS = re.compile(r"^\s*(\d{4})\s*[\u2013-]\s*(\d{4}|Present)\s*$")
 
 
+# A person links a two-wheeler to one MotoSpecDB entry after reading it. The link keeps
+# what the entry said then, so a later change of the entry needs a new review.
+MOTOSPECDB_REVIEWED = ("model", "years_covered", "chassis_codes")
+
+
 def motospecdb_entry(
     entry: dict, bikes: list[dict], until_year: int
 ) -> tuple[dict | None, str | None]:
     """The MotoSpecDB entry a person matched to this model, if it passes the rules.
 
+    The link must still describe the entry as reviewed (model, years, chassis codes).
     The entry must describe one variant of one generation: a name joining variants
-    ("A / B") or several chassis codes is refused. Make and model come from the
-    hand-reviewed link; the chassis code must equal the Dutch commercial name, or
-    the years must cover every year of the Dutch registrations read."""
-    wanted = entry.get("motospecdb")
+    ("A / B") or several chassis codes is refused. Its years must cover every year of
+    the Dutch registrations read. CC BY needs the model page, and the decision cites
+    the owner's manual, so an entry without both is refused."""
+    link = entry.get("motospecdb")
+    if link is not None and not isinstance(link, dict):
+        return None, "motospecdb_link_unbound"
+    wanted = (link or {}).get("slug")
     found = next((b for b in bikes if wanted and b.get("slug") == wanted), None)
     if found is None:
         return None, "motospecdb_no_entry"
     if found.get("brand", "").casefold() != entry["make"].casefold():
         return None, "motospecdb_brand_differs"
+    if any(found.get(field) != link.get(field) for field in MOTOSPECDB_REVIEWED):
+        return None, "motospecdb_link_changed"
     codes = found.get("chassis_codes") or []
     if "/" in found.get("model", "") or len(codes) > 1:
         return None, "motospecdb_combined_entry"
     years = _YEARS.match(found.get("years_covered") or "")
-    covered = bool(years) and (
+    if not years or not (
         int(years[1]) <= TWO_WHEEL_SINCE_YEAR
         and (years[2] == "Present" or int(years[2]) >= until_year)
-    )
-    same_code = slug(entry["rdw_handelsbenaming"]) in {slug(c) for c in codes}
-    if not covered and not same_code:
+    ):
         return None, "motospecdb_years_differ"
+    if not (found.get("urls") or {}).get("en") or not (
+        found.get("manual_source_citation") or {}
+    ).get("en"):
+        return None, "motospecdb_attribution_missing"
     return found, None
 
 
@@ -1558,7 +1571,8 @@ def _motospecdb_facts(bundle, item, entry, bikes, variant_key, requests) -> None
         bundle.run.manifest[requests["versions"].artifact_path]["retrieved_at"][:4]
     )
     found, refused = motospecdb_entry(entry, bikes, until)
-    item["motospecdb"] = entry.get("motospecdb")
+    link = entry.get("motospecdb")
+    item["motospecdb"] = link.get("slug") if isinstance(link, dict) else link
     if found is None:
         for metric, *_ in MOTOSPECDB_FACTS:
             item["gaps"].append({"metric": metric, "reason": refused})
@@ -1633,7 +1647,13 @@ GAP_REASONS = {
     "motospecdb_combined_entry": "The MotoSpecDB entry joins several variants or "
     "generations, so its values may belong to another one.",
     "motospecdb_years_differ": "The MotoSpecDB entry's years do not cover the "
-    "registrations read, and no chassis code matches.",
+    "registrations read.",
+    "motospecdb_link_unbound": "The link names the entry only by slug; it does not "
+    "record the model, years and chassis codes that were reviewed.",
+    "motospecdb_link_changed": "The MotoSpecDB entry no longer says what was "
+    "reviewed (model, years or chassis codes); review the link again.",
+    "motospecdb_attribution_missing": "The MotoSpecDB entry lacks its model page or "
+    "its owner's manual citation, which the credit and the decision need.",
     "motospecdb_field_empty": "The MotoSpecDB entry has no value for this field.",
     "unverified_origin": "The source cites owner's manuals; its values are not "
     "otherwise verified.",

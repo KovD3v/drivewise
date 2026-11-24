@@ -263,11 +263,17 @@ version is the one sold in Italy.
 
 Seat height, wet weight (`mass_kg` with `method: wet`) and fuel tank come from
 MotoSpecDB. A person links each two-wheeler to one entry with the `motospecdb`
-field of the two-wheeler table. The builder still refuses the entry when its
-make differs, when it joins variants or generations (a model named "A / B" or
-more than one chassis code), or when its years do not cover the Dutch
-registrations read (from 2024 to the download year) and no chassis code equals
-the Dutch commercial name. Only those three measured fields enter; the
+field of the two-wheeler table. The link records the entry's slug and what the
+entry said when it was checked: model name, years and chassis codes (taken from
+the file retrieved on 2026-11-24). The builder refuses the entry when the link
+records only a slug (`motospecdb_link_unbound`), when the entry no longer says
+what the link records (`motospecdb_link_changed`: review it again and update the
+link), when its make differs, when it joins variants or generations (a model
+named "A / B" or more than one chassis code), when its years do not cover the
+Dutch registrations read (from 2024 to the download year), or when it lacks its
+model page or its owner's manual citation (`motospecdb_attribution_missing`: the
+CC BY credit needs the page). A chassis code equal to the Dutch commercial name
+no longer overrides the years. Only those three measured fields enter; the
 publisher's estimates (`est_*`, `seat_arch_factor`) never do (ADR-016). Each
 value keeps the entry's citation and model page in its evidence excerpt.
 
