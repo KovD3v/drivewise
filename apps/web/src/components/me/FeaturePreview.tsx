@@ -69,7 +69,7 @@ export function FeaturePreview({ kind }: { kind: NonNullable<import("@/lib/mydri
     return (
       <div className="relative space-y-3 pl-5">
         <span className="absolute top-1 bottom-1 left-[5px] w-px bg-border" />
-        {["Tesla Model Y · Score 86", "Kia Sportage · Score 86", "Volvo XC40 · Score 85"].map(
+        {["Ardea Sette · Score 86", "Nerio Strada · Score 86", "Lirae Volt · Score 85"].map(
           (t, i) => (
             <motion.div
               key={t}
@@ -90,7 +90,7 @@ export function FeaturePreview({ kind }: { kind: NonNullable<import("@/lib/mydri
   if (kind === "vs")
     return (
       <div className="flex items-center justify-between gap-2">
-        {["Tesla", "Kia", "Volvo"].map((b, i) => (
+        {["Ardea", "Nerio", "Lirae"].map((b, i) => (
           <div key={b} className="flex flex-1 items-center gap-2">
             <span className="flex-1 rounded-xl border border-border/70 bg-background/70 py-2 text-center text-xs font-semibold">
               {b}
@@ -267,7 +267,7 @@ export function FeaturePreview({ kind }: { kind: NonNullable<import("@/lib/mydri
     return (
       <div className="space-y-2">
         <div className="flex gap-2">
-          {["Tesla Model Y", "Kia Sportage", "Volvo XC40"].map((v, i) => (
+          {["Ardea Sette", "Nerio Strada", "Lirae Volt"].map((v, i) => (
             <motion.span
               key={v}
               className="flex-1 truncate rounded-xl border border-border/70 bg-background/70 px-2 py-2 text-center text-[0.66rem] font-medium"
@@ -336,7 +336,7 @@ export function FeaturePreview({ kind }: { kind: NonNullable<import("@/lib/mydri
       viewport={{ once: true }}
       transition={{ duration: 0.6, ease: EASE, delay: 0.25 }}
     >
-      «Il nuovo <strong className="font-semibold">Tesla Model Y</strong> migliora del{" "}
+      «Il nuovo <strong className="font-semibold">Ardea Sette</strong> migliora del{" "}
       <strong className="font-semibold text-primary">17%</strong> il tuo Decision Score rispetto al
       tuo attuale veicolo.»
     </motion.div>

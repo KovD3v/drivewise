@@ -59,7 +59,7 @@ export function SmartGarageHero({ feature }: { feature: Feature }) {
         transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
         className="mt-6 max-w-xl rounded-2xl border border-primary/30 bg-primary/8 px-4 py-3.5 text-sm text-foreground/85"
       >
-        «Il nuovo <strong className="font-semibold">Tesla Model Y</strong> migliora del{" "}
+        «Il nuovo <strong className="font-semibold">Ardea Sette</strong> migliora del{" "}
         <strong className="font-semibold text-primary">17%</strong> il tuo Decision Score.»
       </motion.div>
 
