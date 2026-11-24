@@ -152,3 +152,13 @@ The public domain moves to this build when the car module recommends the
 first twelve cars in production. Until their modules exist, motorcycles and
 scooters are shown without a score. The web app gets no local scoring bridge,
 because ADR-008 keeps ranking in the API.
+
+## ADR-018: An interval consumption is published at its upper value
+
+**Status:** Accepted (2026-11-24)
+
+Open registries give the consumption of many variants as an interval. The read
+catalogue publishes the upper value of that interval, and the product says the
+figure is the upper value. The rule lives in publication, not in a hand
+decision per bundle, so it applies whatever source supplies the interval. The
+upper value is chosen so that running costs are not understated.
