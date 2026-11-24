@@ -1,7 +1,29 @@
 import { Link } from '@tanstack/react-router'
 
-import type { VehicleDetail } from '../api/drivewise'
+import type { SourceProvenance, VehicleDetail } from '../api/drivewise'
+import {
+  formatListDate,
+  ListPriceFacts,
+  ListPriceNotes,
+  SourceCredits,
+  withBasis,
+} from './sourceFacts'
 import { formatCurrency, formatNumber } from './viewUtils'
+
+type VehicleSpecDetail = VehicleDetail['specs'][number]
+
+function consumption(spec: VehicleSpecDetail) {
+  if (spec.consumption_l_100km !== null) {
+    return withBasis(`${spec.consumption_l_100km} l/100km`, spec.consumption_l_100km_basis)
+  }
+  if (spec.energy_consumption_kwh_100km !== null) {
+    return withBasis(
+      `${spec.energy_consumption_kwh_100km} kWh/100km`,
+      spec.energy_consumption_kwh_100km_basis,
+    )
+  }
+  return 'Non disponibile'
+}
 
 export function VehicleDetailPage({ vehicle }: { vehicle: VehicleDetail }) {
   return (
@@ -58,14 +80,7 @@ export function VehicleDetailPage({ vehicle }: { vehicle: VehicleDetail }) {
                           : `${spec.horsepower} CV`
                       }
                     />
-                    <Fact
-                      label="Consumi"
-                      value={
-                        spec.consumption_l_100km === null
-                          ? 'Non disponibile'
-                          : `${spec.consumption_l_100km} l/100km`
-                      }
-                    />
+                    <Fact label="Consumi" value={consumption(spec)} />
                     <Fact
                       label="Range WLTP"
                       value={
@@ -103,11 +118,21 @@ export function VehicleDetailPage({ vehicle }: { vehicle: VehicleDetail }) {
                       }
                     />
                   </dl>
+                  {spec.list_price ? (
+                    <section className="offer-summary spec-list-price" aria-label="Prezzo di listino">
+                      <dl className="facts-grid">
+                        <ListPriceFacts price={spec.list_price} />
+                      </dl>
+                      <ListPriceNotes price={spec.list_price} />
+                    </section>
+                  ) : null}
+                  <SourceList provenance={spec.provenance} />
                 </article>
               ))}
             </div>
           )}
         </section>
+        <SourceList provenance={vehicle.provenance} title="Fonti del modello" />
       </section>
     </main>
   )
@@ -119,5 +144,41 @@ function Fact({ label, value }: { label: string; value: string | null }) {
       <dt>{label}</dt>
       <dd>{value ?? 'Non disponibile'}</dd>
     </div>
+  )
+}
+
+function SourceList({
+  provenance,
+  title = 'Fonti dei dati',
+}: {
+  provenance: SourceProvenance[]
+  title?: string
+}) {
+  const current = provenance.filter((source) => source.is_current)
+  if (current.length === 0) {
+    return null
+  }
+  return (
+    <section className="provenance-section">
+      <h5>{title}</h5>
+      <ul className="provenance-list">
+        {current.map((source) => (
+          <li key={`${source.source_id}-${source.content_hash}`}>
+            <span>
+              <a href={source.source_url} rel="noreferrer" target="_blank">
+                {source.source_name}
+              </a>
+            </span>
+            <small>Consultata il {formatListDate(source.observed_at)}</small>
+          </li>
+        ))}
+      </ul>
+      <SourceCredits
+        credits={current.map((source) => ({
+          name: source.source_name,
+          license: source.source_license,
+        }))}
+      />
+    </section>
   )
 }

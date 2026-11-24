@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
 import type {
+  AdvisorOffer,
   AdvisorRecommendationItem,
   AdvisorRecommendationResponse,
 } from '../api/drivewise'
@@ -52,7 +53,9 @@ const recommendationResponse: AdvisorRecommendationResponse = {
             horsepower: 70,
             battery_kwh: null,
             consumption_l_100km: 5,
+            consumption_l_100km_basis: null,
             energy_consumption_kwh_100km: null,
+            energy_consumption_kwh_100km_basis: null,
             wltp_range_km: null,
             co2_g_km: 113,
             euro_emission_standard: 'Euro 6e',
@@ -67,6 +70,8 @@ const recommendationResponse: AdvisorRecommendationResponse = {
             external_references: [],
             provenance: [],
           },
+          price_basis: 'offer',
+          list_price: null,
           offer: {
             id: '30000000-0000-4000-8000-000000000001',
             vehicle_id: '00000000-0000-4000-8000-000000000001',
@@ -142,6 +147,7 @@ const recommendationResponse: AdvisorRecommendationResponse = {
               metric: 'consumption_l_100km',
               source_name: 'EEA passenger-car data',
               source_url: 'https://example.com/eea',
+              source_license: null,
               observed_at: '2026-06-25',
               decision_id: null,
               observation_id: null,
@@ -283,7 +289,7 @@ test('renders a recommendation defensively without provenance or a source URL', 
   const response = structuredClone(recommendationResponse)
   response.groups[0].items[0].provenance = []
   // Simulates a payload that breaks the contract, so the offer is loosened here.
-  const offer: Record<string, unknown> = response.groups[0].items[0].offer
+  const offer: Record<string, unknown> = requireOffer(response.groups[0].items[0])
   offer.source_url = null
   delete offer.last_seen_at
   vi.stubGlobal(
@@ -427,7 +433,7 @@ test.each([
   async ({ message, overrunEur, overrunPercent, priceEur }) => {
     const response = structuredClone(recommendationResponse)
     const item = response.groups[0].items[0]
-    item.offer.price_eur = priceEur
+    requireOffer(item).price_eur = priceEur
     item.evidence = {
       ...item.evidence,
       budget_max_eur: 10000,
@@ -513,7 +519,7 @@ function certifiedElectricItem(): AdvisorRecommendationItem {
     cargo_volume_liters: 594,
   }
   item.offer = {
-    ...item.offer,
+    ...requireOffer(item),
     id: '30000000-0000-4000-8000-000000000005',
     vehicle_id: item.vehicle.id,
     spec_id: item.selected_spec.id,
@@ -557,7 +563,7 @@ function recommendationItems(
       variant_key: `${condition}-variant-${position}`,
     }
     item.offer = {
-      ...item.offer,
+      ...requireOffer(item),
       id: `${condition}-offer-${position}`,
       vehicle_id: item.vehicle.id,
       spec_id: item.selected_spec.id,
@@ -568,3 +574,124 @@ function recommendationItems(
     return item
   })
 }
+
+// The shared fixture item is an offer; tests that edit its offer read it here.
+function requireOffer(item: AdvisorRecommendationItem): AdvisorOffer {
+  if (!item.offer) {
+    throw new Error('expected a fixture item priced by an offer')
+  }
+  return item.offer
+}
+
+// A variant with no eligible offer, ranked at its list price (ADR-013).
+function listPriceItem(
+  terms: Partial<NonNullable<AdvisorRecommendationItem['list_price']>> = {},
+): AdvisorRecommendationItem {
+  const item = structuredClone(recommendationResponse.groups[0].items[0])
+  item.vehicle = { ...item.vehicle, make: 'Zephra', model: 'Tavo' }
+  item.selected_spec = { ...item.selected_spec, consumption_l_100km_basis: 'interval_upper' }
+  item.offer = null
+  item.price_basis = 'list_price'
+  item.list_price = {
+    price_eur: 23450,
+    computed_from_excl_vat: true,
+    derivation: 'computed_from_excl_vat',
+    printed_amount_eur: 19221.31,
+    printed_basis: 'excl_vat',
+    vat_rate_percent: 22,
+    on_road_charge_eur: null,
+    on_road_charge_includes_vat: null,
+    trim_label: 'Tavo 1.2 Comfort',
+    price_list_valid_from: '2026-09-01',
+    substitute_note: 'Registered version is no longer listed.',
+    source_name: 'Zephra price list (synthetic)',
+    source_url: 'https://zephra.example.com/listino.pdf',
+    source_license: 'Synthetic fixture only',
+    observed_at: '2026-10-01T08:00:00Z',
+    decision_id: '60000000-0000-4000-8000-000000000001',
+    observation_id: '60000000-0000-4000-8000-000000000002',
+    ...terms,
+  }
+  item.provenance = [
+    {
+      metric: 'list_price_eur',
+      source_name: 'Zephra price list (synthetic)',
+      source_url: 'https://zephra.example.com/listino.pdf',
+      source_license: 'Synthetic fixture only',
+      observed_at: '2026-10-01T08:00:00Z',
+      decision_id: null,
+      observation_id: null,
+    },
+    {
+      metric: 'consumption_l_100km',
+      source_name: 'Open emissions data (synthetic)',
+      source_url: 'https://open-data.example.com/export',
+      source_license: 'CC BY 4.0, credit the open dataset',
+      observed_at: '2026-10-01T08:00:00Z',
+      decision_id: null,
+      observation_id: null,
+    },
+  ]
+  return item
+}
+
+async function renderItems(items: AdvisorRecommendationItem[]) {
+  const response = structuredClone(recommendationResponse)
+  response.groups[0].items = items
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, json: async () => response }),
+  )
+  renderWithRouter(<AdvisorPage />)
+  fireEvent.change(screen.getByLabelText('Budget massimo'), {
+    target: { value: '30000' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Trova veicoli' }))
+  return screen.findAllByRole('article')
+}
+
+test('renders a list-price item with its terms, notes, document and credits', async () => {
+  const [card] = await renderItems([listPriceItem()])
+  const price = within(card).getByRole('region', { name: 'Prezzo di listino' })
+
+  expect(within(price).getByText('Prezzo di listino')).toBeVisible()
+  expect(within(price).getByText(/23.450/)).toBeVisible()
+  expect(within(price).getByText('Tavo 1.2 Comfort')).toBeVisible()
+  expect(within(price).getByText('01 set 2026')).toBeVisible()
+  expect(within(price).getByText(/non un'offerta di un venditore/)).toBeVisible()
+  expect(within(price).getByText(/abbiamo aggiunto l'IVA al 22%/)).toBeVisible()
+  expect(within(price).getByText(/versione attuale più simile/)).toBeVisible()
+  expect(within(price).getByRole('link', { name: 'Apri il listino' })).toHaveAttribute(
+    'href',
+    'https://zephra.example.com/listino.pdf',
+  )
+  // The raw note is data, not product copy: only the plain sentence is shown.
+  expect(within(card).queryByText(/no longer listed/)).not.toBeInTheDocument()
+  expect(within(card).getByText(/5 l\/100 km \(valore più alto dichiarato\)/)).toBeVisible()
+  expect(within(card).getByText('Crediti delle fonti')).toBeVisible()
+  expect(within(card).getByText('CC BY 4.0, credit the open dataset')).toBeVisible()
+  expect(within(card).queryByText('Prezzo offerta')).not.toBeInTheDocument()
+})
+
+test('notes a turnkey list price and keeps offer cards free of list-price copy', async () => {
+  const listed = listPriceItem({
+    derivation: 'computed_from_turnkey',
+    computed_from_excl_vat: false,
+    printed_basis: 'turnkey',
+    printed_amount_eur: 24400,
+    on_road_charge_eur: 950,
+    on_road_charge_includes_vat: true,
+    substitute_note: null,
+  })
+  const [offerCard, listedCard] = await renderItems([
+    structuredClone(recommendationResponse.groups[0].items[0]),
+    listed,
+  ])
+
+  expect(within(listedCard).getByText(/chiavi in mano \(24.400/)).toBeVisible()
+  expect(within(listedCard).queryByText(/versione attuale più simile/)).not.toBeInTheDocument()
+  expect(within(offerCard).queryByText('Prezzo di listino')).not.toBeInTheDocument()
+  expect(within(offerCard).queryByText(/valore più alto dichiarato/)).not.toBeInTheDocument()
+  // The offer fixture's source has no licence, so no credits block appears.
+  expect(within(offerCard).queryByText('Crediti delle fonti')).not.toBeInTheDocument()
+})
