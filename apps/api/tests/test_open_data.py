@@ -802,14 +802,20 @@ def lumo(tmp_path, folder: str, body: str, day: int) -> open_data.Run:
         ),
         # Rows of another make under the same approval do not count.
         ([{"merk": "TESLA", "inrichting": "sedan", "n": "9"}], None),
-        # A make that only contains, or is contained in, the model's make is another.
-        ([{"merk": "FIA", "inrichting": "sedan", "n": "9"}], None),
-        ([{"merk": "FIAT MOTORS", "inrichting": "sedan", "n": "9"}], None),
         ([], None),
     ],
 )
 def test_registered_body_drops_rare_codes_and_other_makes(rows, expected):
     assert open_data.registered_body("Fiat", rows)[0] == expected
+
+
+@pytest.mark.parametrize("merk", ["LU", "LUMO MOTORS"])
+def test_a_make_that_contains_or_is_contained_in_the_model_s_make_is_another(merk):
+    rows = [{"merk": merk, "inrichting": "sedan", "n": "9"}]
+    assert open_data.registered_body("Lumo", rows)[0] is None
+    assert (
+        open_data.registered_body("Lumo", [{**rows[0], "merk": "LUMO"}])[0] == "sedan"
+    )
 
 
 def body_variant(code, match="exact", codes=None, snapshot="s-body"):
@@ -1248,32 +1254,24 @@ def test_the_register_dates_every_response_and_counts_the_values(run):
 # --- Stored evidence is never replaced -------------------------------------------
 
 
-def test_a_fetch_never_replaces_evidence_of_the_run_s_own_bundle(run, tmp_path, capsys):
-    bundle, _ = open_data.build_cars(run, NAMES)
+def test_a_fetch_never_replaces_evidence_of_the_run_s_own_bundle(tmp_path, capsys):
+    run = open_data.Run(tmp_path / "run")
+    open_data.fetch(run, UNSPLIT, TWO_WHEELERS, OrbaRegistries())
+    bundle, _ = open_data.build_cars(run, UNSPLIT)
     (run.root / "cars.catalog-v2.json").write_text(json.dumps(bundle))
-    family = open_data.family_request(
-        open_data.resolve_families(NAMES, run.read(open_data.names_request()))[0][0]
-    )
-    stored = (run.artifacts / family.artifact_path).read_bytes()
-    # A changed name table asks EEA another question under the same artifact path.
-    split = {
-        "families": [
-            *NAMES["families"],
-            {
-                "make": "Fiat",
-                "model": "Panda Gas",
-                "eea": [{"mk": "FIAT", "names": ["PANDA"], "type_approvals": ["E3*9"]}],
-            },
-        ]
-    }
+    family = "eea/family-orba-vela.json"
+    stored = (run.artifacts / family).read_bytes()
+    # The split asks EEA another question under the same artifact path.
     with pytest.raises(open_data.OpenDataError, match="new run folder"):
-        open_data.fetch(open_data.Run(run.root), split, TWO_WHEELERS, FakeRegistries())
-    assert (run.artifacts / family.artifact_path).read_bytes() == stored
+        open_data.fetch(
+            open_data.Run(run.root), ORBA_NAMES, TWO_WHEELERS, OrbaRegistries()
+        )
+    assert (run.artifacts / family).read_bytes() == stored
     verify_artifacts(CatalogV2.model_validate(bundle), run.artifact_root)
 
     script = load_script()
     names, two_wheelers = tmp_path / "names.json", tmp_path / "two-wheelers.json"
-    names.write_text(json.dumps(NAMES))
+    names.write_text(json.dumps(UNSPLIT))
     two_wheelers.write_text(json.dumps(TWO_WHEELERS))
     before = sorted(p.name for p in run.root.iterdir())
     argv = ["build", "--run-dir", str(run.root), "--names", str(names)]
