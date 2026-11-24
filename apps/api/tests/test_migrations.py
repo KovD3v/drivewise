@@ -63,6 +63,8 @@ def test_migration_files_are_ordered():
         "0008_catalog_evidence.sql",
         "0009_catalog_publication.sql",
         "0010_two_wheel_metrics.sql",
+        "0011_list_price_metric.sql",
+        "0012_list_price_read_view.sql",
     ]
 
 

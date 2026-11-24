@@ -15,6 +15,15 @@ from app.ingestion.catalog_v2 import CatalogV2, METRIC_UNITS, load_catalog_v2
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / "data/fixtures/catalog/catalog-v2.synthetic.json"
+# Synthetic price-list row; real manufacturer prices stay out of the repository.
+LIST_PRICE_TERMS = {
+    "printed_amount_eur": "100.00",
+    "printed_basis": "incl_vat",
+    "vat_rate_percent": None,
+    "trim_label": "Synthetic Trim 50/68",
+    "price_list_valid_from": "2026-01-01",
+    "substitute_note": None,
+}
 
 
 def test_v2_represents_identity_uncertainty_and_keeps_conflict_history():
@@ -247,6 +256,7 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
             conn.execute((MIGRATIONS_PATH / "0008_catalog_evidence.sql").read_text())
             # 0010 only extends the 0008 metric registry, so it applies here too.
             conn.execute((MIGRATIONS_PATH / "0010_two_wheel_metrics.sql").read_text())
+            conn.execute((MIGRATIONS_PATH / "0011_list_price_metric.sql").read_text())
             assert (
                 conn.execute(
                     "SELECT id, variant_key, horsepower, battery_kwh FROM vehicle_specs ORDER BY id"
@@ -368,7 +378,33 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
                         }
                     ),
                     candidate_variant_keys=Jsonb([]),
+                    list_price=(
+                        Jsonb(LIST_PRICE_TERMS) if metric == "list_price_eur" else None
+                    ),
                 )
+                if metric == "list_price_eur":
+                    observation.update(value_min=Decimal("100.00"), value_max=Decimal("100.00"))
+                    # Terms are required for a list price and refused on any other metric.
+                    for broken in [{"list_price": None}, {"value_max": Decimal("101.00")}]:
+                        with pytest.raises(psycopg.errors.CheckViolation):
+                            with conn.transaction():
+                                insert(
+                                    conn,
+                                    "spec_observations",
+                                    {**observation, "id": uuid4(), **broken},
+                                )
+                elif metric == "seats":
+                    with pytest.raises(psycopg.errors.CheckViolation):
+                        with conn.transaction():
+                            insert(
+                                conn,
+                                "spec_observations",
+                                {
+                                    **observation,
+                                    "id": uuid4(),
+                                    "list_price": Jsonb(LIST_PRICE_TERMS),
+                                },
+                            )
                 insert(conn, "spec_observations", observation)
                 with pytest.raises(psycopg.errors.CheckViolation):
                     with conn.transaction():
@@ -404,4 +440,58 @@ def test_v2_fixture_covers_two_wheelers_and_enforces_their_units():
     assert mass["context"]["method"] == "wet"
     del mass["context"]["method"]
     with pytest.raises(ValidationError, match="mass requires"):
+        CatalogV2.model_validate(raw)
+
+
+def _list_price_bundle(terms: dict, value: str) -> dict:
+    raw = json.loads(FIXTURE.read_text())
+    observation = dict(raw["observations"][0])
+    observation.update(
+        id=str(uuid4()),
+        metric="list_price_eur",
+        raw_value=terms["printed_amount_eur"],
+        raw_unit="EUR",
+        value_min=value,
+        value_max=value,
+        unit="EUR",
+        list_price=terms,
+    )
+    raw["observations"].append(observation)
+    return raw
+
+
+def test_list_price_carries_its_terms_and_vat_inclusive_value():
+    printed = CatalogV2.model_validate(
+        _list_price_bundle(LIST_PRICE_TERMS, "100.00")
+    ).observations[-1]
+    assert printed.list_price.computed_from_excl_vat is False
+    computed_terms = {
+        **LIST_PRICE_TERMS,
+        "printed_amount_eur": "10000.01",
+        "printed_basis": "excl_vat",
+        "vat_rate_percent": "22",
+        "substitute_note": "Registered version no longer listed; nearest current row.",
+    }
+    # 10000.01 x 1.22 = 12200.0122, stored to the cent.
+    computed = CatalogV2.model_validate(
+        _list_price_bundle(computed_terms, "12200.01")
+    ).observations[-1]
+    assert computed.list_price.computed_from_excl_vat is True
+    assert computed.list_price.substitute_note
+    for terms, value, message in [
+        (computed_terms, "10000.01", "VAT-inclusive amount"),
+        ({**computed_terms, "vat_rate_percent": None}, "12200.01", "VAT rate"),
+        ({**LIST_PRICE_TERMS, "vat_rate_percent": "22"}, "100.00", "VAT rate"),
+        ({**LIST_PRICE_TERMS, "printed_amount_eur": "100.001"}, "100.001", "two decimals"),
+        ({**LIST_PRICE_TERMS, "trim_label": ""}, "100.00", "at least 1 character"),
+    ]:
+        with pytest.raises(ValidationError, match=message):
+            CatalogV2.model_validate(_list_price_bundle(terms, value))
+    raw = _list_price_bundle(LIST_PRICE_TERMS, "100.00")
+    raw["observations"][-1]["list_price"] = None
+    with pytest.raises(ValidationError, match="list price terms are required"):
+        CatalogV2.model_validate(raw)
+    raw = json.loads(FIXTURE.read_text())
+    raw["observations"][0]["list_price"] = LIST_PRICE_TERMS
+    with pytest.raises(ValidationError, match="list price terms are required"):
         CatalogV2.model_validate(raw)

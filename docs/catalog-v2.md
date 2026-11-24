@@ -66,6 +66,7 @@ globally unique commercial identifiers.
 | Practicality | `seats`: integer count; `cargo_volume_liters`: l; `mass_kg`: kg |
 | Charging | `ac_charge_power_kw`, `dc_peak_charge_power_kw`: kW |
 | Two-wheel | `seat_height_mm`: mm; `fuel_tank_capacity_liters`, `underseat_storage_liters`: l |
+| Price | `list_price_eur`: EUR, the public list price including VAT |
 
 `vehicle_type` is `car`, `motorcycle` or `scooter`; variant fields are shared.
 Two-wheel wet weight is not a separate metric: it is `mass_kg` with
@@ -73,6 +74,29 @@ Two-wheel wet weight is not a separate metric: it is `mass_kg` with
 is an interval. Licence category (AM, A1, A2, A) is not in the contract because
 metrics are numeric; subjective scores such as agility or comfort are never
 catalog facts.
+
+### List price (ADR-015)
+
+`list_price_eur` is the manufacturer's public list price **including VAT**, not
+the turnkey price. It is exact and in cents. The observation that carries it must
+also carry `list_price`, the terms of the price-list row it was read from:
+
+| Field | Meaning |
+| --- | --- |
+| `printed_amount_eur` | The amount as printed in the row |
+| `printed_basis` | `incl_vat`, or `excl_vat` when the list prints the price without VAT |
+| `vat_rate_percent` | Required exactly when `printed_basis` is `excl_vat` |
+| `trim_label` | The row's version label, as printed |
+| `price_list_valid_from` | The validity date the price list prints |
+| `substitute_note` | Set when the registered version is no longer listed and the nearest current row supplies the price; says which row and what differs |
+
+A value computed from an ex-VAT figure is marked by `printed_basis: excl_vat`; the
+validator checks that the value equals the printed amount times the VAT rate,
+rounded to the cent. Other metrics refuse `list_price`. The terms sit on the
+observation, not in the context, because the context is part of the fact key: a
+new price list adds an observation and a decision that supersedes the old one in
+the same context, instead of a second current fact. Keep the context to the
+market only, so the compatibility read below can project the price.
 
 An exact measurement uses equal `value_min` and `value_max`. Intervals stay
 intervals. Original value/unit, source excerpt/locator and extractor version are
@@ -119,6 +143,12 @@ and source permissions are preserved.
 [`0010_two_wheel_metrics.sql`](../apps/api/migrations/0010_two_wheel_metrics.sql)
 extends the SQL metric domain and unit check with the two-wheel metrics. The unit
 check now also rejects a unit for a metric it does not list.
+[`0011_list_price_metric.sql`](../apps/api/migrations/0011_list_price_metric.sql)
+adds `list_price_eur` (unit `EUR`) and the nullable `spec_observations.list_price`
+column, required exactly for that metric.
+[`0012_list_price_read_view.sql`](../apps/api/migrations/0012_list_price_read_view.sql)
+replaces `catalog_read_specs` so a v2 spec exposes `list_price_eur` from its
+eligible list-price fact. It must run after `0009`, which creates that view.
 
 | New table | Responsibility |
 | --- | --- |
@@ -269,7 +299,9 @@ context covering the whole variant. Intervals, multiple contexts and configured
 measurements stay available in the facts API but are not flattened. Consumption,
 range and CO₂ require WLTP combined and a known non-PHEV powertrain; cargo requires
 `method: VDA` and `seating_configuration: all_seats_up`. The legacy scalar mapping
-covers seats, cargo, liquid/electric consumption, WLTP range and CO₂.
+covers seats, cargo, liquid/electric consumption, WLTP range, CO₂ and the list
+price. A v2 `list_price_eur` therefore follows the same permitted, sourced and
+licensed rule as the other metrics; v1 rows keep their stored column.
 For motorcycles and scooters, `GET /vehicles/{id}` adds a `two_wheel` block per
 spec from the same scalar rule: seat height, wet weight (`mass_kg` with
 `method: wet`), fuel tank and underseat storage. A seat range, or a dry and a wet

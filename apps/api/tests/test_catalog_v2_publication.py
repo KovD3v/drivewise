@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -262,6 +263,58 @@ def test_revocation_conflicts_contexts_and_stale_replay(conn, tmp_path):
         ).fetchone()["n"]
         == 0
     )
+
+
+def add_list_price(data, value="12200.01", variant="metro-g1-ice", **terms):
+    """Synthetic price-list row printed without VAT; the fact stores the VAT-inclusive value."""
+    decision = add_fact(data, "list_price_eur", value, variant=variant)
+    observation = data["observations"][-1]
+    observation.update(
+        unit="EUR",
+        raw_unit="EUR excl. VAT",
+        raw_value="10000.01",
+        list_price={
+            "printed_amount_eur": "10000.01",
+            "printed_basis": "excl_vat",
+            "vat_rate_percent": "22",
+            "trim_label": "Synthetic Trim 50/68",
+            "price_list_valid_from": "2026-01-01",
+            **terms,
+        },
+    )
+    return decision
+
+
+def test_list_price_is_read_from_permitted_v2_facts_only(conn, tmp_path):
+    data = bundle(tmp_path)
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_list_price(data)
+    publish(conn, data, tmp_path)
+
+    def price(view):
+        return conn.execute(
+            sql.SQL("SELECT list_price_eur FROM {} WHERE variant_key = 'metro-g1-ice'").format(
+                sql.Identifier(view)
+            )
+        ).fetchone()["list_price_eur"]
+
+    # manual_validation_only: stored and visible as a fact, never projected.
+    assert price("catalog_read_specs") is None
+    assert price("catalog_analysis_specs") is None
+    stored = conn.execute(
+        "SELECT list_price FROM spec_observations WHERE metric = 'list_price_eur'"
+    ).fetchone()["list_price"]
+    assert stored["printed_basis"] == "excl_vat"
+    assert stored["trim_label"] == "Synthetic Trim 50/68"
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'permitted' WHERE source_key = 'synthetic-v2'"
+    )
+    assert price("catalog_read_specs") == Decimal("12200.01")
+    assert price("catalog_analysis_specs") == Decimal("12200.01")
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'not_permitted' WHERE source_key = 'synthetic-v2'"
+    )
+    assert price("catalog_read_specs") is None
 
 
 def test_intervals_and_multiple_contexts_are_not_flattened(conn, tmp_path):
@@ -545,7 +598,8 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            if migration.name[:4] not in {"0001", "0009"}:
+            # 0012 replaces a 0009 view, so it can only follow 0009.
+            if migration.name[:4] not in {"0001", "0009", "0012"}:
                 conn.execute(migration.read_text())
         conn.execute(
             """INSERT INTO vehicles (id, canonical_key, model_family_key, make, model,
@@ -581,10 +635,12 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            if migration.name[:4] not in {"0001", "0009"}:
+            # 0012 replaces a 0009 view, so it can only follow 0009.
+            if migration.name[:4] not in {"0001", "0009", "0012"}:
                 conn.execute(migration.read_text())
         conn.execute("UPDATE vehicle_specs SET engine_code = 'reviewed-code'")
         conn.execute((MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text())
+        conn.execute((MIGRATIONS_PATH / "0012_list_price_read_view.sql").read_text())
         codes = conn.execute("SELECT engine_code FROM catalog_read_specs").fetchall()
         assert codes and all(row["engine_code"] == "reviewed-code" for row in codes)
 

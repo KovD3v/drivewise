@@ -50,6 +50,8 @@ Metric = Literal[
     "seat_height_mm",
     "fuel_tank_capacity_liters",
     "underseat_storage_liters",
+    # Public list price including VAT (ADR-015); terms ride on the observation.
+    "list_price_eur",
 ]
 # The unit is part of the metric definition, never guessed from a source label.
 METRIC_UNITS = {
@@ -76,6 +78,7 @@ METRIC_UNITS = {
     "seat_height_mm": "mm",
     "fuel_tank_capacity_liters": "l",
     "underseat_storage_liters": "l",
+    "list_price_eur": "EUR",
 }
 MEASURED_METRICS = {
     "liquid_consumption_l_100km",
@@ -205,6 +208,41 @@ class MeasurementContext(Applicability):
         return self
 
 
+class ListPriceTerms(ContractModel):
+    """How a list price row was read. The observation value is always VAT-inclusive."""
+
+    printed_amount_eur: Number
+    printed_basis: Literal["incl_vat", "excl_vat"]
+    # Required when the value is computed from a price printed without VAT.
+    vat_rate_percent: Number | None = None
+    trim_label: Text
+    price_list_valid_from: date
+    # Set when the registered version is no longer listed and a current one supplies the price.
+    substitute_note: Text | None = None
+
+    @property
+    def computed_from_excl_vat(self) -> bool:
+        return self.printed_basis == "excl_vat"
+
+    def incl_vat_amount(self) -> Decimal:
+        if self.printed_basis == "incl_vat":
+            return self.printed_amount_eur
+        rate = self.vat_rate_percent or Decimal(0)
+        return (self.printed_amount_eur * (100 + rate) / 100).quantize(Decimal("0.01"))
+
+    @model_validator(mode="after")
+    def consistent_basis(self) -> Self:
+        if self.printed_amount_eur <= 0:
+            raise ValueError("printed list price must be positive")
+        if self.printed_amount_eur != self.printed_amount_eur.quantize(Decimal("0.01")):
+            raise ValueError("printed list price has at most two decimals")
+        if (self.printed_basis == "excl_vat") != (self.vat_rate_percent is not None):
+            raise ValueError("a VAT rate is required exactly when the price excludes VAT")
+        if self.vat_rate_percent is not None and not 0 < self.vat_rate_percent < 100:
+            raise ValueError("VAT rate must be a percentage")
+        return self
+
+
 class SpecObservation(ContractModel):
     model_config = ConfigDict(json_schema_extra={"x-metric-units": METRIC_UNITS})
 
@@ -222,6 +260,7 @@ class SpecObservation(ContractModel):
     evidence_excerpt: Annotated[str, Field(min_length=1, max_length=4000)]
     evidence_locator: Text
     extractor_version: Key
+    list_price: ListPriceTerms | None = None
 
     @model_validator(mode="after")
     def valid_measurement(self) -> Self:
@@ -256,6 +295,14 @@ class SpecObservation(ContractModel):
                 )
         if self.metric == "mass_kg" and not self.context.method:
             raise ValueError("mass requires its measurement definition")
+        if (self.metric == "list_price_eur") != (self.list_price is not None):
+            raise ValueError("list price terms are required exactly for list_price_eur")
+        if self.list_price is not None:
+            expected = self.list_price.incl_vat_amount()
+            if self.value_min != expected or self.value_max != expected:
+                raise ValueError(
+                    "list price must equal its VAT-inclusive amount, rounded to cents"
+                )
         return self
 
 
