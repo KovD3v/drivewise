@@ -240,7 +240,15 @@ needed. After publication, catalog v2 treats three kinds of data differently:
 - **Identity** (make, model, generation, phase, body, year, market, powertrain,
   fuel, transmission, drivetrain, type-approval references and the evidence the
   identity rests on) cannot be changed by the import, not even from "unknown" to a
-  value. A correction needs a hand-written, reviewed migration.
+  value. A correction needs a hand-written, reviewed migration. "Frozen" means
+  only this: the automatic import refuses the change, and a person makes it.
+  Tried on a disposable local database (2026-11-24) for one published hybrid,
+  from `MHEV` to `HEV`: the import of a bundle with the new kind was rejected and
+  published nothing; a plain `UPDATE` was rejected by the trigger; one transaction
+  that sets `drivewise.catalog_writer` to `v2` and updates `powertrain_type` and
+  the derived `fuel_type` succeeded; the bundle with the same edit then published
+  and a repeat returned `unchanged`. The stored bundle must carry the same edit,
+  or the next import is rejected again.
 - **Evidence** (stored responses, observations, decisions) is append-only.
   Database triggers reject updates and deletions. A wrong value is retracted by a
   superseding decision. A wrong vehicle or variant row needs a reviewed migration
