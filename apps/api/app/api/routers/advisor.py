@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies import (
     get_advisor_repository,
     get_vehicles_repository,
+    require_internal_routes,
 )
 from app.repositories.advisor import AdvisorRepository
 from app.repositories.vehicles import VehiclesRepository
@@ -34,7 +35,11 @@ def get_advisor_clock() -> datetime:
     return datetime.now(timezone.utc)
 
 
-@router.post("/recommendations", response_model=AdvisorRecommendationResponse)
+@router.post(
+    "/recommendations",
+    response_model=AdvisorRecommendationResponse,
+    dependencies=[Depends(require_internal_routes)],
+)
 def create_recommendations(
     request: AdvisorRecommendationRequest,
     repository: Annotated[AdvisorRepository, Depends(get_advisor_repository)],

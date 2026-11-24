@@ -714,22 +714,17 @@ def _upsert_sources(conn, sources: list[SourceRecord]) -> dict[str, UUID]:
     source_ids: dict[str, UUID] = {}
     for source in sources:
         source_id = uuid5(SOURCE_NAMESPACE, source.source_key)
-        row = conn.execute(
+        # A v1 import may register a new source but never rewrites an existing
+        # one: ranking_permission and license are reviewed facts owned by
+        # Catalog v2, so a stale v1 file must not upgrade or relabel them.
+        conn.execute(
             """
             INSERT INTO sources (
               id, source_key, name, source_type, market, ranking_permission,
               url, license, notes
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (source_key) DO UPDATE SET
-              name = EXCLUDED.name,
-              source_type = EXCLUDED.source_type,
-              market = EXCLUDED.market,
-              ranking_permission = EXCLUDED.ranking_permission,
-              url = EXCLUDED.url,
-              license = EXCLUDED.license,
-              notes = EXCLUDED.notes
-            RETURNING id
+            ON CONFLICT (source_key) DO NOTHING
             """,
             (
                 source_id,
@@ -742,6 +737,10 @@ def _upsert_sources(conn, sources: list[SourceRecord]) -> dict[str, UUID]:
                 source.license,
                 source.notes,
             ),
+        )
+        row = conn.execute(
+            "SELECT id FROM sources WHERE source_key = %s",
+            (source.source_key,),
         ).fetchone()
         source_ids[source.source_key] = _row_value(row, "id")
     return source_ids

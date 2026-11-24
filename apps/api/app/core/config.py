@@ -10,6 +10,8 @@ DEFAULT_API_CORS_ORIGINS = (
     "http://127.0.0.1:3000",
 )
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+# Environments where docs, OpenAPI and internal/debug routes are on by default.
+INTERNAL_ROUTE_ENVS = frozenset({"local", "test"})
 ENV_FILE_KEYS = frozenset(
     {
         "APP_ENV",
@@ -17,6 +19,7 @@ ENV_FILE_KEYS = frozenset(
         "API_CORS_ORIGINS",
         "API_ROOT_PATH",
         "FIRECRAWL_API_KEY",
+        "ENABLE_INTERNAL_ROUTES",
     }
 )
 
@@ -30,6 +33,10 @@ class Settings:
     # Path prefix the API is served under when it shares a domain with the
     # frontend (for example "/api"). Requests without the prefix still match.
     api_root_path: str = ""
+    # Docs, OpenAPI and the listings/documents/search/resolve/recommendations
+    # routes. Off by default outside local and test; ENABLE_INTERNAL_ROUTES
+    # overrides it either way.
+    enable_internal_routes: bool = True
 
 
 def load_env_file(
@@ -60,6 +67,17 @@ def parse_csv_list(value: str | None) -> tuple[str, ...]:
     return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
+def parse_bool(value: str | None, default: bool) -> bool:
+    if value is None or not value.strip():
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean value: {value!r}")
+
+
 @lru_cache
 def get_settings() -> Settings:
     load_env_file()
@@ -71,7 +89,8 @@ def get_settings() -> Settings:
             dict.fromkeys((*DEFAULT_API_CORS_ORIGINS, *configured_cors_origins))
         )
     else:
-        api_cors_origins = configured_cors_origins or DEFAULT_API_CORS_ORIGINS
+        # Fail closed: a deployed API with no configured origins allows none.
+        api_cors_origins = configured_cors_origins
 
     return Settings(
         app_env=app_env,
@@ -79,4 +98,8 @@ def get_settings() -> Settings:
         api_cors_origins=api_cors_origins,
         firecrawl_api_key=os.getenv("FIRECRAWL_API_KEY") or None,
         api_root_path=os.getenv("API_ROOT_PATH", "").rstrip("/"),
+        enable_internal_routes=parse_bool(
+            os.getenv("ENABLE_INTERNAL_ROUTES"),
+            default=app_env in INTERNAL_ROUTE_ENVS,
+        ),
     )
