@@ -356,12 +356,21 @@ disposable local database (2026-11-23):
    179, height 178, displacement 205 (every car with an engine), power 108 (every
    car that is not a hybrid or electric), consumption 63 and CO2 57. A hybrid
    shows no power, because EEA gives the engine's power and not the system's.
-3. **A range is not shown in the detail response.** The legacy fields hold one
-   number. Consumption is a range for 110 of 181 variants and CO2 for 138 of 203,
-   so those stay empty there and are readable only in
-   `GET /vehicles/{id}/facts`. Plug-in hybrids never show consumption or CO2 in
-   the legacy fields, because their values are weighted. Showing ranges is a
-   product and contract decision.
+   These counts are historical: they were measured on 2026-11-23, before ADR-018,
+   and were not measured again.
+3. **Ranges in the detail response.** The legacy fields hold one number. In the
+   first run consumption is a range for 110 of 181 variants and CO2 for 138 of
+   203 (measured 2026-11-23). Consumption and CO2 are now treated differently:
+   - **Consumption** (liquid and electric): since ADR-018 (migration 0012) an
+     eligible WLTP combined interval is published at its upper value, and
+     `consumption_l_100km_basis` (or `energy_consumption_kwh_100km_basis`) says
+     `interval_upper`; a single value says `exact`. How many variants now show a
+     consumption was not measured.
+   - **CO2** and every other interval (power, dimensions, range) stay empty in
+     the legacy fields and are readable only in `GET /vehicles/{id}/facts`.
+     Showing those ranges is a product and contract decision.
+   - **Plug-in hybrids** show neither consumption nor CO2 in the legacy fields,
+     because their values are weighted.
 4. **Generation and model year are empty.** Neither source names them. They are
    identity fields, so publishing freezes them empty until a reviewed migration.
 5. **16 models may mix two generations.** Their variants come from different type
