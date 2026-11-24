@@ -115,10 +115,18 @@ def test_list_price_uses_the_same_formulas_as_a_new_offer_at_that_price():
         "missing_factors",
         "positive_factors",
         "tradeoffs",
-        "evidence",
     ):
         assert getattr(listed, field) == getattr(offer, field), field
-    assert listed.evidence["assessments"]["tco"] == offer.evidence["assessments"]["tco"]
+    # Only the TCO assumptions differ: they name the price they use.
+    listed_tco = listed.evidence["assessments"]["tco"]
+    offer_tco = offer.evidence["assessments"]["tco"]
+    assert [line.replace("list price", "offer price") for line in listed_tco["assumptions"]] == (
+        offer_tco["assumptions"]
+    )
+    assert {**listed_tco, "assumptions": None} == {**offer_tco, "assumptions": None}
+    for evidence in (listed.evidence, offer.evidence):
+        evidence["assessments"]["tco"]["assumptions"] = []
+    assert listed.evidence == offer.evidence
     assert listed.condition_group == "new"
     assert any(p.metric == "list_price_eur" for p in listed.provenance)
     assert not any(p.metric == "price_eur" for p in listed.provenance)
@@ -189,3 +197,50 @@ def test_item_requires_the_source_of_its_price_basis():
     ]:
         with pytest.raises(ValidationError, match="present exactly"):
             AdvisorRecommendationItem.model_validate({**payload, **broken})
+
+
+def test_tco_assumptions_name_the_price_they_use():
+    request = AdvisorRecommendationRequest(budget_max_eur=20_000, primary_use="city")
+    offer = estimate_tco(request, candidate(7, condition="new", mileage=None), as_of=AS_OF)
+    listed = estimate_tco(request, list_price_candidate(7), as_of=AS_OF)
+    assert any("of offer price" in line for line in offer.assumptions)
+    assert not any("offer price" in line for line in listed.assumptions)
+    assert sum("of list price" in line for line in listed.assumptions) == 2
+
+
+def _http_entry(metric: str) -> dict[str, Any]:
+    return {
+        "metric": metric,
+        "source_name": "Plain-HTTP mirror (synthetic)",
+        "source_url": "http://example.com/specs/8",
+        "observed_at": "2026-07-15T00:00:00Z",
+    }
+
+
+@pytest.mark.parametrize("make", [candidate, list_price_candidate])
+def test_http_evidence_is_left_out_instead_of_failing_the_response(make):
+    request = AdvisorRecommendationRequest(budget_max_eur=20_000, primary_use="city")
+    priced = make(8)
+    # An optional technical metric, and a required one that also has HTTPS evidence.
+    priced["provenance"] += [_http_entry("length_mm"), _http_entry("seats")]
+
+    item = only_item(score_recommendations(request, [priced], as_of=AS_OF))
+
+    assert all(p.source_url.startswith("https://") for p in item.provenance)
+    assert {p.metric for p in item.provenance} >= {"seats", "cargo_volume_liters"}
+    assert "length_mm" not in {p.metric for p in item.provenance}
+
+
+def test_required_evidence_cited_only_over_http_still_excludes_the_variant():
+    priced = candidate(9)
+    priced["provenance"] = [
+        _http_entry("seats") if entry["metric"] == "seats" else entry
+        for entry in priced["provenance"]
+    ]
+    result = score_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=20_000, primary_use="city"),
+        [priced],
+        as_of=AS_OF,
+    )
+    assert not result.items
+    assert result.excluded_counts_by_reason == {"missing_spec_provenance": 1}

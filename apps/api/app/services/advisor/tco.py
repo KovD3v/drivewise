@@ -10,7 +10,7 @@ from app.services.advisor.energy_prices import (
     LIQUID_ENERGY_PRICES_EUR_PER_LITER,
 )
 from app.services.advisor.model_analysis import estimate_annual_maintenance
-from app.services.advisor.pricing import priced_terms
+from app.services.advisor.pricing import PriceBasis, price_basis, priced_terms
 
 
 TCO_VERSION = "tco-v1"
@@ -112,7 +112,7 @@ def estimate_tco(
         return ModuleAssessment(
             status="insufficient_data",
             version=TCO_VERSION,
-            assumptions=_assumptions(),
+            assumptions=_assumptions(price_basis(candidate)),
             missing_data=tuple(dict.fromkeys(missing)),
         )
 
@@ -128,12 +128,14 @@ def estimate_tco(
         version=TCO_VERSION,
         value=float(annual["total"]),
         details={"annual_eur": exposed_annual},
-        assumptions=_assumptions(),
+        assumptions=_assumptions(price_basis(candidate)),
         missing_data=tuple(dict.fromkeys(missing)),
     )
 
 
-def _assumptions() -> tuple[str, ...]:
+def _assumptions(basis: PriceBasis) -> tuple[str, ...]:
+    # The price is an offer's, or the list price when no eligible offer exists.
+    price = "list price" if basis == "list_price" else "offer price"
     liquid_rates = ", ".join(
         f"{fuel_type} EUR {rate:.5f}/L"
         for fuel_type, rate in LIQUID_ENERGY_PRICES_EUR_PER_LITER.items()
@@ -142,10 +144,10 @@ def _assumptions() -> tuple[str, ...]:
         f"{TCO_VERSION}: annual kilometres come from the request.",
         "Energy formula: consumption × rate × annual_km ÷ 100.",
         f"Energy rates from MIMIT fuel and ARERA electricity ({ENERGY_ASSUMPTION_VERSION}): {liquid_rates}; electricity EUR {ELECTRICITY_PRICE_EUR_PER_KWH:.5f}/kWh.",
-        "Insurance formula: EUR 650 + 0.8% of offer price, capped at EUR 1,600.",
+        f"Insurance formula: EUR 650 + 0.8% of {price}, capped at EUR 1,600.",
         "Tax formula: EUR 2.58/kW through 100 kW (100 kW cap), then EUR 3.87/kW above 100 kW.",
         "maintenance-v1 formula: EUR 420 city car or EUR 520 other body + EUR 70 per age year + EUR 2.50 per 1,000 km; electric base EUR 340.",
         "Tyres: city_car/small_hatchback EUR 180; hatchback/sedan/wagon EUR 240; crossover/SUV/MPV/van EUR 300.",
-        "Depreciation formula: 9.333% of offer price annually (28% over three years).",
+        f"Depreciation formula: 9.333% of {price} annually (28% over three years).",
         "PHEV energy uses the liquid-fuel consumption and rate only; electric share and charging context remain in powertrain-fit-v1.",
     )

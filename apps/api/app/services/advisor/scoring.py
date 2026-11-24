@@ -1333,6 +1333,11 @@ def _build_provenance(
     entries: list[AdvisorMetricProvenance] = []
     seen: set[tuple[str, str, str | None, str | None]] = set()
     for raw_entry in candidate.get("provenance", []):
+        # Snapshots may cite http:// pages. The gates already demand HTTPS evidence
+        # for every required metric, so an entry that fails the Advisor URL rule is
+        # extra evidence: leave it out instead of failing the whole response.
+        if not _is_https_url(raw_entry.get("source_url")):
+            continue
         entry = AdvisorMetricProvenance.model_validate(raw_entry)
         observed_at = (
             entry.observed_at.isoformat() if entry.observed_at is not None else None
