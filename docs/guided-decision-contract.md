@@ -12,7 +12,8 @@ The backend keeps three responsibilities separate:
 2. The decision engine computes completeness, confidence, missing information,
    and the highest-impact next question.
 3. Advisor v3 performs deterministic eligibility, scoring, and ranking over
-   reviewed exact vehicle/variant/offer pairs.
+   reviewed exact variants, each priced by an eligible offer or, without one,
+   by its reviewed list price (ADR-013).
 
 The current interpreter is a deliberately narrow Italian baseline with no
 external model call. It recognizes high-signal facts and short contextual
@@ -214,9 +215,10 @@ the flow is not a fixed questionnaire.
 ambiguous:
 
 - `blocked`: `budget_eur` or `primary_use` is missing;
-- `ready`: Advisor v3 returned at least one eligible exact offer;
-- `insufficient_inventory`: the profile is rankable, but no eligible reviewed
-  offer is available.
+- `ready`: Advisor v3 returned at least one eligible exact variant, priced by
+  an offer or a list price;
+- `insufficient_inventory`: the profile is rankable, but no variant has an
+  eligible reviewed offer or list price.
 
 The preview reuses `advisor-v3.0` without persisting a formal recommendation
 run. Its assumptions remain visible, including a default annual distance when

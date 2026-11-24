@@ -249,6 +249,31 @@ class AdvisorOffer(ApiModel):
         return value
 
 
+class AdvisorListPrice(ApiModel):
+    """The public list price that stands in for an offer (ADR-013, ADR-015)."""
+
+    price_eur: float
+    computed_from_excl_vat: bool
+    printed_amount_eur: float
+    printed_basis: Literal["incl_vat", "excl_vat"]
+    vat_rate_percent: float | None = None
+    trim_label: str
+    price_list_valid_from: date
+    substitute_note: str | None = None
+    source_name: str
+    source_url: str
+    observed_at: datetime
+    decision_id: UUID
+    observation_id: UUID
+
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
+
+
 class AdvisorSelectedSpec(VehicleSpec):
     variant_key: str
     body_style: AdvisorBodyStyle
@@ -288,7 +313,10 @@ class AdvisorMetricProvenance(ApiModel):
 class AdvisorRecommendationItem(ApiModel):
     vehicle: AdvisorVehicleSummary
     selected_spec: AdvisorSelectedSpec
-    offer: AdvisorOffer
+    # Null when the variant has no eligible offer and is evaluated at list price.
+    offer: AdvisorOffer | None
+    price_basis: Literal["offer", "list_price"] = "offer"
+    list_price: AdvisorListPrice | None = None
     score: float
     decision_status: Literal["complete", "insufficient_data"] = "insufficient_data"
     decision_score: float | None = None
@@ -308,6 +336,23 @@ class AdvisorRecommendationItem(ApiModel):
     tradeoffs: list[AdvisorFactor]
     evidence: dict[str, Any]
     provenance: list[AdvisorMetricProvenance]
+
+
+    @model_validator(mode="after")
+    def price_basis_matches_its_source(self) -> "AdvisorRecommendationItem":
+        if (self.price_basis == "offer") != (self.offer is not None):
+            raise ValueError("an offer is present exactly when the price basis is offer")
+        if (self.price_basis == "list_price") != (self.list_price is not None):
+            raise ValueError("a list price is present exactly for the list_price basis")
+        return self
+
+    @property
+    def price_eur(self) -> float:
+        return self.offer.price_eur if self.offer else self.list_price.price_eur
+
+    @property
+    def condition_group(self) -> Literal["new", "used"]:
+        return "used" if self.offer and self.offer.condition != "new" else "new"
 
 
 class AdvisorRecommendationGroup(ApiModel):

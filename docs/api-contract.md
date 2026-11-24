@@ -633,9 +633,11 @@ request is documented separately in `docs/guided-decision-contract.md`.
 
 ### POST /advisor/recommendations
 
-Creates a deterministic Advisor v3 run from reviewed, imported Italian catalog
-offers. It does not call an LLM, search documents, generate embeddings, or
-ingest external data.
+Creates a deterministic Advisor v3 run that ranks exact Italian catalog variants
+(ADR-013). A variant with an eligible reviewed offer is evaluated with that
+offer. A catalog v2 variant with no eligible offer is evaluated as a new vehicle
+at its reviewed public list price including VAT (ADR-015). It does not call an
+LLM, search documents, generate embeddings, or ingest external data.
 
 Recommendations, Model Analysis and Guided Decisions rank cars only. Offers
 for a `motorcycle` or `scooter` are never candidates and are counted under
@@ -644,7 +646,8 @@ for a `motorcycle` or `scooter` are never candidates and are counted under
 The endpoint persists the normalized request, scoring version, energy
 assumptions, exclusion counts, and completion status on the run. Each selected
 item persists its exact listing/spec pair, new/used group, group rank, score,
-version, and complete score breakdown.
+version, and complete score breakdown. A list-price item persists a null
+listing, and its breakdown stores `price_basis` and `list_price`.
 
 Request body:
 
@@ -717,6 +720,8 @@ Example response:
           "vehicle": {"id": "...", "model_family_key": "it-fiat-panda"},
           "selected_spec": {"id": "...", "variant_key": "..."},
           "offer": {"id": "...", "spec_id": "...", "price_eur": 17500},
+          "price_basis": "offer",
+          "list_price": null,
           "score": 86.42,
           "decision_status": "complete",
           "decision_score": 86.42,
@@ -760,9 +765,46 @@ Example response:
 }
 ```
 
+Every item has a `price_basis`. With `offer`, `offer` is set and `list_price`
+is null. With `list_price`, `offer` is null and `list_price` holds the price
+that stands in for it:
+
+```json
+{
+  "offer": null,
+  "price_basis": "list_price",
+  "list_price": {
+    "price_eur": 12200.01,
+    "computed_from_excl_vat": true,
+    "printed_amount_eur": 10000.01,
+    "printed_basis": "excl_vat",
+    "vat_rate_percent": 22,
+    "trim_label": "Synthetic Trim 50/68",
+    "price_list_valid_from": "2026-01-01",
+    "substitute_note": null,
+    "source_name": "Synthetic manufacturer list",
+    "source_url": "https://example.test/price-list",
+    "observed_at": "2026-07-15T00:00:00Z",
+    "decision_id": "...",
+    "observation_id": "..."
+  }
+}
+```
+
+A list-price item is always in the `new` group and has no mileage. The values
+above are synthetic. `computed_from_excl_vat` is true when the price list prints
+the price without VAT and the value was computed from it. `substitute_note` is
+set when the registered version is no longer listed and the nearest current
+version supplies the price.
+
 Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,
-and backed by spec provenance. Price, model-family identity, body, fuel, seats,
+and backed by spec provenance. A variant with no such offer is a list-price
+candidate only when it is a catalog v2 car spec and its list price is a
+current fact whose evidence and identity come from permitted, sourced and
+licensed sources; otherwise it is counted under `missing_list_price`, or under
+`source_not_permitted` when a list price exists but its source is not
+permitted. Price, model-family identity, body, fuel, seats,
 cargo, and powertrain consumption evidence are required. Used/certified offers
 also require mileage. Recognized powertrains are assessed or marked
 `insufficient_data`; PHEVs and highway EVs are not blanket exclusions. The
@@ -798,8 +840,8 @@ score below 70. Any soft budget overrun is always reported with exact euros and
 percentage. Offers are ranked before keeping the best offer per
 `model_family_key`; at most five are returned per group. Complete items sort
 before insufficient-data items. Within each status, stable ties use effective
-score, confidence, price, mileage with missing last, listing reference, then
-listing ID.
+score, confidence, price, mileage with missing last, listing reference (variant
+key for a list price), then listing ID (spec ID for a list price).
 
 ### POST /advisor/model-analysis
 

@@ -4,8 +4,38 @@
 
 Advisor v3 is the only ranking runtime. `POST /advisor/recommendations` and
 Guided Decision previews call [`scoring.py`](../apps/api/app/services/advisor/scoring.py).
-The scorer reads reviewed catalog offers and exact vehicle variants, applies
-constraints and module assessments, and returns a deterministic ranking.
+The scorer ranks exact vehicle variants (ADR-013). It applies constraints and
+module assessments and returns a deterministic ranking.
+
+## Price basis
+
+Each candidate has one price basis, returned as `price_basis` on every item:
+
+- `offer`: the variant has an eligible offer. The offer supplies price,
+  mileage, condition and freshness, as before.
+- `list_price`: the variant has no eligible offer. It is evaluated as a **new**
+  vehicle at its public list price including VAT (ADR-015): mileage is absent,
+  the item lands in the `new` group, and `offer` is null. The item's
+  `list_price` block carries the value, whether it was computed from an ex-VAT
+  figure, the price-list trim label and validity date, a substitute note when
+  the registered version is no longer listed, and the source link.
+
+An eligible offer is one request-independent rule: active, seen within
+`FRESHNESS_DAYS`, not expired, from a permitted Italian source with a name and
+licence, from a completed import, with a price, a valid condition and, when
+used, a mileage. A variant with any such offer is only an offer candidate. A
+variant whose offers are all stale, inactive or unreviewed falls back to its
+list price.
+
+A list-price candidate is a catalog v2 car spec whose list price is an
+eligible fact, so the price source passes the same permitted, sourced and
+licensed rule as the other required facts. Legacy v1 rows never become
+list-price candidates. The formulas below do not change: they read price,
+condition and mileage from
+[`pricing.py`](../apps/api/app/services/advisor/pricing.py), and a list price
+of X scores exactly like a new offer at X. Exclusions add
+`missing_list_price` (no eligible list price) and reuse `source_not_permitted`
+when a list price exists but its evidence is not permitted.
 
 The old `decision_engine/` Python package, demo, tests, and requirements file
 are retired. The reports in `docs/snapshots/` and calibration JSON in
@@ -17,7 +47,7 @@ exists. The active runtime and its current inputs are listed below.
 
 | Area | Runs now | Current input or fallback | Replacement boundary |
 | --- | --- | --- | --- |
-| Ranking | Yes, `advisor-v3.0` | Reviewed Italian offers, exact specs, profile, provenance | Keep the scoring and response contract stable |
+| Ranking | Yes, `advisor-v3.0` | Exact specs with a reviewed Italian offer or, without one, a reviewed list price; profile; provenance | Keep the scoring and response contract stable |
 | Safety | Yes, `safety-v1` | Curated Knowledge Profile ratings. ADAS/features remain in `decision_context` but are not scored | Replace the rating input, not pillar composition |
 | Reliability | Adapter only, `reliability-v1` | `insufficient_data` without an explicit assessment | Produce a versioned assessment for the exact generation/spec |
 | Known issues | Adapter only, `known-issues-v1` | `insufficient_data` without issue records | Produce applicability-first issue records |
@@ -204,10 +234,10 @@ The current fixed inputs are the versioned MIMIT and ARERA rates in
 `apps/api/app/services/advisor/energy_prices.py`: petrol and hybrid
 EUR 1.91662/L, diesel EUR 2.04276/L, LPG EUR 0.77695/L, and electricity EUR
 0.29593/kWh under `it-energy-2026-07-16-v1`. Insurance is EUR 650 plus 0.8% of
-offer price, capped at EUR 1,600. Tax is EUR 2.58/kW through 100 kW and EUR
+the candidate price (offer or list price), capped at EUR 1,600. Tax is EUR 2.58/kW through 100 kW and EUR
 3.87/kW above 100 kW. Maintenance and tyres use the named `maintenance-v1`
 and body-class assumptions returned in the response. Depreciation is 9.333%
-of offer price per year. For PHEVs, this estimate uses liquid consumption and
+of the candidate price per year. For PHEVs, this estimate uses liquid consumption and
 the liquid-fuel rate only. Electric share, range, and charging context remain
 in `powertrain-fit-v1` and are not folded into the liquid-only TCO estimate.
 
@@ -224,7 +254,8 @@ The v3 pillar inputs use these deterministic metric functions from
 100 km, liquid consumption is litres per 100 km, electric consumption is kWh
 per 100 km, range is km, seats are a count, and cargo is litres.
 
-Price fit uses `ratio = offer_price_eur / budget_max_eur`:
+Price fit uses `ratio = price_eur / budget_max_eur`, where `price_eur` is the
+offer price or, for the `list_price` basis, the list price:
 
 ```text
 100                                      when ratio <= 0.75
@@ -330,7 +361,9 @@ evaluation time, defaulted fields, constraint modes, active module versions,
 assumptions, exclusion counts, status, and completion time. Each item stores
 the exact vehicle, listing, and spec identity, condition group, rank, score,
 scoring version, and the full v3 breakdown in
-`recommendation_items.score_breakdown`.
+`recommendation_items.score_breakdown`. A list-price item has no listing:
+`listing_id` is null, and the breakdown stores `price_basis` and the
+`list_price` block with its decision and observation IDs.
 
 The breakdown includes confidence components, pillar and preference scores,
 penalties, missing factors, module versions, assumptions, evidence, and

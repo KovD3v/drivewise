@@ -847,3 +847,115 @@ def test_car_decision_flows_never_return_two_wheelers(conn, tmp_path, vehicle_ty
         for item in group.items
     }
     assert (spec["vehicle_id"] in guided_ids) is is_car
+
+
+def publish_list_price_ready(conn, tmp_path, permission="permitted"):
+    """metro-g1 with every scored fact and a list price, and no offer at all."""
+    data = bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = permission
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_fact(data, "seats", 5)
+    add_fact(
+        data,
+        "cargo_volume_liters",
+        300,
+        {"market": "IT", "method": "VDA", "seating_configuration": "all_seats_up"},
+    )
+    add_fact(
+        data,
+        "liquid_consumption_l_100km",
+        4.5,
+        {"market": "IT", "procedure": "WLTP", "cycle": "combined"},
+    )
+    add_list_price(data, substitute_note="Synthetic: nearest current row.")
+    publish(conn, data, tmp_path)
+    return conn.execute(
+        "SELECT * FROM vehicle_specs WHERE variant_key = 'metro-g1-ice'"
+    ).fetchone()
+
+
+def insert_offer(conn, spec, *, age_days=0):
+    run_id = uuid4()
+    conn.execute(
+        "INSERT INTO import_runs (id,schema_version,dataset_hash,file_name,status) VALUES (%s,1,%s,'test','completed')",
+        (run_id, f"offer-{run_id}"),
+    )
+    source_id = conn.execute(
+        "SELECT id FROM sources WHERE source_key = 'synthetic-v2'"
+    ).fetchone()["id"]
+    conn.execute(
+        """INSERT INTO listings (id,vehicle_id,spec_id,source_id,listing_ref,title,price_eur,
+                   mileage,condition,source_url,first_seen_at,last_seen_at,content_hash,import_run_id)
+                   VALUES (%s,%s,%s,%s,%s,'Test offer',11000,NULL,'new','https://example.test/offer',
+                   now() - make_interval(days => %s), now() - make_interval(days => %s),'test',%s)""",
+        (uuid4(), spec["vehicle_id"], spec["id"], source_id, f"offer-{run_id}", age_days, age_days, run_id),
+    )
+
+
+def test_variant_without_offer_is_ranked_at_its_list_price(conn, tmp_path):
+    spec = publish_list_price_ready(conn, tmp_path)
+    repo = AdvisorRepository(conn)
+    candidates = repo.list_candidates()
+    assert [(c["spec"]["id"], c["price_basis"]) for c in candidates] == [
+        (spec["id"], "list_price")
+    ]
+    assert candidates[0]["offer"] is None
+    assert candidates[0]["list_price"]["price_eur"] == Decimal("12200.01")
+    assert candidates[0]["list_price"]["trim_label"] == "Synthetic Trim 50/68"
+    assert candidates[0]["list_price"]["decision_id"] is not None
+    request = AdvisorRecommendationRequest(budget_max_eur=15000, primary_use="city")
+    items = build_recommendations(request, candidates)
+    assert [(i.price_basis, i.offer, i.list_price.price_eur) for i in items] == [
+        ("list_price", None, 12200.01)
+    ]
+    assert items[0].list_price.computed_from_excl_vat is True
+    assert items[0].list_price.substitute_note == "Synthetic: nearest current row."
+    run_id = repo.create_run({})
+    repo.save_items(run_id, items)
+    saved = conn.execute(
+        "SELECT listing_id, condition_group, score_breakdown FROM recommendation_items WHERE run_id = %s",
+        (run_id,),
+    ).fetchone()
+    assert saved["listing_id"] is None and saved["condition_group"] == "new"
+    assert saved["score_breakdown"]["price_basis"] == "list_price"
+    assert saved["score_breakdown"]["list_price"]["trim_label"] == "Synthetic Trim 50/68"
+
+    guided = process_guided_decision_turn(
+        decision_id=uuid4(),
+        profile_version=1,
+        current_profile=DecisionProfile(),
+        message="Cerco un'auto in città con budget 15.000 euro",
+        advisor_repository=repo,
+        as_of=datetime.now(timezone.utc),
+    )
+    guided_items = [
+        item for group in guided.response.preview_ranking.groups for item in group.items
+    ]
+    assert [(i.selected_spec.id, i.price_basis) for i in guided_items] == [
+        (spec["id"], "list_price")
+    ]
+
+    # A stale offer is not eligible, so the list price still stands in for it.
+    insert_offer(conn, spec, age_days=40)
+    assert [c["price_basis"] for c in repo.list_candidates()] == ["list_price"]
+    # An eligible offer replaces the list-price candidate: current behaviour.
+    insert_offer(conn, spec)
+    candidates = repo.list_candidates()
+    assert [c["price_basis"] for c in candidates] == ["offer"]
+    assert candidates[0]["offer"]["price_eur"] == 11000
+
+
+def test_list_price_from_an_unreviewed_source_is_excluded_and_counted(conn, tmp_path):
+    publish_list_price_ready(conn, tmp_path, permission="manual_validation_only")
+    repo = AdvisorRepository(conn)
+    assert repo.list_candidates() == []
+    excluded = repo.count_excluded_candidates()
+    # The other synthetic cars have no list price at all.
+    assert excluded["missing_list_price"] >= 1
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'permitted' WHERE source_key = 'synthetic-v2'"
+    )
+    permitted = repo.count_excluded_candidates()
+    # Seed offers from unreviewed sources keep their own count; the variant leaves it.
+    assert permitted.get("source_not_permitted", 0) == excluded["source_not_permitted"] - 1
+    assert [c["price_basis"] for c in repo.list_candidates()] == ["list_price"]

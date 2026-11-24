@@ -384,6 +384,53 @@ export interface components {
             /** Useful Width Mm */
             useful_width_mm: number;
         };
+        /**
+         * AdvisorListPrice
+         * @description The public list price that stands in for an offer (ADR-013, ADR-015).
+         */
+        AdvisorListPrice: {
+            /** Computed From Excl Vat */
+            computed_from_excl_vat: boolean;
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /**
+             * Observation Id
+             * Format: uuid
+             */
+            observation_id: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Price Eur */
+            price_eur: number;
+            /**
+             * Price List Valid From
+             * Format: date
+             */
+            price_list_valid_from: string;
+            /** Printed Amount Eur */
+            printed_amount_eur: number;
+            /**
+             * Printed Basis
+             * @enum {string}
+             */
+            printed_basis: "incl_vat" | "excl_vat";
+            /** Source Name */
+            source_name: string;
+            /** Source Url */
+            source_url: string;
+            /** Substitute Note */
+            substitute_note: string | null;
+            /** Trim Label */
+            trim_label: string;
+            /** Vat Rate Percent */
+            vat_rate_percent: number | null;
+        };
         /** AdvisorMetricProvenance */
         AdvisorMetricProvenance: {
             /** Decision Id */
@@ -482,13 +529,14 @@ export interface components {
             evidence: {
                 [key: string]: unknown;
             };
+            list_price: components["schemas"]["AdvisorListPrice"] | null;
             /** Missing Factors */
             missing_factors: string[];
             /** Module Versions */
             module_versions: {
                 [key: string]: string;
             };
-            offer: components["schemas"]["AdvisorOffer"];
+            offer: components["schemas"]["AdvisorOffer"] | null;
             /** Penalties */
             penalties: string[];
             /** Pillar Scores */
@@ -499,6 +547,12 @@ export interface components {
             positive_factors: components["schemas"]["AdvisorFactor"][];
             /** Preference Fit */
             preference_fit: number | null;
+            /**
+             * Price Basis
+             * @default offer
+             * @enum {string}
+             */
+            price_basis: "offer" | "list_price";
             /** Provenance */
             provenance: components["schemas"]["AdvisorMetricProvenance"][];
             /** Score */
@@ -720,7 +774,7 @@ export interface components {
              * Metric
              * @enum {string}
              */
-            metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw" | "seat_height_mm" | "fuel_tank_capacity_liters" | "underseat_storage_liters";
+            metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw" | "seat_height_mm" | "fuel_tank_capacity_liters" | "underseat_storage_liters" | "list_price_eur";
             /** Policy Version */
             policy_version: string;
             /** Reason */

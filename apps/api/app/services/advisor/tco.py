@@ -10,6 +10,7 @@ from app.services.advisor.energy_prices import (
     LIQUID_ENERGY_PRICES_EUR_PER_LITER,
 )
 from app.services.advisor.model_analysis import estimate_annual_maintenance
+from app.services.advisor.pricing import priced_terms
 
 
 TCO_VERSION = "tco-v1"
@@ -28,7 +29,7 @@ def estimate_tco(
 ) -> ModuleAssessment:
     vehicle = candidate.get("vehicle", {})
     spec = candidate.get("spec", {})
-    offer = candidate.get("offer", {})
+    offer = priced_terms(candidate)
     missing: list[str] = []
     annual: dict[str, Decimal] = {}
 

@@ -11,19 +11,7 @@ from app.schemas.advisor import AdvisorRecommendationGroup, AdvisorRecommendatio
 from app.services.advisor.scoring import FRESHNESS_DAYS, SCORING_VERSION
 
 
-class AdvisorRepository:
-    def __init__(self, conn) -> None:
-        self.conn = conn
-
-    def list_candidates(
-        self,
-        *,
-        as_of: datetime | None = None,
-    ) -> list[dict[str, Any]]:
-        evaluation_time = _as_utc(as_of)
-        fresh_since = evaluation_time - timedelta(days=FRESHNESS_DAYS)
-        rows = self.conn.execute(
-            """
+_CANDIDATE_SPEC_COLUMNS = """
             SELECT
               v.id AS vehicle_id,
               v.canonical_key,
@@ -75,7 +63,9 @@ class AdvisorRepository:
               s.acceleration_0_100_s,
               s.top_speed_kmh,
               s.braking_100_0_m,
-              l.id AS listing_id,
+"""
+
+_CANDIDATE_LISTING_COLUMNS = """              l.id AS listing_id,
               l.source_id,
               l.listing_ref,
               l.title,
@@ -92,7 +82,9 @@ class AdvisorRepository:
               listing_source.license AS listing_source_license,
               listing_source.ranking_permission AS listing_source_ranking_permission,
               import_run.status AS import_status,
-              COALESCE(
+"""
+
+_CANDIDATE_CHILDREN = """              COALESCE(
                 (
                   SELECT jsonb_agg(
                     jsonb_build_object(
@@ -208,20 +200,11 @@ class AdvisorRepository:
                 ),
                 '[]'::jsonb
               ) AS technology_comfort_features
-            FROM listings AS l
-            JOIN vehicles AS v
-              ON v.id = l.vehicle_id
-            JOIN catalog_read_specs AS s
-              ON s.id = l.spec_id
-             AND s.vehicle_id = l.vehicle_id
-            JOIN sources AS listing_source
-              ON listing_source.id = l.source_id
-            JOIN import_runs AS import_run
-              ON import_run.id = l.import_run_id
-             AND import_run.status = 'completed'
-            WHERE upper(v.market) = 'IT'
-              AND """ + CAR_ONLY_SQL + """
-              AND upper(listing_source.market) = 'IT'
+"""
+
+# One request-independent definition of an eligible offer. The offer query applies it
+# to its own row; the list-price query asks that no such offer exists for the spec.
+_ELIGIBLE_OFFER_GATES = """              AND upper(listing_source.market) = 'IT'
               AND listing_source.ranking_permission = 'permitted'
               AND l.is_active IS TRUE
               AND l.last_seen_at >= %s
@@ -229,182 +212,54 @@ class AdvisorRepository:
               AND nullif(trim(l.source_url), '') IS NOT NULL
               AND nullif(trim(listing_source.name), '') IS NOT NULL
               AND nullif(trim(listing_source.license), '') IS NOT NULL
-              AND nullif(trim(v.model_family_key), '') IS NOT NULL
-              AND NOT EXISTS (
-                SELECT 1
-                FROM (
-                  VALUES
-                    ('body_style'),
-                    ('fuel_type'),
-                    ('seats'),
-                    ('cargo_volume_liters')
-                ) AS required_metric(metric)
-                WHERE NOT EXISTS (
-                  SELECT 1
-                  FROM catalog_read_provenance AS required_provenance
-                  JOIN sources AS required_provenance_source
-                    ON required_provenance_source.id = required_provenance.source_id
-                  WHERE required_provenance.spec_id = s.id
-                    AND required_provenance.is_current
-                    AND required_provenance_source.ranking_permission = 'permitted'
-                    AND COALESCE(
-                      required_provenance.metadata->'supported_metrics',
-                      required_provenance.metadata->'metrics',
-                      '[]'::jsonb
-                    ) ? required_metric.metric
-                )
-              )
-              AND (
-                (
-                  s.fuel_type = 'electric'
-                  AND EXISTS (
-                    SELECT 1
-                    FROM catalog_read_provenance AS energy_provenance
-                    JOIN sources AS energy_provenance_source
-                      ON energy_provenance_source.id = energy_provenance.source_id
-                    WHERE energy_provenance.spec_id = s.id
-                      AND energy_provenance.is_current
-                      AND energy_provenance_source.ranking_permission = 'permitted'
-                      AND COALESCE(
-                        energy_provenance.metadata->'supported_metrics',
-                        energy_provenance.metadata->'metrics',
-                        '[]'::jsonb
-                      ) ? 'energy_consumption_kwh_100km'
-                  )
-                  AND EXISTS (
-                    SELECT 1
-                    FROM catalog_read_provenance AS range_provenance
-                    JOIN sources AS range_provenance_source
-                      ON range_provenance_source.id = range_provenance.source_id
-                    WHERE range_provenance.spec_id = s.id
-                      AND range_provenance.is_current
-                      AND range_provenance_source.ranking_permission = 'permitted'
-                      AND COALESCE(
-                        range_provenance.metadata->'supported_metrics',
-                        range_provenance.metadata->'metrics',
-                        '[]'::jsonb
-                      ) ? 'wltp_range_km'
-                  )
-                )
-                OR s.fuel_type = 'plug_in_hybrid_petrol'
-                OR (
-                  s.fuel_type <> 'electric'
-                  AND s.fuel_type <> 'plug_in_hybrid_petrol'
-                  AND EXISTS (
-                    SELECT 1
-                    FROM catalog_read_provenance AS liquid_provenance
-                    JOIN sources AS liquid_provenance_source
-                      ON liquid_provenance_source.id = liquid_provenance.source_id
-                    WHERE liquid_provenance.spec_id = s.id
-                      AND liquid_provenance.is_current
-                      AND liquid_provenance_source.ranking_permission = 'permitted'
-                      AND COALESCE(
-                        liquid_provenance.metadata->'supported_metrics',
-                        liquid_provenance.metadata->'metrics',
-                        '[]'::jsonb
-                      ) ? 'consumption_l_100km'
-                  )
-                )
-              )
               AND l.price_eur IS NOT NULL
               AND l.condition IN ('new', 'used', 'certified')
               AND (
                 l.condition = 'new'
                 OR l.mileage IS NOT NULL
               )
-              AND nullif(trim(s.variant_key), '') IS NOT NULL
-              AND nullif(trim(s.body_style), '') IS NOT NULL
-              AND nullif(trim(s.fuel_type), '') IS NOT NULL
-              AND s.fuel_type IN (
-                'diesel',
-                'electric',
-                'full_hybrid_petrol',
-                'hybrid_petrol',
-                'mild_hybrid_petrol',
-                'petrol',
-                'petrol_lpg',
-                'plug_in_hybrid_petrol'
-              )
-              AND s.body_style IN (
-                'city_car',
-                'crossover',
-                'hatchback',
-                'mpv',
-                'sedan',
-                'small_hatchback',
-                'suv',
-                'van',
-                'wagon'
-              )
-              AND s.seats IS NOT NULL
-              AND s.cargo_volume_liters IS NOT NULL
-              AND (
-                (
-                  lower(s.fuel_type) = 'electric'
-                  AND s.energy_consumption_kwh_100km IS NOT NULL
-                  AND s.wltp_range_km IS NOT NULL
-                )
-                OR lower(s.fuel_type) = 'plug_in_hybrid_petrol'
-                OR (
-                  lower(s.fuel_type) <> 'electric'
-                  AND lower(s.fuel_type) <> 'plug_in_hybrid_petrol'
-                  AND s.consumption_l_100km IS NOT NULL
-                )
-              )
-            ORDER BY
-              l.condition,
-              v.model_family_key,
-              l.price_eur,
-              l.mileage NULLS LAST,
-              l.listing_ref,
-              l.id
-            """,
-            (fresh_since, evaluation_time),
-        ).fetchall()
-        return [_candidate_from_row(row) for row in rows]
+"""
 
-    def count_excluded_candidates(
-        self,
-        *,
-        as_of: datetime | None = None,
-    ) -> dict[str, int]:
-        evaluation_time = _as_utc(as_of)
-        fresh_since = evaluation_time - timedelta(days=FRESHNESS_DAYS)
-        rows = self.conn.execute(
-            """
-            WITH classified AS (
-              SELECT CASE
-                WHEN NOT """ + CAR_ONLY_SQL + """
-                  THEN 'unsupported_vehicle_type'
-                WHEN upper(v.market) <> 'IT'
-                  OR upper(listing_source.market) <> 'IT'
-                  THEN 'non_it_market'
-                WHEN listing_source.ranking_permission <> 'permitted'
-                  THEN 'source_not_permitted'
-                WHEN l.is_active IS NOT TRUE
-                  THEN 'inactive_offer'
-                WHEN l.last_seen_at IS NULL OR l.last_seen_at < %s
-                  THEN 'stale_offer'
-                WHEN l.valid_until IS NOT NULL AND l.valid_until < %s
-                  THEN 'expired_offer'
-                WHEN nullif(trim(l.source_url), '') IS NULL
-                  OR nullif(trim(listing_source.name), '') IS NULL
-                  OR nullif(trim(listing_source.license), '') IS NULL
-                  OR import_run.status IS DISTINCT FROM 'completed'
-                  THEN 'unreviewed_source'
-                WHEN l.spec_id IS NULL OR s.id IS NULL
-                  OR s.vehicle_id IS DISTINCT FROM l.vehicle_id
-                  OR nullif(trim(s.variant_key), '') IS NULL
-                  THEN 'unresolved_spec'
-                WHEN nullif(trim(v.model_family_key), '') IS NULL
-                  THEN 'missing_model_family_key'
-                WHEN l.price_eur IS NULL
-                  THEN 'missing_price'
-                WHEN l.condition NOT IN ('new', 'used', 'certified')
-                  THEN 'invalid_condition'
-                WHEN l.condition IN ('used', 'certified') AND l.mileage IS NULL
-                  THEN 'missing_mileage'
-                WHEN nullif(trim(s.body_style), '') IS NULL
+_NO_ELIGIBLE_OFFER = """              AND NOT EXISTS (
+                SELECT 1
+                FROM listings AS l
+                JOIN sources AS listing_source
+                  ON listing_source.id = l.source_id
+                JOIN import_runs AS import_run
+                  ON import_run.id = l.import_run_id
+                 AND import_run.status = 'completed'
+                WHERE l.spec_id = s.id
+                  AND l.vehicle_id = s.vehicle_id
+""" + _ELIGIBLE_OFFER_GATES + """              )
+"""
+
+# The current list-price fact, already limited by catalog_scalar_facts to eligible
+# evidence from permitted, sourced and licensed sources, with its price-list terms.
+_LIST_PRICE_FACT_JOIN = """LEFT JOIN LATERAL (
+              SELECT fact.id AS decision_id,
+                     fact.selected_observation_id AS observation_id,
+                     fact.source_name,
+                     fact.source_url,
+                     fact.retrieved_at,
+                     observation.list_price AS terms
+              FROM catalog_scalar_facts AS fact
+              JOIN spec_observations AS observation
+                ON observation.id = fact.selected_observation_id
+              WHERE fact.spec_id = s.id
+                AND fact.legacy_metric = 'list_price_eur'
+            ) AS list_price ON true
+"""
+
+_LIST_PRICE_COLUMNS = """              list_price.decision_id AS list_price_decision_id,
+              list_price.observation_id AS list_price_observation_id,
+              list_price.source_name AS list_price_source_name,
+              list_price.source_url AS list_price_source_url,
+              list_price.retrieved_at AS list_price_observed_at,
+              list_price.terms AS list_price_terms,
+"""
+
+# Spec exclusion reasons shared by offers and list-price variants, in scoring order.
+_SPEC_EXCLUSION_CASES = """                WHEN nullif(trim(s.body_style), '') IS NULL
                   THEN 'missing_body_style'
                 WHEN nullif(trim(s.fuel_type), '') IS NULL
                   THEN 'missing_fuel_type'
@@ -519,7 +374,250 @@ class AdvisorRepository:
                   )
                 )
                   THEN 'missing_spec_provenance'
-                ELSE NULL
+"""
+
+# Spec gates shared by offer and list-price candidates: permitted provenance first,
+# then the values the car module scores.
+_SPEC_PROVENANCE_GATES = """              AND nullif(trim(v.model_family_key), '') IS NOT NULL
+              AND NOT EXISTS (
+                SELECT 1
+                FROM (
+                  VALUES
+                    ('body_style'),
+                    ('fuel_type'),
+                    ('seats'),
+                    ('cargo_volume_liters')
+                ) AS required_metric(metric)
+                WHERE NOT EXISTS (
+                  SELECT 1
+                  FROM catalog_read_provenance AS required_provenance
+                  JOIN sources AS required_provenance_source
+                    ON required_provenance_source.id = required_provenance.source_id
+                  WHERE required_provenance.spec_id = s.id
+                    AND required_provenance.is_current
+                    AND required_provenance_source.ranking_permission = 'permitted'
+                    AND COALESCE(
+                      required_provenance.metadata->'supported_metrics',
+                      required_provenance.metadata->'metrics',
+                      '[]'::jsonb
+                    ) ? required_metric.metric
+                )
+              )
+              AND (
+                (
+                  s.fuel_type = 'electric'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM catalog_read_provenance AS energy_provenance
+                    JOIN sources AS energy_provenance_source
+                      ON energy_provenance_source.id = energy_provenance.source_id
+                    WHERE energy_provenance.spec_id = s.id
+                      AND energy_provenance.is_current
+                      AND energy_provenance_source.ranking_permission = 'permitted'
+                      AND COALESCE(
+                        energy_provenance.metadata->'supported_metrics',
+                        energy_provenance.metadata->'metrics',
+                        '[]'::jsonb
+                      ) ? 'energy_consumption_kwh_100km'
+                  )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM catalog_read_provenance AS range_provenance
+                    JOIN sources AS range_provenance_source
+                      ON range_provenance_source.id = range_provenance.source_id
+                    WHERE range_provenance.spec_id = s.id
+                      AND range_provenance.is_current
+                      AND range_provenance_source.ranking_permission = 'permitted'
+                      AND COALESCE(
+                        range_provenance.metadata->'supported_metrics',
+                        range_provenance.metadata->'metrics',
+                        '[]'::jsonb
+                      ) ? 'wltp_range_km'
+                  )
+                )
+                OR s.fuel_type = 'plug_in_hybrid_petrol'
+                OR (
+                  s.fuel_type <> 'electric'
+                  AND s.fuel_type <> 'plug_in_hybrid_petrol'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM catalog_read_provenance AS liquid_provenance
+                    JOIN sources AS liquid_provenance_source
+                      ON liquid_provenance_source.id = liquid_provenance.source_id
+                    WHERE liquid_provenance.spec_id = s.id
+                      AND liquid_provenance.is_current
+                      AND liquid_provenance_source.ranking_permission = 'permitted'
+                      AND COALESCE(
+                        liquid_provenance.metadata->'supported_metrics',
+                        liquid_provenance.metadata->'metrics',
+                        '[]'::jsonb
+                      ) ? 'consumption_l_100km'
+                  )
+                )
+              )
+"""
+
+_SPEC_VALUE_GATES = """              AND nullif(trim(s.variant_key), '') IS NOT NULL
+              AND nullif(trim(s.body_style), '') IS NOT NULL
+              AND nullif(trim(s.fuel_type), '') IS NOT NULL
+              AND s.fuel_type IN (
+                'diesel',
+                'electric',
+                'full_hybrid_petrol',
+                'hybrid_petrol',
+                'mild_hybrid_petrol',
+                'petrol',
+                'petrol_lpg',
+                'plug_in_hybrid_petrol'
+              )
+              AND s.body_style IN (
+                'city_car',
+                'crossover',
+                'hatchback',
+                'mpv',
+                'sedan',
+                'small_hatchback',
+                'suv',
+                'van',
+                'wagon'
+              )
+              AND s.seats IS NOT NULL
+              AND s.cargo_volume_liters IS NOT NULL
+              AND (
+                (
+                  lower(s.fuel_type) = 'electric'
+                  AND s.energy_consumption_kwh_100km IS NOT NULL
+                  AND s.wltp_range_km IS NOT NULL
+                )
+                OR lower(s.fuel_type) = 'plug_in_hybrid_petrol'
+                OR (
+                  lower(s.fuel_type) <> 'electric'
+                  AND lower(s.fuel_type) <> 'plug_in_hybrid_petrol'
+                  AND s.consumption_l_100km IS NOT NULL
+                )
+              )
+"""
+
+
+class AdvisorRepository:
+    def __init__(self, conn) -> None:
+        self.conn = conn
+
+    def list_candidates(
+        self,
+        *,
+        as_of: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """Offer candidates, then variants with no eligible offer at list price (ADR-013)."""
+        evaluation_time = _as_utc(as_of)
+        fresh_since = evaluation_time - timedelta(days=FRESHNESS_DAYS)
+        rows = self.conn.execute(
+            _CANDIDATE_SPEC_COLUMNS
+            + _CANDIDATE_LISTING_COLUMNS
+            + _CANDIDATE_CHILDREN
+            + """            FROM listings AS l
+            JOIN vehicles AS v
+              ON v.id = l.vehicle_id
+            JOIN catalog_read_specs AS s
+              ON s.id = l.spec_id
+             AND s.vehicle_id = l.vehicle_id
+            JOIN sources AS listing_source
+              ON listing_source.id = l.source_id
+            JOIN import_runs AS import_run
+              ON import_run.id = l.import_run_id
+             AND import_run.status = 'completed'
+            WHERE upper(v.market) = 'IT'
+              AND """
+            + CAR_ONLY_SQL
+            + "\n"
+            + _ELIGIBLE_OFFER_GATES
+            + _SPEC_PROVENANCE_GATES
+            + _SPEC_VALUE_GATES
+            + """            ORDER BY
+              l.condition,
+              v.model_family_key,
+              l.price_eur,
+              l.mileage NULLS LAST,
+              l.listing_ref,
+              l.id
+            """,
+            (fresh_since, evaluation_time),
+        ).fetchall()
+        candidates = [_candidate_from_row(row) for row in rows]
+        list_price_rows = self.conn.execute(
+            _CANDIDATE_SPEC_COLUMNS
+            + _LIST_PRICE_COLUMNS
+            + _CANDIDATE_CHILDREN
+            + """            FROM vehicles AS v
+            JOIN catalog_read_specs AS s
+              ON s.vehicle_id = v.id
+            """
+            + _LIST_PRICE_FACT_JOIN
+            + """            WHERE upper(v.market) = 'IT'
+              AND s.catalog_version = 2
+              AND """
+            + CAR_ONLY_SQL
+            + "\n"
+            + _NO_ELIGIBLE_OFFER
+            + """              AND s.list_price_eur IS NOT NULL
+              AND list_price.decision_id IS NOT NULL
+              AND list_price.source_url LIKE 'https://%%'
+"""
+            + _SPEC_PROVENANCE_GATES
+            + _SPEC_VALUE_GATES
+            + """            ORDER BY
+              v.model_family_key,
+              s.list_price_eur,
+              s.variant_key,
+              s.id
+            """,
+            (fresh_since, evaluation_time),
+        ).fetchall()
+        candidates.extend(_list_price_candidate_from_row(row) for row in list_price_rows)
+        return candidates
+
+    def count_excluded_candidates(
+        self,
+        *,
+        as_of: datetime | None = None,
+    ) -> dict[str, int]:
+        evaluation_time = _as_utc(as_of)
+        fresh_since = evaluation_time - timedelta(days=FRESHNESS_DAYS)
+        rows = self.conn.execute(
+            """
+            WITH classified AS (
+              SELECT CASE
+                WHEN NOT """ + CAR_ONLY_SQL + """
+                  THEN 'unsupported_vehicle_type'
+                WHEN upper(v.market) <> 'IT'
+                  OR upper(listing_source.market) <> 'IT'
+                  THEN 'non_it_market'
+                WHEN listing_source.ranking_permission <> 'permitted'
+                  THEN 'source_not_permitted'
+                WHEN l.is_active IS NOT TRUE
+                  THEN 'inactive_offer'
+                WHEN l.last_seen_at IS NULL OR l.last_seen_at < %s
+                  THEN 'stale_offer'
+                WHEN l.valid_until IS NOT NULL AND l.valid_until < %s
+                  THEN 'expired_offer'
+                WHEN nullif(trim(l.source_url), '') IS NULL
+                  OR nullif(trim(listing_source.name), '') IS NULL
+                  OR nullif(trim(listing_source.license), '') IS NULL
+                  OR import_run.status IS DISTINCT FROM 'completed'
+                  THEN 'unreviewed_source'
+                WHEN l.spec_id IS NULL OR s.id IS NULL
+                  OR s.vehicle_id IS DISTINCT FROM l.vehicle_id
+                  OR nullif(trim(s.variant_key), '') IS NULL
+                  THEN 'unresolved_spec'
+                WHEN nullif(trim(v.model_family_key), '') IS NULL
+                  THEN 'missing_model_family_key'
+                WHEN l.price_eur IS NULL
+                  THEN 'missing_price'
+                WHEN l.condition NOT IN ('new', 'used', 'certified')
+                  THEN 'invalid_condition'
+                WHEN l.condition IN ('used', 'certified') AND l.mileage IS NULL
+                  THEN 'missing_mileage'
+""" + _SPEC_EXCLUSION_CASES + """                ELSE NULL
               END AS reason
               FROM listings AS l
               JOIN vehicles AS v
@@ -540,7 +638,53 @@ class AdvisorRepository:
             """,
             (fresh_since, evaluation_time),
         ).fetchall()
-        return {row["reason"]: row["excluded_count"] for row in rows}
+        counts = {row["reason"]: row["excluded_count"] for row in rows}
+        for row in self.conn.execute(
+            """
+            WITH classified AS (
+              SELECT CASE
+                WHEN s.list_price_eur IS NULL AND EXISTS (
+                  SELECT 1 FROM catalog_current_facts AS fact
+                  WHERE fact.spec_id = s.id
+                    AND fact.metric = 'list_price_eur'
+                    AND fact.status = 'verified'
+                    AND NOT fact.eligible
+                )
+                  THEN 'source_not_permitted'
+                WHEN s.list_price_eur IS NULL
+                  OR list_price.decision_id IS NULL
+                  OR list_price.source_url NOT LIKE 'https://%%'
+                  THEN 'missing_list_price'
+                WHEN nullif(trim(s.variant_key), '') IS NULL
+                  THEN 'unresolved_spec'
+                WHEN nullif(trim(v.model_family_key), '') IS NULL
+                  THEN 'missing_model_family_key'
+"""
+            + _SPEC_EXCLUSION_CASES
+            + """                ELSE NULL
+              END AS reason
+              FROM vehicles AS v
+              JOIN catalog_read_specs AS s
+                ON s.vehicle_id = v.id
+              """
+            + _LIST_PRICE_FACT_JOIN
+            + """              WHERE upper(v.market) = 'IT'
+                AND s.catalog_version = 2
+                AND """
+            + CAR_ONLY_SQL
+            + "\n"
+            + _NO_ELIGIBLE_OFFER
+            + """            )
+            SELECT reason, count(*)::integer AS excluded_count
+            FROM classified
+            WHERE reason IS NOT NULL
+            GROUP BY reason
+            ORDER BY reason
+            """,
+            (fresh_since, evaluation_time),
+        ).fetchall():
+            counts[row["reason"]] = counts.get(row["reason"], 0) + row["excluded_count"]
+        return counts
 
     def list_model_analysis_candidates(self) -> list[dict[str, Any]]:
         evaluation_time = datetime.now(timezone.utc)
@@ -713,6 +857,10 @@ class AdvisorRepository:
                     factor.model_dump(mode="json") for factor in item.tradeoffs
                 ],
                 "evidence": item.evidence,
+                "price_basis": item.price_basis,
+                "list_price": (
+                    item.list_price.model_dump(mode="json") if item.list_price else None
+                ),
                 "provenance": [
                     entry.model_dump(mode="json") for entry in item.provenance
                 ],
@@ -747,7 +895,7 @@ class AdvisorRepository:
                     uuid4(),
                     run_id,
                     item.vehicle.id,
-                    item.offer.id,
+                    item.offer.id if item.offer else None,
                     item.selected_spec.id,
                     condition_group,
                     rank,
@@ -844,9 +992,10 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
             "ranking_permission": row["listing_source_ranking_permission"],
         },
         "import_status": row["import_status"],
+        "price_basis": "offer",
         "reviewed": True,
         "repository_eligible": True,
-        "provenance": _metric_provenance(row, spec, offer),
+        "provenance": _offer_provenance(row, offer) + _metric_provenance(row, spec),
     }
     candidate["decision_context"] = {
         "identity": {
@@ -954,9 +1103,69 @@ def _model_analysis_listing(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _metric_provenance(
+_LISTING_ROW_KEYS = (
+    "listing_id",
+    "source_id",
+    "listing_ref",
+    "title",
+    "price_eur",
+    "mileage",
+    "condition",
+    "location_region",
+    "source_url",
+    "listed_at",
+    "last_seen_at",
+    "valid_until",
+    "is_active",
+    "listing_source_name",
+    "listing_source_license",
+    "listing_source_ranking_permission",
+    "import_status",
+)
+
+
+def _list_price_candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
+    """A variant with no eligible offer, evaluated as new at its list price (ADR-013)."""
+    # The list-price query has no listing columns; the shared mapper sees them as empty.
+    candidate = _candidate_from_row({**dict.fromkeys(_LISTING_ROW_KEYS), **row})
+    terms = row.get("list_price_terms") or {}
+    candidate.update(
+        offer=None,
+        source=None,
+        import_status=None,
+        price_basis="list_price",
+        list_price={
+            "price_eur": row["list_price_eur"],
+            "computed_from_excl_vat": terms.get("printed_basis") == "excl_vat",
+            "printed_amount_eur": terms.get("printed_amount_eur"),
+            "printed_basis": terms.get("printed_basis"),
+            "vat_rate_percent": terms.get("vat_rate_percent"),
+            "trim_label": terms.get("trim_label"),
+            "price_list_valid_from": terms.get("price_list_valid_from"),
+            "substitute_note": terms.get("substitute_note"),
+            "source_name": row.get("list_price_source_name"),
+            "source_url": row.get("list_price_source_url"),
+            "observed_at": row.get("list_price_observed_at"),
+            "decision_id": row.get("list_price_decision_id"),
+            "observation_id": row.get("list_price_observation_id"),
+        },
+    )
+    candidate["provenance"] = [
+        {
+            "metric": "list_price_eur",
+            "source_name": row.get("list_price_source_name"),
+            "source_url": row.get("list_price_source_url"),
+            "observed_at": row.get("list_price_observed_at"),
+            "decision_id": row.get("list_price_decision_id"),
+            "observation_id": row.get("list_price_observation_id"),
+        },
+        *_metric_provenance(row, candidate["spec"]),
+    ]
+    return candidate
+
+
+def _offer_provenance(
     row: dict[str, Any],
-    spec: dict[str, Any],
     offer: dict[str, Any],
 ) -> list[dict[str, Any]]:
     provenance = [
@@ -976,7 +1185,14 @@ def _metric_provenance(
                 "observed_at": offer["last_seen_at"],
             }
         )
+    return provenance
 
+
+def _metric_provenance(
+    row: dict[str, Any],
+    spec: dict[str, Any],
+) -> list[dict[str, Any]]:
+    provenance: list[dict[str, Any]] = []
     technical_metrics = (
         "body_style",
         "fuel_type",
@@ -1050,7 +1266,7 @@ def _ranked_items(
     for item in groups_or_items:
         if not isinstance(item, AdvisorRecommendationItem):
             continue
-        condition_group = "new" if item.offer.condition == "new" else "used"
+        condition_group = item.condition_group
         counters[condition_group] += 1
         ranked.append((condition_group, counters[condition_group], item))
     return ranked
