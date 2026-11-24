@@ -421,8 +421,11 @@ second run was built with the earlier table. When it is applied:
   keeps its Corolla Cross identity and values: `--previous` keeps a published
   identity and lists the difference under `identity_differs`, so retiring or
   correcting it needs a reviewed decision;
-- each model enters the ranking at the name's 8,591 registrations, so the
-  100th model leaves the top 100.
+- each model enters the ranking at the name's 8,591 registrations, so EVO 5
+  (the 100th model today) leaves the top 100 and DS 7 becomes the 100th;
+- fetch into a new run folder: a run that holds the unsplit Corolla response
+  refuses to build (`Missing or outdated artifact eea/family-toyota-corolla.json;
+  fetch first.`) until both new responses are stored.
 
 The other Italian Corolla versions (ZWE219, 4,650 mm, `stationwagen` in RDW) are
 the Corolla Touring Sports. They are registered in Italy in 2024 but not in the
