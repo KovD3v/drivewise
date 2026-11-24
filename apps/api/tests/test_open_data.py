@@ -789,6 +789,9 @@ def lumo(tmp_path, folder: str, body: str, day: int) -> open_data.Run:
         ),
         # Rows of another make under the same approval do not count.
         ([{"merk": "TESLA", "inrichting": "sedan", "n": "9"}], None),
+        # A make that only contains, or is contained in, the model's make is another.
+        ([{"merk": "FIA", "inrichting": "sedan", "n": "9"}], None),
+        ([{"merk": "FIAT MOTORS", "inrichting": "sedan", "n": "9"}], None),
         ([], None),
     ],
 )

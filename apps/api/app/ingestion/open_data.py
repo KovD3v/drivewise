@@ -725,11 +725,9 @@ def _rdw_counts(rows: list[dict], field: str) -> dict[Decimal, int]:
 
 
 def _same_make(family_make: str, rdw_rows: list[dict]) -> bool:
+    """Exact after normalisation: one approval version can be registered by two makes."""
     wanted = slug(family_make)
-    return any(
-        slug(row.get("merk", "")) in wanted or wanted in slug(row.get("merk", ""))
-        for row in rdw_rows
-    )
+    return any(slug(row.get("merk") or "") == wanted for row in rdw_rows)
 
 
 def _complete(rows: list[dict]) -> bool:
