@@ -314,7 +314,9 @@ that collides with an existing identity is rejected by the unique index.
 
 The read provenance credits the body style to the vehicle's **last** identity
 snapshot and the fuel type to the variant's first. A bundle that fills a body
-style must therefore append the snapshot that states it last. Before `0014` both
+style must therefore append the snapshot that states it last, and the writer
+refuses a fill whose last snapshot is already in the stored evidence (for example
+`[registry, coachwork, registry]` over `[registry]`). Before `0014` both
 were credited to the variant's first snapshot, so a filled body style still named
 the vehicle's original source.
 
