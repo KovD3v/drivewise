@@ -136,6 +136,9 @@ test('credits the price list when the reference price is a list price', async ()
       ok: true,
       json: async () => ({
         ...analysisResponse,
+        assumptions: [
+          'No eligible offer was found, so the reference price is the list price of the selected variant.',
+        ],
         estimated_costs: {
           ...analysisResponse.estimated_costs,
           market_reference_price_eur: 30500,
@@ -167,4 +170,9 @@ test('credits the price list when the reference price is a list price', async ()
   expect(screen.getByText('Crediti delle fonti')).toBeVisible()
   expect(screen.getByText('Lumen registry (synthetic)')).toBeVisible()
   expect(screen.getByText('Synthetic fixture only')).toBeVisible()
+  expect(
+    screen.getByText(
+      'Non ci sono offerte valide. Il prezzo di riferimento è il prezzo di listino di questa versione.',
+    ),
+  ).toBeVisible()
 })

@@ -66,8 +66,14 @@ const resultLabels: Record<string, string> = {
 const assumptionLabels: Record<string, string> = {
   'No live market sources are used in Model Analysis V1.':
     'L’analisi V1 non usa fonti di mercato in tempo reale.',
-  'Reference price uses available MVP listing prices, then base price fallback.':
-    'Il prezzo di riferimento usa gli annunci disponibili, con il prezzo base come alternativa.',
+  'Reference prices use eligible, fresh offers for the selected variant.':
+    'Il prezzo di riferimento è la media delle offerte recenti per questa versione.',
+  'No eligible offer was found, so the reference price is the list price of the selected variant.':
+    'Non ci sono offerte valide. Il prezzo di riferimento è il prezzo di listino di questa versione.',
+  "No eligible offer or variant list price was found, so the reference price is the model's base price.":
+    'Non ci sono offerte valide né un prezzo di listino per questa versione. Il prezzo di riferimento è il prezzo base del modello.',
+  'No reference price is available: no eligible offer and no list price.':
+    'Non abbiamo un prezzo di riferimento: mancano offerte valide e prezzo di listino.',
   'Annual kilometres are estimated deterministically from usage_profile.':
     'I chilometri annui sono stimati in modo deterministico dal profilo di utilizzo.',
   'Fuel is estimated at EUR 1.85/L and electricity at EUR 0.30/kWh.':
