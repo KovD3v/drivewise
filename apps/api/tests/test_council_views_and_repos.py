@@ -246,7 +246,7 @@ def test_advisor_reads_the_same_v2_dimensions_and_power_as_the_detail(db, tmp_pa
     assert {"length_mm", "width_mm", "power_kw"} <= credited
 
 
-def test_detail_and_listing_and_resolve_keep_consumption_basis(db, tmp_path):
+def test_listing_and_resolve_candidates_keep_consumption_basis(db, tmp_path):
     data = permitted_bundle(tmp_path)
     add_interval(data, "liquid_consumption_l_100km", 4.4, 4.9, wltp())
     publish(db, data, tmp_path)

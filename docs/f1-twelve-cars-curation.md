@@ -37,13 +37,17 @@ bundle, come spiega [open-data-import.md](open-data-import.md).
 
 ### Bloccanti per il go-live
 
-Senza questi due campi l'Advisor esclude la variante (ADR-013: senza offerta
-autorizzata, la variante si valuta al prezzo di listino).
+L'Advisor esclude una variante senza tipo di carrozzeria, posti, bagagliaio o
+consumo (`_SPEC_EXCLUSION_CASES` in `apps/api/app/repositories/advisor.py`).
+Senza offerta autorizzata la valuta al prezzo di listino (ADR-013), quindi senza
+prezzo la esclude con `missing_list_price`. Posti e consumo arrivano dagli open
+data. Questi tre campi invece vanno curati:
 
 | Campo | Regola | Fonte |
 | --- | --- | --- |
 | `list_price_eur` | Prezzo di listino pubblico IVA inclusa, non chiavi in mano. Ogni osservazione porta i `ListPriceTerms` di ADR-015: `printed_amount_eur`, `printed_basis` (`incl_vat`, `excl_vat` o `turnkey`), `vat_rate_percent` quando il listino è senza IVA, la messa su strada quando è chiavi in mano, `trim_label`, `price_list_valid_from` e `substitute_note` quando la versione immatricolata non è più a listino. | Listino ufficiale del costruttore |
 | `cargo_volume_liters` | Contesto obbligatorio `method = "VDA"` e `seating_configuration = "all_seats_up"`. Gli altri contesti si salvano ma non arrivano mai al catalogo letto. | Scheda tecnica ufficiale del costruttore |
+| `body_style` del veicolo | Gli open data lo danno a 1 veicolo su 100 ([open-data-gaps.md](open-data-gaps.md)). Un bundle successivo lo riempie aggiungendo all'identità del veicolo lo snapshot che lo dichiara (migrazione `0014`, [catalog-v2.md](catalog-v2.md)). | Scheda tecnica o listino del costruttore |
 
 Il valore calcolato (da listino senza IVA o da chiavi in mano) resta marcato come
 calcolato, e l'interfaccia lo dice. Il validatore e il vincolo SQL di `0011`
@@ -51,11 +55,12 @@ controllano già i termini: un bundle con termini incompleti non passa `--check`
 
 ### Dopo il go-live: larghezza per il garage
 
-Garage Fit confronta la porta del garage con `width_mirrors_folded_mm`. Oggi
-questa metrica non esiste nel dominio `catalog_metric`: esiste solo
-`width_with_mirrors_mm` (specchi aperti). Per questo Garage Fit risponde
-`insufficient_data` sulla porta, anche quando lunghezza, larghezza carrozzeria
-(`body_width_mm`) e altezza sono note.
+Garage Fit dell'Advisor (`services/advisor/garage.py`) e il controllo garage del
+flusso guidato (`services/guided_decisions/engine.py`) confrontano la porta del
+garage con `width_mirrors_folded_mm`. Oggi questa metrica non esiste nel dominio
+`catalog_metric`: esiste solo `width_with_mirrors_mm` (specchi aperti). Per
+questo la porta resta senza verdetto (`insufficient_data`), anche quando
+lunghezza, larghezza carrozzeria (`body_width_mm`) e altezza sono note.
 
 Serve una decisione di prodotto di Andrea e Tommaso, prima di toccare il codice:
 
@@ -83,6 +88,12 @@ come intervallo si pubblica al valore superiore (ADR-018).
 Una fonte influenza il ranking solo con `ranking_permission = "permitted"`, e solo
 dopo una review firmata. Le tre bozze esistono già, ma nessuna è firmata.
 
+EEA e RDW non servono solo per i loro valori. L'identità di ogni veicolo open data
+(marca, modello, variante) poggia sui loro snapshot, e un fatto è idoneo solo se
+tutta l'identità viene da fonti `permitted` (`catalog_identity_eligibility`,
+migrazione `0009`). Finché EEA e RDW restano `manual_validation_only`, anche un
+listino firmato non porta nessuna delle 12 auto nel ranking.
+
 Per ognuna di [eea-co2-cars.md](source-reviews/eea-co2-cars.md),
 [rdw-open-data.md](source-reviews/rdw-open-data.md) e
 [motospecdb.md](source-reviews/motospecdb.md):
@@ -108,10 +119,46 @@ Per i listini e le schede tecniche dei costruttori serve una review nuova:
 4. Firmare la decisione. Senza firma, la fonte resta `manual_validation_only` e i
    prezzi non entrano nel ranking.
 
-Un bundle più vecchio non può riattivare una fonte revocata: il permesso di una
-fonte esistente si cambia nel database, non reimportando.
+### Come una fonte diventa `permitted`
+
+Il publish inserisce una fonte solo se la sua `source_key` non esiste ancora
+(`ON CONFLICT DO NOTHING` in `catalog_v2_writer.py`). Quindi:
+
+1. **Fonte nuova** (il listino di un costruttore): scrivere
+   `"ranking_permission": "permitted"` nel record `sources` del bundle solo dopo la
+   firma. Il primo publish fissa il permesso.
+2. **Fonte già pubblicata** (EEA e RDW, che il builder open data scrive come
+   `manual_validation_only`): reimportare non cambia niente. Dopo la firma, una
+   persona esegue sul database, solo per le fonti con la review firmata:
+
+   ```sql
+   UPDATE sources SET ranking_permission = 'permitted'
+   WHERE source_key IN ('eea-co2-cars', 'rdw-open-data');
+   ```
+
+   La revoca è lo stesso comando con `manual_validation_only`, e ha effetto alla
+   lettura successiva, senza ripubblicare.
 
 ## 3. Sequenza CLI
+
+### Chi produce il bundle F1
+
+Il bundle aggiunge prezzi, bagagliaio e carrozzeria alle varianti già pubblicate
+dal bundle open data. Ci sono due strade:
+
+1. **A mano (costo zero, consigliata per 12 auto).** Si scrive il JSON v2 seguendo
+   [catalog-v2.md](catalog-v2.md): uno snapshot per documento, un'osservazione e
+   una decisione `verified` per valore, con estratto e posizione nel documento.
+2. **Agente di raccolta** (`apps/api/scripts/scrape_catalog.py`,
+   [scraping.md](scraping.md)). Produce un bundle e un report delle lacune, ma
+   richiede chiavi OpenRouter e Tinyfish a pagamento: serve prima il via libera di
+   Andrea sul budget.
+
+In entrambi i casi il bundle deve riusare le identità già pubblicate. Il publish
+sul database di prova (che ha già il bundle open data) lo verifica: il numero di
+veicoli non deve cambiare, e le 12 auto devono avere i nuovi valori.
+
+### Comandi
 
 Si lancia dalla radice del repository. I file originali (PDF dei listini, pagine
 delle schede) stanno in `data/private/catalog/`, che Git ignora. Il bundle si
@@ -214,7 +261,8 @@ Ogni verifica gira su produzione e il suo risultato va annotato qui, con la data
 Motornet e Infocar vendono listini e schede italiane con licenza. Costano, quindi
 la scelta spetta ad Andrea e Tommaso insieme. Dopo la validazione della fase 1
 (le 12 auto in produzione), proporre il passaggio quando vale almeno una di
-queste condizioni, misurata e scritta qui:
+queste condizioni, misurata e scritta qui. Le soglie sono una proposta, da
+confermare con Andrea e Tommaso:
 
 1. **Costo di curazione.** Curare e aggiornare una variante richiede in media più
    di 30 minuti di lavoro umano per listino.
