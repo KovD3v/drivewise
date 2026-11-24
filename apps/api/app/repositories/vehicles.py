@@ -442,11 +442,21 @@ class VehiclesRepository:
               JOIN spec_observations observation
                 ON observation.id = fact.selected_observation_id
               UNION ALL
-              SELECT spec.id, spec.identity_evidence[1], identity_metric
+              SELECT spec.id, spec.identity_evidence[1], 'fuel_type'
               FROM vehicle_specs spec
               JOIN catalog_identity_eligibility identity
                 ON identity.spec_id = spec.id AND identity.eligible
-              CROSS JOIN unnest(ARRAY['body_style', 'fuel_type']) AS identity_metric
+              UNION ALL
+              -- Body style belongs to the vehicle: the snapshot that states it is
+              -- the last of the vehicle's identity evidence (migration 0014).
+              SELECT spec.id,
+                     vehicle.identity_evidence[cardinality(vehicle.identity_evidence)],
+                     'body_style'
+              FROM vehicle_specs spec
+              JOIN vehicles vehicle
+                ON vehicle.id = spec.vehicle_id AND vehicle.body_style IS NOT NULL
+              JOIN catalog_identity_eligibility identity
+                ON identity.spec_id = spec.id AND identity.eligible
             )
             SELECT
               evidence.spec_id,

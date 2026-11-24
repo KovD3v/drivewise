@@ -466,6 +466,24 @@ def test_a_later_bundle_fills_an_unknown_body_style_with_its_evidence(
     }
 
 
+def test_an_unknown_body_style_gets_no_credit(conn, tmp_path):  # noqa: F811
+    assert publish(conn, readiness_bundle(tmp_path, body_style=None), tmp_path) == "published"
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'permitted' WHERE source_key = 'lumen-registry'"
+    )
+    credited = {
+        metric
+        for row in conn.execute(
+            """SELECT p.metadata->'supported_metrics' AS metrics
+               FROM catalog_read_provenance p
+               JOIN vehicle_specs s ON s.id = p.spec_id
+               WHERE s.variant_key = 'tavo-petrol' AND NOT p.metadata ? 'decision_id'"""
+        ).fetchall()
+        for metric in row["metrics"]
+    }
+    assert credited == {"fuel_type"}
+
+
 @pytest.mark.parametrize(
     ("first_body_style", "change", "message"),
     [

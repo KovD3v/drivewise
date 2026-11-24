@@ -104,14 +104,18 @@ def test_vehicle_detail_carries_list_price_terms_basis_and_credits(client, conn)
 
     # A v2 spec is credited with every source behind the values it shows.
     credits = {entry["source_key"]: entry for entry in petrol["provenance"]}
-    assert set(credits) == {"lumen-registry", "plain-mirror"}
+    assert set(credits) == {"lumen-registry", "plain-mirror", "coachwork-notes"}
     registry = credits["lumen-registry"]
     assert registry["source_license"] == LICENCE
     assert registry["source_url"] == "https://lumen-registry.example.com/export"
     assert {"list_price_eur", "consumption_l_100km", "seats"} <= set(
         registry["supported_metrics"]
     )
-    assert {"body_style", "fuel_type"} <= set(registry["supported_metrics"])
+    # Fuel type comes from the variant's source, body style from the snapshot
+    # that states it on the vehicle.
+    assert "fuel_type" in registry["supported_metrics"]
+    assert "body_style" not in registry["supported_metrics"]
+    assert credits["coachwork-notes"]["supported_metrics"] == ["body_style"]
     assert credits["plain-mirror"]["source_url"].startswith("http://")
     # The vehicle's identity, body style included, credits both of its sources.
     vehicle_credits = {e["source_key"]: e for e in response.json()["provenance"]}
