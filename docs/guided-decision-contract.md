@@ -216,9 +216,13 @@ ambiguous:
 
 - `blocked`: `budget_eur` or `primary_use` is missing;
 - `ready`: Advisor v3 returned at least one eligible exact variant, priced by
-  an offer or a list price;
-- `insufficient_inventory`: the profile is rankable, but no variant has an
-  eligible reviewed offer or list price.
+  an offer or a list price, and every returned item has
+  `decision_status: "complete"`;
+- `provisional`: Advisor v3 returned at least one item, and at least one
+  returned item has `decision_status: "insufficient_data"` (the profile or the
+  evidence is not enough for a full decision score);
+- `insufficient_inventory`: the profile is rankable, but Advisor v3 returned no
+  item: no variant has an eligible reviewed offer or list price.
 
 `previewRanking.groups` uses the Advisor recommendation item shape unchanged,
 with its snake_case field names (`docs/api-contract.md`). A list-price item has
