@@ -1104,7 +1104,9 @@ def _interval(observation: dict) -> tuple:
     return _number(observation["value_min"]), _number(observation["value_max"])
 
 
-def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
+def continue_bundle(
+    previous: dict, fresh: dict | None, fresh_report: dict | None = None
+) -> tuple[dict, dict]:
     """Continue an earlier bundle with the bundle of a later run.
 
     Catalog v2 freezes a published vehicle or variant together with its evidence, and
@@ -1112,7 +1114,10 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
     it is, new vehicles and variants are added, and a fresh value becomes a decision
     that supersedes the earlier one only where the value changed. The one identity
     change catalog v2 accepts is a body style filled where it was unknown: the
-    earlier evidence stays first and the snapshots that state the body follow it."""
+    earlier evidence stays first and the snapshots that state the body follow it.
+
+    `fresh_report` is the later run's car report: it holds each variant's registry
+    body code, and gets a gap for every addition held back for a person's review."""
     fresh = fresh or {part: [] for part in BUNDLE_PARTS}
     merged = {"schema_version": 2}
     merged.update({part: list(previous[part]) for part in BUNDLE_PARTS})
@@ -1122,17 +1127,54 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
         "new_variants": [],
         "body_style_filled": [],
         "identity_differs": [],
+        "identity_review": [],
+        "withheld_vehicles": [],
+        "body_style_withheld": [],
         "revised": [],
         "unchanged": 0,
         "kept_without_fresh_value": 0,
     }
+    families = {f["key"]: f for f in (fresh_report or {}).get("families", [])}
+    held = _held_back(previous, fresh, families, report)
+    kept_variants: dict[str, set] = {}
+    for variant in fresh["variants"]:
+        if variant["variant_key"] not in held:
+            kept_variants.setdefault(variant["vehicle_key"], set()).add(
+                variant["variant_key"]
+            )
+    published_variants: dict[str, set] = {}
+    for variant in previous["variants"]:
+        published_variants.setdefault(variant["vehicle_key"], set()).add(
+            variant["variant_key"]
+        )
+    known = {v["canonical_key"] for v in previous["vehicles"]}
+    for vehicle in fresh["vehicles"]:
+        if vehicle["canonical_key"] not in known | set(kept_variants):
+            held.add(vehicle["canonical_key"])  # every variant is held back
+            report["withheld_vehicles"].append(vehicle["canonical_key"])
     for part, key in (("vehicles", "canonical_key"), ("variants", "variant_key")):
         published = {record[key]: record for record in previous[part]}
         for record in fresh[part]:
             earlier = published.get(record[key])
+            if record[key] in held:
+                continue
             if earlier is None:
                 merged[part].append(record)
                 report[f"new_{part}"].append(record[key])
+            elif _fills_body_style(earlier, record) and not (
+                published_variants.get(record[key], set())
+                <= kept_variants.get(record[key], set())
+            ):
+                # Every variant of the vehicle inherits the body style, and a filled
+                # one is frozen: a published variant this run did not check blocks it.
+                report["body_style_withheld"].append(record[key])
+                if record[key] in families:
+                    families[record[key]]["gaps"].append(
+                        {
+                            "metric": "body_style",
+                            "reason": "rdw_body_unconfirmed_for_kept_variants",
+                        }
+                    )
             elif _fills_body_style(earlier, record) and (
                 filled := _with_body_style(earlier, record, all_snapshots)
             ):
@@ -1150,6 +1192,8 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
     refreshed = set()
     for decision in fresh["decisions"]:
         scope = _scope(decision)
+        if scope[0] in held:
+            continue
         refreshed.add(scope)
         observation = fresh_observations[decision["selected_observation_id"]]
         head = heads.get(scope)
@@ -1178,6 +1222,68 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
     sources = {s["source_key"]: s for s in [*fresh["sources"], *previous["sources"]]}
     merged["sources"] = [sources[key] for key in sorted(sources)]
     return CatalogV2.model_validate(merged).model_dump(mode="json"), report
+
+
+def _approval(variant: dict) -> tuple:
+    return tuple(r["value"] for r in variant["external_references"])
+
+
+def _held_back(previous: dict, fresh: dict, families: dict, report: dict) -> set:
+    """New variants that would contradict a published identity, held for review.
+
+    A split can move a published approval version to another model of the same make,
+    and a new version's registered body can contradict the vehicle's frozen body
+    style. Neither is corrected automatically: the addition waits for a person."""
+    published = {v["variant_key"] for v in previous["variants"]}
+    owners = {_approval(v): v for v in previous["variants"]}
+    makes = {
+        v["canonical_key"]: v["make"].casefold()
+        for v in [*previous["vehicles"], *fresh["vehicles"]]
+    }
+    bodies = {v["canonical_key"]: v.get("body_style") for v in previous["vehicles"]}
+    entries = {
+        v["variant_key"]: v for family in families.values() for v in family["variants"]
+    }
+    held = set()
+    for variant in fresh["variants"]:
+        key, vehicle = variant["variant_key"], variant["vehicle_key"]
+        if key in published:
+            continue
+        owner = owners.get(_approval(variant))
+        body = bodies.get(vehicle)
+        entry = entries.get(key, {})
+        if (
+            owner
+            and owner["vehicle_key"] != vehicle
+            and makes[owner["vehicle_key"]] == makes[vehicle]
+        ):
+            gap = {
+                "metric": "identity",
+                "reason": "approval_published_under_other_model",
+                "detail": f"published as {owner['variant_key']}; new {key} withheld",
+            }
+            was = owner["variant_key"]
+        elif (
+            body
+            and entry.get("rdw_body_codes")
+            and RDW_BODY_STYLES.get(entry.get("rdw_body_code")) != body
+        ):
+            codes = ", ".join(entry["rdw_body_codes"])
+            gap = {
+                "metric": "body_style",
+                "reason": "rdw_body_conflicts_published",
+                "detail": f"registry {codes}; published {body}; {key} withheld",
+            }
+            was = None
+        else:
+            continue
+        held.add(key)
+        report["identity_review"].append(
+            {"variant_key": key, "published_variant_key": was, "reason": gap["reason"]}
+        )
+        if entry:
+            entry["gaps"].append(gap)
+    return held
 
 
 def _fills_body_style(earlier: dict, record: dict) -> bool:
@@ -1740,6 +1846,16 @@ GAP_REASONS = {
     "below_share_threshold": "Under 5% of the model's registrations.",
     "beyond_powertrain_limit": "Beyond the four most-registered powertrains.",
     "no_supported_powertrain": "No powertrain of this model could be imported.",
+    "approval_published_under_other_model": "A split moves an approval version "
+    "already published under another model of the same make. The new model's "
+    "version is withheld until a reviewed identity correction; the published one "
+    "stays.",
+    "rdw_body_conflicts_published": "The registry body code of this new version "
+    "contradicts the vehicle's published body style, which every variant inherits; "
+    "the version is withheld for review.",
+    "rdw_body_unconfirmed_for_kept_variants": "A published variant of this vehicle "
+    "was not checked by this run, and every variant would inherit the body style; "
+    "not filled.",
     "motospecdb_no_entry": "MotoSpecDB has no entry for this model.",
     "motospecdb_brand_differs": "The linked MotoSpecDB entry names another make.",
     "motospecdb_combined_entry": "The MotoSpecDB entry joins several variants or "
@@ -1801,24 +1917,37 @@ def gap_register(
     for family in cars["families"]:
         label = f"{family['make']} {family['model']}"
         if not family["variants"]:
-            rows.append(("car", label, None, "identity", "no_supported_powertrain"))
+            rows.append(
+                ("car", label, None, "identity", "no_supported_powertrain", None)
+            )
         for gap in family["gaps"]:
-            rows.append(("car", label, None, gap["metric"], gap["reason"]))
+            rows.append(
+                ("car", label, None, gap["metric"], gap["reason"], gap.get("detail"))
+            )
         for variant in family["variants"]:
             name = f"{variant['fuel']} ({variant['fuel_mode']})"
             for gap in variant["gaps"]:
-                rows.append(("car", label, name, gap["metric"], gap["reason"]))
+                rows.append(
+                    (
+                        "car",
+                        label,
+                        name,
+                        gap["metric"],
+                        gap["reason"],
+                        gap.get("detail"),
+                    )
+                )
         for skipped in family["skipped_powertrains"]:
             name = f"{skipped['fuel']} ({skipped['mode']})"
-            rows.append(("car", label, name, "powertrain", skipped["reason"]))
+            rows.append(("car", label, name, "powertrain", skipped["reason"], None))
     for model in two_wheelers["models"]:
         label = f"{model['make']} {model['model']}"
         for gap in model["gaps"]:
             rows.append(
-                (model["vehicle_type"], label, None, gap["metric"], gap["reason"])
+                (model["vehicle_type"], label, None, gap["metric"], gap["reason"], None)
             )
     by_field: dict[tuple, int] = {}
-    for kind, _, _, metric, reason in rows:
+    for kind, _, _, metric, reason, _ in rows:
         kind = "car" if kind == "car" else "two_wheeler"
         by_field[(kind, metric, reason)] = by_field.get((kind, metric, reason), 0) + 1
     return {
@@ -1849,13 +1978,18 @@ def gap_register(
                 "field": metric,
                 "reason": reason,
             }
-            for kind, label, variant, metric, reason in rows
+            | ({"detail": detail} if detail else {})
+            for kind, label, variant, metric, reason, detail in rows
         ],
         "unmapped_names": sorted(
             cars["unmapped_names"],
             key=lambda n: (-n["registrations"], n["make"], n["name"]),
         ),
     }
+
+
+def _detail(gap: dict) -> str:
+    return f" ({gap['detail']})" if gap.get("detail") else ""
 
 
 def gap_register_markdown(register: dict) -> str:
@@ -1937,7 +2071,8 @@ def gap_register_markdown(register: dict) -> str:
         "| --- | --- | --- | --- | --- |",
     ]
     lines += [
-        f"| {g['type']} | {g['model']} | {g['variant'] or ''} | {g['field']} | {g['reason']} |"
+        f"| {g['type']} | {g['model']} | {g['variant'] or ''} | {g['field']} | "
+        f"{g['reason']}{_detail(g)} |"
         for g in register["gaps"]
     ]
     lines += [

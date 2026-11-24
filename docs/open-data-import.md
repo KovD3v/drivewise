@@ -235,6 +235,15 @@ gets a body style when every variant has an exact RDW version, each version has
 one code, and all variants agree. Otherwise it stays unknown, with a reason in
 the register; a vehicle is never split by guess.
 
+Every variant of a vehicle inherits its body style, and a filled body style is
+frozen. So a later run (`--previous`) fills a published vehicle's body style only
+when it checked every variant the bundle keeps for that vehicle; a published
+variant that the run did not select blocks the fill
+(`rdw_body_unconfirmed_for_kept_variants`). A new variant whose registry code
+contradicts the body style a vehicle already has is held back and listed
+(`rdw_body_conflicts_published`). A new variant without any registry code is
+added and inherits the body style.
+
 The code is a legal class, not the body a buyer means, so only `sedan` maps
 (to `sedan`). On the 2024 top 100 the registry writes `stationwagen` for the
 Volkswagen Golf, Mercedes-Benz A-Class and Volkswagen T-Roc, `MPV` for the Fiat
@@ -428,16 +437,21 @@ partition counts and two new EEA family responses
 it waits for the EEA API, and the second run was built with the earlier table.
 When it is applied:
 
-- the Corolla Cross becomes a new vehicle, and the published `it-toyota-corolla`
-  keeps its Corolla Cross identity and values: `--previous` keeps a published
-  identity and lists the difference under `identity_differs`, so retiring or
-  correcting it needs a reviewed decision;
+- the published `it-toyota-corolla` keeps its Corolla Cross version, identity
+  and values, and gains the true Corolla versions next to it. The Corolla Cross
+  version that the split moves to the new model is held back, with the new model
+  if it has no other version: the register lists it as
+  `approval_published_under_other_model` with the published and the new variant
+  keys, and `report.json` under `update.identity_review`. Retiring or moving the
+  published version needs a reviewed identity correction;
 - each model enters the ranking at its own exact count, which is not known yet
   (the name has 8,591 registrations in all), so which model becomes the 100th is
   decided only by the run that fetches the counts;
 - fetch into a new run folder: a run that holds the unsplit Corolla response
-  refuses to build (`Missing or outdated artifact eea/family-toyota-corolla.json;
-  fetch first.`) until both new responses are stored.
+  refuses to build (`Missing count eea/partition-...; fetch first.`) until the
+  counts and both new responses are stored. A fetch refuses to replace a response
+  that the run folder's own bundle cites, and `build` refuses the same folder for
+  `--run-dir` and `--previous`.
 
 The other Italian Corolla versions (ZWE219, 4,650 mm, `stationwagen` in RDW) are
 the Corolla Touring Sports. They are registered in Italy in 2024 but not in the
@@ -478,7 +492,13 @@ The new bundles then contain the whole history:
 `report.json` lists all of this under `update`. An entry under `identity_differs`
 means the new run would describe a published vehicle or variant differently (for
 example after a change to the name table). The published identity stays; changing
-it needs a reviewed migration. Publish the new bundles with the same import
+it needs a reviewed migration. An entry under `identity_review` is a new variant
+held back because it contradicts a published identity: its approval version is
+published under another model of the same make, or its registry body code
+contradicts the vehicle's body style. It is also a line of the gap register, with
+both keys. `withheld_vehicles` lists new vehicles held back because all their
+variants were, and `body_style_withheld` the fills blocked as described in "Body
+style". Publish the new bundles with the same import
 commands and the same `--artifact-root`. The gap register describes the new run
 only.
 

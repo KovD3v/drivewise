@@ -104,8 +104,12 @@ def main(argv=None) -> int:
             for label, name in (("cars", CARS), ("two_wheelers", TWO_WHEELERS)):
                 if earlier[name] is None:
                     continue
-                fresh = cars if label == "cars" else bikes
-                merged, update = open_data.continue_bundle(earlier[name], fresh)
+                fresh, fresh_report = (
+                    (cars, car_report) if label == "cars" else (bikes, bike_report)
+                )
+                merged, update = open_data.continue_bundle(
+                    earlier[name], fresh, fresh_report
+                )
                 report["update"][label] = update
                 if label == "cars":
                     cars = merged
@@ -115,7 +119,8 @@ def main(argv=None) -> int:
                     f"{label} update: {len(update['revised'])} values revised, "
                     f"{update['unchanged']} unchanged, "
                     f"{len(update['new_variants'])} new variants, "
-                    f"{len(update['identity_differs'])} identities differ"
+                    f"{len(update['identity_differs'])} identities differ, "
+                    f"{len(update['identity_review'])} additions held for review"
                 )
         # Coverage describes the bundles written, so after --previous the merged ones.
         covered = {

@@ -1314,7 +1314,8 @@ def cli_build(tmp_path, run_dir, names, previous=None) -> int:
     return load_script().main(argv)
 
 
-def test_a_copied_run_reuses_the_snapshots_of_the_responses_it_copied(tmp_path, capsys):
+def split_later(tmp_path):
+    """A published unsplit run, and a copy of it fetched again after the split."""
     first = open_data.Run(tmp_path / "run")
     open_data.fetch(
         first,
@@ -1333,7 +1334,11 @@ def test_a_copied_run_reuses_the_snapshots_of_the_responses_it_copied(tmp_path, 
         OrbaRegistries(CROSS_ON_TOP),
         now=lambda: datetime(2026, 11, 24, tzinfo=UTC),
     )
+    return first, earlier, later
 
+
+def test_a_copied_run_reuses_the_snapshots_of_the_responses_it_copied(tmp_path, capsys):
+    first, earlier, later = split_later(tmp_path)
     assert cli_build(tmp_path, later.root, ORBA_NAMES, previous=first.root) == 0, (
         capsys.readouterr().err
     )
@@ -1348,3 +1353,132 @@ def test_a_copied_run_reuses_the_snapshots_of_the_responses_it_copied(tmp_path, 
     earlier_ids = {s["id"] for s in earlier["snapshots"]}
     reused = {i for i, p in paths.items() if p.startswith("run/")}
     assert reused and reused <= earlier_ids
+
+
+def test_a_split_never_publishes_an_approval_twice(tmp_path):
+    first, earlier, later = split_later(tmp_path)
+    fresh, report = open_data.build_cars(later, ORBA_NAMES, previous=earlier)
+    (moved,) = [v for v in earlier["variants"] if v["vehicle_key"] == "it-orba-vela"]
+    (cross,) = [
+        v["variant_key"]
+        for v in fresh["variants"]
+        if v["vehicle_key"] == "it-orba-vela-cross"
+    ]
+
+    merged, update = open_data.continue_bundle(earlier, fresh, report)
+
+    # The published Vela keeps the Vela Cross version; the Vela Cross is held back
+    # until a person reviews the identity correction.
+    tuples = [
+        tuple(r["value"] for r in v["external_references"]) for v in merged["variants"]
+    ]
+    assert len(set(tuples)) == len(tuples)
+    assert "it-orba-vela-cross" not in {v["canonical_key"] for v in merged["vehicles"]}
+    assert all(o["variant_key"] != cross for o in merged["observations"])
+    assert update["identity_review"] == [
+        {
+            "variant_key": cross,
+            "published_variant_key": moved["variant_key"],
+            "reason": "approval_published_under_other_model",
+        }
+    ]
+    assert update["withheld_vehicles"] == ["it-orba-vela-cross"]
+    register = open_data.gap_register(later, report, {"models": []})
+    (gap,) = [
+        g
+        for g in register["gaps"]
+        if g["reason"] == "approval_published_under_other_model"
+    ]
+    assert cross in gap["detail"] and moved["variant_key"] in gap["detail"]
+    assert moved["variant_key"] in open_data.gap_register_markdown(register)
+    # Without a split nothing is held back.
+    again, again_report = open_data.build_cars(first, UNSPLIT, previous=earlier)
+    assert (
+        open_data.continue_bundle(earlier, again, again_report)[1]["identity_review"]
+        == []
+    )
+
+
+A1, A2, A3 = (f"E9*2018/858*00730*0{n}" for n in (1, 2, 3))
+VELA_ONLY = {"families": [ORBA_NAMES["families"][0]]}
+
+
+def body_run(tmp_path, folder, day, docs, bodies):
+    run = open_data.Run(tmp_path / folder)
+    open_data.fetch(
+        run,
+        VELA_ONLY,
+        TWO_WHEELERS,
+        OrbaRegistries(
+            [orba("VELA", tan, "petrol", "M", n) for tan, n in docs], bodies
+        ),
+        now=lambda: datetime(2026, 11, day, tzinfo=UTC),
+    )
+    return run
+
+
+def published_bodies(db):
+    return {
+        row["variant_key"]: row["body_style"]
+        for row in db.execute(
+            "SELECT s.variant_key, v.body_style FROM vehicle_specs s "
+            "JOIN vehicles v ON v.id = s.vehicle_id "
+            "WHERE v.canonical_key = 'it-orba-vela'"
+        ).fetchall()
+    }
+
+
+def test_a_body_style_is_filled_only_when_every_kept_variant_agrees(conn, tmp_path):  # noqa: F811
+    first, _ = open_data.build_cars(
+        body_run(tmp_path, "run", 23, [(A1, 50)], {A1: "stationwagen"}), VELA_ONLY
+    )
+    publish(conn, first, tmp_path)
+    # The later run selects only another version, a sedan.
+    later = body_run(tmp_path, "run-2", 24, [(A1, 10), (A2, 60)], {A2: "sedan"})
+    fresh, report = open_data.build_cars(later, VELA_ONLY, previous=first)
+    assert fresh["vehicles"][0]["body_style"] == "sedan"
+
+    merged, update = open_data.continue_bundle(first, fresh, report)
+
+    assert merged["vehicles"][0]["body_style"] is None
+    assert update["body_style_filled"] == []
+    assert {
+        "metric": "body_style",
+        "reason": "rdw_body_unconfirmed_for_kept_variants",
+    } in report["families"][0]["gaps"]
+    publish(conn, merged, tmp_path)
+    assert set(published_bodies(conn).values()) == {None}
+
+
+def test_a_new_version_whose_body_conflicts_with_the_published_one_is_withheld(
+    conn,  # noqa: F811
+    tmp_path,
+):
+    first, _ = open_data.build_cars(
+        body_run(tmp_path, "run", 23, [(A1, 50)], {A1: "sedan"}), VELA_ONLY
+    )
+    assert first["vehicles"][0]["body_style"] == "sedan"
+    publish(conn, first, tmp_path)
+    later = body_run(tmp_path, "run-2", 24, [(A1, 10), (A3, 60)], {A1: "sedan"})
+    fresh, report = open_data.build_cars(later, VELA_ONLY, previous=first)
+    (added,) = [v["variant_key"] for v in fresh["variants"]]
+
+    merged, update = open_data.continue_bundle(first, fresh, report)
+
+    assert merged["variants"] == first["variants"]
+    assert all(o["variant_key"] != added for o in merged["observations"])
+    assert update["identity_review"] == [
+        {
+            "variant_key": added,
+            "published_variant_key": None,
+            "reason": "rdw_body_conflicts_published",
+        }
+    ]
+    (variant,) = report["families"][0]["variants"]
+    assert variant["gaps"][-1]["reason"] == "rdw_body_conflicts_published"
+    batch = stage_catalog_v2(
+        conn, CatalogV2.model_validate(merged), artifact_root=tmp_path
+    )
+    # Nothing is added: the published bundle stays as it was.
+    assert publish_catalog_v2(conn, batch, artifact_root=tmp_path) == "unchanged"
+    assert published_bodies(conn) == {first["variants"][0]["variant_key"]: "sedan"}
