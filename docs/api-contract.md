@@ -228,9 +228,16 @@ the value is its upper end (ADR-018), so the product must say "upper value". The
 basis is `null` for v1 specs and when there is no value. Only these two
 consumptions are published from an interval; every other interval stays `null`
 here. Each fact in `GET /vehicles/{vehicle_id}/facts` keeps `value_min` and
-`value_max` and adds `published_value` and `published_basis`: the exact scalar
-the read catalogue and the Advisor use, or `null` when the fact is not
-published as a scalar. Each fact also names its source with `source_name`,
+`value_max` and adds `published_value` and `published_basis`: the scalar the
+catalogue derives from that fact when the fact is eligible (`exact` for a point
+value, `interval_upper` for the upper end of a published consumption
+interval), or `null` when it is not. A read that needs a whole number leaves
+out a non-whole value: a displacement fact of 1399.5 cc has
+`published_value` 1399.5 here, while `powertrain.displacement_cc` in vehicle
+detail stays `null`. The same holds for `dimensions.length_mm`, `width_mm` and
+`height_mm`. For `seats`, `electric_range_km` and `co2_g_km` the whole-number
+rule is part of eligibility, so a non-whole value has no `published_value`.
+Each fact also names its source with `source_name`,
 `source_url` (the document), `retrieved_at`, and `source_license`, the licence
 or attribution text to show with it.
 

@@ -149,3 +149,22 @@ def test_recommendations_carry_list_price_credits_and_skip_http_evidence(
         catalogue = [p for p in item["provenance"] if "example.com" in p["source_url"]]
         assert catalogue and all(p["source_license"] == LICENCE for p in catalogue)
         assert "of offer price" not in " ".join(item["evidence"]["assessments"]["tco"]["assumptions"])
+
+
+def test_guided_preview_carries_the_same_list_price_item(client):
+    created = client.post(
+        "/guided-decisions",
+        json={"message": "Auto per la famiglia, budget 35.000 euro"},
+    )
+    assert created.status_code == 200, created.text
+    preview = created.json()["previewRanking"]
+    items = [item for group in preview["groups"] for item in group["items"]]
+    assert preview["status"] == "provisional", preview["status"]
+    assert items
+    for item in items:
+        assert (item["price_basis"], item["offer"]) == ("list_price", None)
+        price = item["list_price"]
+        assert price["source_license"] == LICENCE
+        assert price["source_url"].startswith("https://")
+        assert price["trim_label"] and price["price_list_valid_from"] == "2026-09-01"
+        assert all("source_license" in p for p in item["provenance"])
