@@ -1,12 +1,67 @@
 {
  "version": "open-data-v1",
- "data_retrieved_at": "2026-11-23T20:34:19+00:00",
+ "data_retrieved_at": "2026-11-24T17:33:10+00:00",
  "scope": {
   "market": "IT",
   "eea_year": 2024,
   "car_families": 100,
   "car_variants": 218,
   "two_wheelers": 20
+ },
+ "retrieval": [
+  {
+   "host": "co2cars.apps.eea.europa.eu",
+   "date": "2026-11-23",
+   "responses": 101
+  },
+  {
+   "host": "motospecdb.com",
+   "date": "2026-11-24",
+   "responses": 1
+  },
+  {
+   "host": "opendata.rdw.nl",
+   "date": "2026-11-23",
+   "responses": 517
+  },
+  {
+   "host": "opendata.rdw.nl",
+   "date": "2026-11-24",
+   "responses": 179
+  }
+ ],
+ "coverage": {
+  "cars": {
+   "variants": 218,
+   "vehicles": 100,
+   "body_style": 1,
+   "body_width_mm": 181,
+   "co2_g_km": 203,
+   "electric_consumption_kwh_100km": 13,
+   "electric_range_km": 13,
+   "engine_displacement_cc": 205,
+   "engine_power_kw": 205,
+   "height_mm": 180,
+   "length_mm": 180,
+   "liquid_consumption_l_100km": 181,
+   "mass_kg (mass_in_running_order)": 218,
+   "seats": 181
+  },
+  "two_wheelers": {
+   "variants": 20,
+   "vehicles": 20,
+   "body_style": 0,
+   "body_width_mm": 20,
+   "engine_displacement_cc": 20,
+   "engine_power_kw": 20,
+   "fuel_tank_capacity_liters": 3,
+   "height_mm": 20,
+   "length_mm": 20,
+   "mass_kg (mass_in_running_order)": 20,
+   "mass_kg (wet)": 3,
+   "seat_height_mm": 3,
+   "seats": 20
+  }
  },
  "dataset_gaps": [
   {
@@ -35,9 +90,15 @@
   },
   {
    "applies_to": "car",
-   "field": "body_style, generation, model_year",
+   "field": "generation, model_year",
    "reason": "not_in_source",
    "detail": "Left unknown, not guessed."
+  },
+  {
+   "applies_to": "car",
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue",
+   "detail": "RDW gives the EU bodywork code; only sedan matches a catalogue body style."
   },
   {
    "applies_to": "all",
@@ -59,15 +120,9 @@
   },
   {
    "applies_to": "two_wheeler",
-   "field": "seat_height_mm, fuel_tank_capacity_liters",
-   "reason": "no_verified_source",
-   "detail": "One open dataset has them but its origin is unverified."
-  },
-  {
-   "applies_to": "two_wheeler",
-   "field": "wet_weight_kg",
-   "reason": "not_in_source",
-   "detail": "RDW gives mass in running order; it is not verified to equal wet weight."
+   "field": "seat_height_mm, fuel_tank_capacity_liters, mass_kg (wet)",
+   "reason": "unverified_origin",
+   "detail": "From MotoSpecDB only where one entry fits one model; it cites owner's manuals and is not otherwise verified."
   },
   {
    "applies_to": "two_wheeler",
@@ -85,16 +140,34 @@
    "applies_to": "all",
    "field": "source_review",
    "reason": "unsigned",
-   "detail": "Both sources stay manual_validation_only."
+   "detail": "Every source stays manual_validation_only."
   },
   {
    "applies_to": "all",
    "field": "attribution",
    "reason": "no_ui_location",
-   "detail": "The EEA terms need a visible credit to the EEA in the product."
+   "detail": "The EEA and MotoSpecDB terms need a visible credit in the product."
   }
  ],
  "summary": [
+  {
+   "applies_to": "car",
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue",
+   "count": 65
+  },
+  {
+   "applies_to": "car",
+   "field": "body_style",
+   "reason": "rdw_body_styles_differ",
+   "count": 4
+  },
+  {
+   "applies_to": "car",
+   "field": "body_style",
+   "reason": "rdw_no_exact_version",
+   "count": 30
+  },
   {
    "applies_to": "car",
    "field": "body_width_mm",
@@ -202,9 +275,52 @@
    "field": "variant",
    "reason": "version_covers_small_share",
    "count": 19
+  },
+  {
+   "applies_to": "two_wheeler",
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry",
+   "count": 11
+  },
+  {
+   "applies_to": "two_wheeler",
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry",
+   "count": 6
+  },
+  {
+   "applies_to": "two_wheeler",
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry",
+   "count": 11
+  },
+  {
+   "applies_to": "two_wheeler",
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry",
+   "count": 6
+  },
+  {
+   "applies_to": "two_wheeler",
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry",
+   "count": 11
+  },
+  {
+   "applies_to": "two_wheeler",
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry",
+   "count": 6
   }
  ],
  "gaps": [
+  {
+   "type": "car",
+   "model": "Fiat Panda",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
   {
    "type": "car",
    "model": "Fiat Panda",
@@ -225,6 +341,13 @@
    "variant": "electric (E)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Dacia Sandero",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -243,9 +366,23 @@
   {
    "type": "car",
    "model": "Jeep Avenger",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Jeep Avenger",
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Citroën C3",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -264,9 +401,23 @@
   {
    "type": "car",
    "model": "Toyota Yaris Cross",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Toyota Yaris Cross",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Renault Clio",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -285,6 +436,13 @@
   {
    "type": "car",
    "model": "Peugeot 208",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Peugeot 208",
    "variant": "electric (E)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -295,6 +453,13 @@
    "variant": "diesel (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Lancia Ypsilon",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -369,9 +534,23 @@
   {
    "type": "car",
    "model": "Toyota Yaris",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Toyota Yaris",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Renault Captur",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -396,6 +575,20 @@
   },
   {
    "type": "car",
+   "model": "Volkswagen T-Roc",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Ford Puma",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
    "model": "Ford Puma",
    "variant": "petrol (M)",
    "field": "powertrain",
@@ -404,9 +597,23 @@
   {
    "type": "car",
    "model": "MG ZS",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "MG ZS",
    "variant": "petrol (H)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Dacia Duster",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -467,6 +674,13 @@
   {
    "type": "car",
    "model": "Opel Corsa",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Opel Corsa",
    "variant": "petrol (H)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -488,6 +702,13 @@
   {
    "type": "car",
    "model": "Volkswagen T-Cross",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Volkswagen T-Cross",
    "variant": "petrol (H)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -495,9 +716,23 @@
   {
    "type": "car",
    "model": "Peugeot 2008",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Peugeot 2008",
    "variant": "electric (E)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Kia Sportage",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -526,6 +761,20 @@
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Toyota Aygo X",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "BMW X1",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -558,6 +807,13 @@
   {
    "type": "car",
    "model": "Volkswagen Tiguan",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Volkswagen Tiguan",
    "variant": "petrol/electric (P)",
    "field": "powertrain",
    "reason": "below_share_threshold"
@@ -572,9 +828,23 @@
   {
    "type": "car",
    "model": "Nissan Qashqai",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Nissan Qashqai",
    "variant": "petrol (H)",
    "field": "variant",
    "reason": "version_covers_small_share"
+  },
+  {
+   "type": "car",
+   "model": "Fiat 500",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -607,6 +877,13 @@
   {
    "type": "car",
    "model": "Toyota C-HR",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Toyota C-HR",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -624,6 +901,13 @@
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Hyundai i10",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -677,6 +961,13 @@
   {
    "type": "car",
    "model": "Jeep Compass",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Jeep Compass",
    "variant": "diesel (M)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -719,6 +1010,13 @@
   {
    "type": "car",
    "model": "Alfa Romeo Tonale",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Alfa Romeo Tonale",
    "variant": "diesel (M)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -757,6 +1055,13 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Volkswagen Golf",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -771,6 +1076,13 @@
    "variant": "ng (M)",
    "field": "powertrain",
    "reason": "fuel_unsupported"
+  },
+  {
+   "type": "car",
+   "model": "Mercedes-Benz GLA",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -817,6 +1129,13 @@
   {
    "type": "car",
    "model": "Volkswagen Polo",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Volkswagen Polo",
    "variant": "ng (M)",
    "field": "powertrain",
    "reason": "fuel_unsupported"
@@ -824,6 +1143,13 @@
   {
    "type": "car",
    "model": "Jeep Renegade",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Jeep Renegade",
    "variant": "diesel (M)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -894,6 +1220,13 @@
   {
    "type": "car",
    "model": "Ford Kuga",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Ford Kuga",
    "variant": "diesel (M)",
    "field": "length_mm",
    "reason": "rdw_field_empty"
@@ -918,6 +1251,13 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Kia Picanto",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -936,9 +1276,23 @@
   {
    "type": "car",
    "model": "Nissan Juke",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Nissan Juke",
    "variant": "diesel (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Hyundai Tucson",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -960,6 +1314,13 @@
    "variant": "diesel (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Peugeot 3008",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -985,9 +1346,30 @@
   {
    "type": "car",
    "model": "Ford Focus",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_styles_differ"
+  },
+  {
+   "type": "car",
+   "model": "Ford Focus",
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Suzuki Vitara",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Fiat 500X",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -1027,6 +1409,13 @@
   {
    "type": "car",
    "model": "Audi A3",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Audi A3",
    "variant": "petrol/electric (P)",
    "field": "liquid_consumption_l_100km",
    "reason": "eea_field_empty"
@@ -1051,6 +1440,20 @@
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Suzuki Swift",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Cupra Formentor",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -1099,6 +1502,27 @@
    "model": "Cupra Formentor",
    "variant": "diesel (M)",
    "field": "seats",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Škoda Fabia",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Suzuki Ignis",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Hyundai i20",
+   "variant": null,
+   "field": "body_style",
    "reason": "rdw_no_exact_version"
   },
   {
@@ -1153,6 +1577,13 @@
   {
    "type": "car",
    "model": "DR 5.0",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "DR 5.0",
    "variant": "lpg (B)",
    "field": "co2_g_km",
    "reason": "bifuel_value_ambiguous"
@@ -1218,6 +1649,13 @@
    "model": "DR 5.0",
    "variant": "petrol (M)",
    "field": "seats",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Audi Q3 Sportback",
+   "variant": null,
+   "field": "body_style",
    "reason": "rdw_no_exact_version"
   },
   {
@@ -1292,6 +1730,20 @@
   },
   {
    "type": "car",
+   "model": "Volkswagen Taigo",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Škoda Kamiq",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
    "model": "Škoda Kamiq",
    "variant": "petrol (M)",
    "field": "variant",
@@ -1303,6 +1755,13 @@
    "variant": "ng (M)",
    "field": "powertrain",
    "reason": "fuel_unsupported"
+  },
+  {
+   "type": "car",
+   "model": "Citroën C3 Aircross",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -1334,6 +1793,20 @@
   },
   {
    "type": "car",
+   "model": "Toyota Corolla",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Opel Mokka",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
    "model": "Opel Mokka",
    "variant": "diesel (M)",
    "field": "powertrain",
@@ -1356,9 +1829,23 @@
   {
    "type": "car",
    "model": "Audi A1",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Audi A1",
    "variant": "petrol (M)",
    "field": "variant",
    "reason": "version_covers_small_share"
+  },
+  {
+   "type": "car",
+   "model": "Mercedes-Benz GLC",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_styles_differ"
   },
   {
    "type": "car",
@@ -1394,6 +1881,20 @@
    "variant": "diesel (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Ford Tourneo Courier",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Volvo XC40",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -1420,6 +1921,13 @@
    "type": "car",
    "model": "BMW Serie 1",
    "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "BMW Serie 1",
+   "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
   },
@@ -1461,6 +1969,13 @@
   {
    "type": "car",
    "model": "Audi Q2",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Audi Q2",
    "variant": "diesel (M)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -1492,6 +2007,13 @@
    "variant": "petrol (M)",
    "field": "variant",
    "reason": "version_covers_small_share"
+  },
+  {
+   "type": "car",
+   "model": "Audi Q3",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -1552,9 +2074,23 @@
   {
    "type": "car",
    "model": "Tesla Model Y",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Tesla Model Y",
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Škoda Octavia",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -1580,6 +2116,13 @@
   {
    "type": "car",
    "model": "Fiat Tipo",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Fiat Tipo",
    "variant": "diesel (M)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -1618,6 +2161,20 @@
    "variant": "petrol (M)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Renault Austral",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Kia Stonic",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -1636,9 +2193,23 @@
   {
    "type": "car",
    "model": "Fiat 600",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Fiat 600",
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "BMW X3",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -1681,6 +2252,13 @@
    "variant": "petrol (H)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Audi A4",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -1734,6 +2312,13 @@
   {
    "type": "car",
    "model": "Dacia Jogger",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Dacia Jogger",
    "variant": "lpg (B)",
    "field": "co2_g_km",
    "reason": "bifuel_value_ambiguous"
@@ -1749,6 +2334,13 @@
    "type": "car",
    "model": "Hyundai Kona",
    "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Hyundai Kona",
+   "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
   },
@@ -1758,6 +2350,13 @@
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "MG HS",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -1779,6 +2378,20 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Suzuki S-Cross",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Peugeot 308",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_styles_differ"
   },
   {
    "type": "car",
@@ -1803,6 +2416,20 @@
   },
   {
    "type": "car",
+   "model": "Seat Arona",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Mini Cooper",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_styles_differ"
+  },
+  {
+   "type": "car",
    "model": "Mini Cooper",
    "variant": null,
    "field": "generation",
@@ -1814,6 +2441,13 @@
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "BMW X2",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -1877,6 +2511,13 @@
    "variant": "diesel (H)",
    "field": "powertrain_type",
    "reason": "hybrid_type_unknown"
+  },
+  {
+   "type": "car",
+   "model": "BMW Serie 3",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
   },
   {
    "type": "car",
@@ -1917,6 +2558,13 @@
    "type": "car",
    "model": "Mini Countryman",
    "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Mini Countryman",
+   "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
   },
@@ -1964,6 +2612,20 @@
   },
   {
    "type": "car",
+   "model": "Alfa Romeo Stelvio",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Toyota RAV4",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
    "model": "Toyota RAV4",
    "variant": null,
    "field": "generation",
@@ -1986,6 +2648,13 @@
   {
    "type": "car",
    "model": "Volvo XC60",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Volvo XC60",
    "variant": "petrol/electric (P)",
    "field": "electric_consumption_kwh_100km",
    "reason": "phev_electric_definition_unknown"
@@ -1996,6 +2665,13 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Citroën C4",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -2034,6 +2710,20 @@
   },
   {
    "type": "car",
+   "model": "Mazda CX-30",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Škoda Karoq",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
    "model": "Škoda Karoq",
    "variant": "diesel (M)",
    "field": "variant",
@@ -2045,6 +2735,13 @@
    "variant": "petrol (M)",
    "field": "variant",
    "reason": "version_covers_small_share"
+  },
+  {
+   "type": "car",
+   "model": "Mercedes-Benz Classe A",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -2091,6 +2788,13 @@
   {
    "type": "car",
    "model": "Cupra Leon",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Cupra Leon",
    "variant": "diesel (M)",
    "field": "variant",
    "reason": "version_covers_small_share"
@@ -2115,6 +2819,13 @@
    "variant": "petrol/electric (P)",
    "field": "electric_range_km",
    "reason": "phev_electric_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Citroën C5 Aircross",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -2168,6 +2879,13 @@
   {
    "type": "car",
    "model": "Renault Twingo",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Renault Twingo",
    "variant": "petrol (M)",
    "field": "length_mm",
    "reason": "rdw_no_exact_version"
@@ -2226,6 +2944,27 @@
    "model": "Renault Twingo",
    "variant": "electric (E)",
    "field": "seats",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "MG MG3",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Opel Crossland",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "DR 6.0",
+   "variant": null,
+   "field": "body_style",
    "reason": "rdw_no_exact_version"
   },
   {
@@ -2309,6 +3048,13 @@
    "type": "car",
    "model": "Škoda Kodiaq",
    "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "Škoda Kodiaq",
+   "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
   },
@@ -2353,6 +3099,13 @@
    "variant": "petrol/electric (P)",
    "field": "powertrain",
    "reason": "below_share_threshold"
+  },
+  {
+   "type": "car",
+   "model": "Audi Q5 Sportback",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -2448,9 +3201,23 @@
   {
    "type": "car",
    "model": "Volvo EX30",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Volvo EX30",
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Hyundai Bayon",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -2505,6 +3272,13 @@
    "type": "car",
    "model": "Peugeot 5008",
    "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Peugeot 5008",
+   "variant": null,
    "field": "generation",
    "reason": "several_type_approvals"
   },
@@ -2518,9 +3292,30 @@
   {
    "type": "car",
    "model": "Dacia Spring",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "Dacia Spring",
    "variant": "electric (E)",
    "field": "system_power_kw",
    "reason": "bev_power_definition_unknown"
+  },
+  {
+   "type": "car",
+   "model": "Nissan X-Trail",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_body_code_not_catalogue"
+  },
+  {
+   "type": "car",
+   "model": "DS DS 7",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
   },
   {
    "type": "car",
@@ -2567,6 +3362,13 @@
   {
    "type": "car",
    "model": "EVO 5",
+   "variant": null,
+   "field": "body_style",
+   "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "car",
+   "model": "EVO 5",
    "variant": "lpg (B)",
    "field": "co2_g_km",
    "reason": "bifuel_value_ambiguous"
@@ -2633,6 +3435,363 @@
    "variant": "petrol (M)",
    "field": "seats",
    "reason": "rdw_no_exact_version"
+  },
+  {
+   "type": "scooter",
+   "model": "Honda X-ADV 750",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Honda X-ADV 750",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Honda X-ADV 750",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Honda Africa Twin",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Honda Africa Twin",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Honda Africa Twin",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Piaggio Liberty 125",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Piaggio Liberty 125",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Piaggio Liberty 125",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Piaggio Beverly 300",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Piaggio Beverly 300",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Piaggio Beverly 300",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Vespa GTS 310",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Vespa GTS 310",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Vespa GTS 310",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Yamaha TMAX 560",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Yamaha TMAX 560",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Yamaha TMAX 560",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Yamaha XMAX 300",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Yamaha XMAX 300",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Yamaha XMAX 300",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Yamaha Ténéré 700",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Yamaha Ténéré 700",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Yamaha Ténéré 700",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Yamaha MT-07",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Yamaha MT-07",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Yamaha MT-07",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Kymco Agility 16+ 125",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Kymco Agility 16+ 125",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Kymco Agility 16+ 125",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "SYM Symphony ST 125",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "SYM Symphony ST 125",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "SYM Symphony ST 125",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Benelli TRK 702",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Benelli TRK 702",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Benelli TRK 702",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "BMW R 1300 GS",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "BMW R 1300 GS",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "BMW R 1300 GS",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Ducati Multistrada V4 S",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Ducati Multistrada V4 S",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Ducati Multistrada V4 S",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Kawasaki Z900",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Kawasaki Z900",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Kawasaki Z900",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Voge Valico 525 DSX",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Voge Valico 525 DSX",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "motorcycle",
+   "model": "Voge Valico 525 DSX",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_no_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Aprilia SR GT 200",
+   "variant": null,
+   "field": "seat_height_mm",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Aprilia SR GT 200",
+   "variant": null,
+   "field": "mass_kg",
+   "reason": "motospecdb_combined_entry"
+  },
+  {
+   "type": "scooter",
+   "model": "Aprilia SR GT 200",
+   "variant": null,
+   "field": "fuel_tank_capacity_liters",
+   "reason": "motospecdb_combined_entry"
   }
  ],
  "unmapped_names": [
