@@ -165,6 +165,18 @@ def test_reopened_decision_falls_back_to_stored_answer_for_legacy_profile(guided
     assert payload["previewRanking"] == stored_ranking
 
 
+def test_catalogue_validation_errors_are_not_hidden_by_the_fallback(guided_api):
+    client, _decisions, advisor = guided_api
+    decision_id = _create(client)
+
+    def broken_catalogue(*, as_of):
+        AdvisorRecommendationRequest.model_validate({"budget_max_eur": -1})
+
+    advisor.list_candidates = broken_catalogue
+    with pytest.raises(ValidationError):
+        client.get(f"/guided-decisions/{decision_id}")
+
+
 def test_turns_are_capped_before_any_catalogue_query(guided_api):
     client, decisions, advisor = guided_api
     decision_id = _create(client)
@@ -219,12 +231,20 @@ ADVERSARIAL_PAYLOADS = {
     "budget_then_digits": "budget " + "1 " * 995 + "x",
     "separators": ("9 ,'" * 500)[:2_000],
     "long_number": "9" * 2_000,
+    # Keyword repeats exercise the "keyword .* keyword" constraint patterns.
+    "box_repeats": "box " * 500,
+    "suv_repeats": "suv " * 500,
+    "diesel_repeats": "diesel " * 285,
+    "budget_repeats": "budget " * 285,
+    "automatico_repeats": "automatico " * 181,
+    "manuale_repeats": "manuale " * 250,
+    "non_necessario_repeats": "non necessario " * 133,
 }
 
 
 @pytest.mark.parametrize(
     "expected_question_id",
-    [None, "budget_eur", "annual_km", "garage.useful_length_mm"],
+    [None, "budget_eur", "annual_km", "garage.useful_length_mm", "constraint_modes"],
 )
 @pytest.mark.parametrize("payload_name", sorted(ADVERSARIAL_PAYLOADS))
 def test_interpreter_is_linear_on_two_kilobyte_adversarial_input(

@@ -116,11 +116,15 @@ def recompute_guided_decision_response(
     today's validation rejects falls back to the stored answer, with a warning;
     any other failure propagates instead of serving stale data silently.
     """
+    # Only the profile-to-request step may fall back: a validation error raised
+    # by catalogue data must surface, never hide behind the stored answer.
     try:
-        live = _live_fields(profile, advisor_repository=advisor_repository, as_of=as_of)
+        if profile.budget_eur is not None and profile.primary_use is not None:
+            _advisor_request_from_profile(profile)
     except ValidationError:
         warnings = list(dict.fromkeys([*stored.warnings, RECOMPUTE_FALLBACK_WARNING]))
         return stored.model_copy(update={"warnings": warnings})
+    live = _live_fields(profile, advisor_repository=advisor_repository, as_of=as_of)
     return stored.model_copy(update={"decision_profile": profile, **live})
 
 
