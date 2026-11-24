@@ -127,6 +127,12 @@ value keeps the link to its document, and the source passes the source review
 before it affects ranking. The first group is the twelve cars of the current
 public site.
 
+The price shown is the public list price including VAT, not the turnkey price.
+When a document prints only the price without VAT, the value is computed from
+it and marked as computed. When a registered version is no longer in the
+current price list, the nearest current version supplies the price, and the
+product says so.
+
 ## ADR-016: Two-wheel modules score measurable facts only
 
 **Status:** Accepted (2026-11-24)
