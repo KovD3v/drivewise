@@ -3,11 +3,22 @@ import type { ListPrice } from '../api/drivewise'
 // Copy and blocks shared by the Advisor result and the vehicle detail for a
 // price taken from a public price list instead of a seller's offer (ADR-013).
 
-const eurFormatter = new Intl.NumberFormat('it-IT', {
+const wholeEurFormatter = new Intl.NumberFormat('it-IT', {
   currency: 'EUR',
   maximumFractionDigits: 0,
   style: 'currency',
 })
+
+const centsEurFormatter = new Intl.NumberFormat('it-IT', {
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+  style: 'currency',
+})
+
+/** "12.200 €" for a whole amount, "12.200,01 €" when the price list has cents. */
+export function formatListEur(value: number) {
+  return (Number.isInteger(value) ? wholeEurFormatter : centsEurFormatter).format(value)
+}
 
 const dateFormatter = new Intl.DateTimeFormat('it-IT', {
   day: '2-digit',
@@ -42,7 +53,7 @@ export function listPriceNotes(price: ListPrice): string[] {
   }
   if (price.derivation === 'computed_from_turnkey') {
     notes.push(
-      `Il listino indica il prezzo chiavi in mano (${eurFormatter.format(price.printed_amount_eur)}): abbiamo tolto i costi di messa su strada.`,
+      `Il listino indica il prezzo chiavi in mano (${formatListEur(price.printed_amount_eur)}): abbiamo tolto i costi di messa su strada.`,
     )
   }
   if (price.substitute_note) {
@@ -58,7 +69,7 @@ export function ListPriceFacts({ price }: { price: ListPrice }) {
     <>
       <div>
         <dt>Prezzo di listino</dt>
-        <dd>{eurFormatter.format(price.price_eur)}</dd>
+        <dd>{formatListEur(price.price_eur)}</dd>
       </div>
       <div>
         <dt>Versione in listino</dt>
