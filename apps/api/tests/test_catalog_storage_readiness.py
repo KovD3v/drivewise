@@ -513,6 +513,14 @@ def test_an_unknown_body_style_gets_no_credit(conn, tmp_path):  # noqa: F811
             ),
             "differs at body_style",
         ),
+        # Read provenance credits the last snapshot, so it must be the new one.
+        (
+            None,
+            lambda d: d["vehicles"][0].update(
+                evidence_snapshot_ids=[REGISTRY, COACHWORK, REGISTRY]
+            ),
+            "differs at body_style",
+        ),
         # Every published variant must carry the filled body style.
         (
             None,

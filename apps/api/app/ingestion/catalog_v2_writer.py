@@ -116,8 +116,11 @@ def _fills_body_style(row, values, differing, *, table) -> bool:
     stored, bundled = list(row["identity_evidence"]), list(values["identity_evidence"])
     if bundled[: len(stored)] != stored:
         return False
-    # A repeated snapshot is no new source, so the appended part must bring one.
-    return table == "vehicle_specs" or bool(set(bundled[len(stored) :]) - set(stored))
+    # A repeated snapshot is no new source. Read provenance credits the body style to
+    # the last snapshot, so the last one must be new to the stored evidence.
+    return table == "vehicle_specs" or (
+        len(bundled) > len(stored) and bundled[-1] not in stored
+    )
 
 
 def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
