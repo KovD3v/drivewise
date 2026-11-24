@@ -272,8 +272,14 @@ Things to settle before the first production publication, as measured on a
 disposable local database (2026-11-23):
 
 1. **Sources are not reviewed.** Until the two reviews are signed, facts have
-   `eligible: false`. The Advisor ignores the new vehicles and
-   `GET /vehicles/{id}` shows none of their values.
+   `eligible: false` and `GET /vehicles/{id}` shows none of their values.
+   **Signing does not make the Advisor rank these cars.** The Advisor and the
+   Guided Decision preview rank listings (an offer with a price, from a permitted
+   Italian source), and this import creates vehicles and variants, not listings.
+   Measured on a disposable local database (2026-11-24): with the 218 car
+   variants published and both sources marked `permitted`, the Advisor had 0
+   candidates, the same as before. Production also has 0: its 5 seed listings
+   are excluded (2 `non_it_market`, 3 `source_not_permitted`).
 2. **The detail response needs the branch `feat/vehicle-detail-facts`.** On `main`
    a v2 vehicle shows only seats and exact consumption, CO2 and range. That branch
    (on top of pull request #19) also fills length, width, height, displacement
