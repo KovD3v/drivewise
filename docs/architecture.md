@@ -15,27 +15,23 @@ docs/    architecture and project notes
 
 ## Frontend
 
-`apps/web` uses TanStack Start with React and Vite. Bun is the frontend package manager. The current UI includes the `Drivewise MVP` home route, vehicle, listing, document explorer, document detail, document search, advisor, and model analysis routes:
+`apps/web` uses TanStack Start with React and Vite. Bun is the frontend package manager. The UI is the Decision Hub redesign (see [design-integration.md](design-integration.md)):
 
 ```text
-/
-/vehicles
-/vehicles/{vehicle_id}
-/listings
-/listings/{listing_id}
-/documents
-/documents/{document_id}
-/search
-/advisor
-/model-analysis
+/                      home
+/app/start             Scelta Guidata (cars: Guided Decision API; motorcycles and scooters: catalogue)
+/app/report            Riepilogo della scelta (Guided Decision ranking)
+/app/vehicle/{id}      vehicle page
+/app/compare           two vehicles side by side
+/app/catalog?type=     motorcycle and scooter catalogue, without a score
+/app/me                browser-local demo account
+/contact /privacy /terms
 ```
 
-The frontend uses TanStack Router `Link` for internal navigation. The `/vehicles`, `/listings`, and `/documents` routes validate supported URL search parameters, derive loader dependencies from the normalized filters, and load matching collection data through route loaders. Server rendering and hydration therefore share the same filtered payload, while deep links and browser back/forward navigation preserve form and result state. Unknown or invalid search values are discarded before API calls. Shared pending and error boundaries handle loader navigation failures. Runtime API calls go through `apps/web/src/api/drivewise.ts`. Mock fallback is explicit and only activates when `VITE_USE_MOCK_API=true`; by default API failures are surfaced instead of hidden.
-
-The vehicle, listing, and document detail routes also load their records through
-route loaders. Direct detail URLs therefore render from the same loader payload
-on the server and client, and reuse the shared pending and retryable error UI.
-Missing detail records map API `404` responses to the router's not-found page.
+The site is a client of the API (ADR-008): it computes no ranking, score, cost or
+confidence and holds no vehicle data. Runtime API calls go through
+`apps/web/src/api/drivewise.ts`, and an API failure is shown as an error, never
+replaced by local data.
 
 ## Backend
 

@@ -28,7 +28,7 @@ Copy the example environment file and fill local values as needed:
 cp .env.example .env
 ```
 
-The frontend reads `VITE_API_BASE_URL` and falls back to `http://127.0.0.1:8000` when it is not set. Mock API fallback is disabled by default; set `VITE_USE_MOCK_API=true` only when you intentionally want the browser to use local mock data after an API connection failure.
+The frontend reads `VITE_API_BASE_URL` and falls back to `http://127.0.0.1:8000` when it is not set. API failures are shown as errors; the site has no mock data.
 
 Install frontend dependencies:
 
