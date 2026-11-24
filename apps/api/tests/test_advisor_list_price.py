@@ -3,32 +3,54 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
 
+from app.ingestion.catalog_v2 import ListPriceTerms
 from app.schemas.advisor import AdvisorRecommendationItem, AdvisorRecommendationRequest
 from app.services.advisor.scoring import score_recommendations
 from app.services.advisor.tco import estimate_tco
 from tests.test_advisor_scoring import AS_OF, candidate
 
 
-def list_price_candidate(index: int, **kwargs: Any) -> dict[str, Any]:
-    """The same synthetic variant as `candidate`, with its offer replaced by a list price."""
+# Synthetic ex-VAT row: 15,000.00 x (1 + 22/100) = 18,300.00 exactly.
+EXCL_VAT_TERMS = {
+    "printed_amount_eur": Decimal("15000.00"),
+    "printed_basis": "excl_vat",
+    "vat_rate_percent": Decimal("22"),
+}
+
+
+def list_price_candidate(
+    index: int, *, terms: dict[str, Any] | None = None, **kwargs: Any
+) -> dict[str, Any]:
+    """The same synthetic variant as `candidate`, with its offer replaced by a list price.
+
+    Without `terms` the row prints the VAT-inclusive price itself; given terms must
+    imply exactly the candidate's price, as publication requires.
+    """
     priced = candidate(index, condition="new", mileage=None, **kwargs)
     price = priced["spec"]["list_price_eur"]
+    terms = terms or {"printed_amount_eur": price, "printed_basis": "incl_vat"}
+    checked = ListPriceTerms(
+        **terms, trim_label="Synthetic Trim 50/68", price_list_valid_from="2026-01-01"
+    )
+    assert checked.incl_vat_amount() == Decimal(str(price))
     priced.update(
         offer=None,
         source=None,
         price_basis="list_price",
         list_price={
             "price_eur": price,
-            "computed_from_excl_vat": True,
-            "printed_amount_eur": 10_000.01,
-            "printed_basis": "excl_vat",
-            "vat_rate_percent": 22,
+            "computed_from_excl_vat": checked.computed_from_excl_vat,
+            "derivation": checked.derivation,
+            "printed_amount_eur": float(checked.printed_amount_eur),
+            "printed_basis": checked.printed_basis,
+            "vat_rate_percent": terms.get("vat_rate_percent"),
             "trim_label": "Synthetic Trim 50/68",
             "price_list_valid_from": "2026-01-01",
             "substitute_note": None,
@@ -64,20 +86,23 @@ def test_list_price_uses_the_same_formulas_as_a_new_offer_at_that_price():
     offer = only_item(
         score_recommendations(
             request,
-            [candidate(1, condition="new", mileage=None, price_eur=18_500)],
+            [candidate(1, condition="new", mileage=None, price_eur=18_300)],
             as_of=AS_OF,
         )
     )
     listed = only_item(
         score_recommendations(
-            request, [list_price_candidate(1, price_eur=18_500)], as_of=AS_OF
+            request,
+            [list_price_candidate(1, terms=EXCL_VAT_TERMS, price_eur=18_300)],
+            as_of=AS_OF,
         )
     )
 
     assert (offer.price_basis, listed.price_basis) == ("offer", "list_price")
     assert offer.offer is not None and listed.offer is None
-    assert listed.list_price.price_eur == 18_500
+    assert listed.list_price.price_eur == 18_300
     assert listed.list_price.computed_from_excl_vat is True
+    assert listed.list_price.derivation == "computed_from_excl_vat"
     for field in (
         "score",
         "decision_status",

@@ -1124,6 +1124,13 @@ _LISTING_ROW_KEYS = (
 )
 
 
+_LIST_PRICE_DERIVATIONS = {
+    "incl_vat": "printed",
+    "excl_vat": "computed_from_excl_vat",
+    "turnkey": "computed_from_turnkey",
+}
+
+
 def _list_price_candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
     """A variant with no eligible offer, evaluated as new at its list price (ADR-013)."""
     # The list-price query has no listing columns; the shared mapper sees them as empty.
@@ -1137,9 +1144,12 @@ def _list_price_candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
         list_price={
             "price_eur": row["list_price_eur"],
             "computed_from_excl_vat": terms.get("printed_basis") == "excl_vat",
+            "derivation": _LIST_PRICE_DERIVATIONS.get(terms.get("printed_basis")),
             "printed_amount_eur": terms.get("printed_amount_eur"),
             "printed_basis": terms.get("printed_basis"),
             "vat_rate_percent": terms.get("vat_rate_percent"),
+            "on_road_charge_eur": terms.get("on_road_charge_eur"),
+            "on_road_charge_includes_vat": terms.get("on_road_charge_includes_vat"),
             "trim_label": terms.get("trim_label"),
             "price_list_valid_from": terms.get("price_list_valid_from"),
             "substitute_note": terms.get("substitute_note"),

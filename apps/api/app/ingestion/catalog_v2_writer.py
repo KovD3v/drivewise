@@ -29,12 +29,17 @@ def verify_artifacts(payload: CatalogV2, artifact_root: Path) -> None:
             ) from error
 
 
+def dataset_hash(data: dict) -> str:
+    """SHA-256 of the canonical JSON; absent optional terms are omitted, not null."""
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+
 def stage_catalog_v2(conn, payload: CatalogV2, *, artifact_root: Path) -> UUID:
     # Revalidate even callers that constructed or mutated Pydantic instances.
     payload = CatalogV2.model_validate(payload.model_dump(mode="json"))
     verify_artifacts(payload, artifact_root)
     data = payload.model_dump(mode="json")
-    digest = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    digest = dataset_hash(data)
     with conn.transaction():
         conn.execute(
             """INSERT INTO catalog_v2_batches (id, dataset_hash, payload)

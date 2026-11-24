@@ -776,9 +776,12 @@ that stands in for it:
   "list_price": {
     "price_eur": 12200.01,
     "computed_from_excl_vat": true,
+    "derivation": "computed_from_excl_vat",
     "printed_amount_eur": 10000.01,
     "printed_basis": "excl_vat",
     "vat_rate_percent": 22,
+    "on_road_charge_eur": null,
+    "on_road_charge_includes_vat": null,
     "trim_label": "Synthetic Trim 50/68",
     "price_list_valid_from": "2026-01-01",
     "substitute_note": null,
@@ -792,10 +795,21 @@ that stands in for it:
 ```
 
 A list-price item is always in the `new` group and has no mileage. The values
-above are synthetic. `computed_from_excl_vat` is true when the price list prints
-the price without VAT and the value was computed from it. `substitute_note` is
-set when the registered version is no longer listed and the nearest current
-version supplies the price.
+above are synthetic. `price_eur` is always the list price including VAT.
+`derivation` says how it was obtained:
+
+| `derivation` | `printed_basis` | `price_eur` |
+| --- | --- | --- |
+| `printed` | `incl_vat` | the printed amount |
+| `computed_from_excl_vat` | `excl_vat` | printed x (1 + `vat_rate_percent`/100), rounded half up to the cent |
+| `computed_from_turnkey` | `turnkey` | the printed turnkey price minus the stated on-road charge |
+
+For `turnkey`, `printed_amount_eur` is the turnkey price as printed and
+`on_road_charge_eur` the charge the price list states. When
+`on_road_charge_includes_vat` is false, the charge is first grossed up with
+`vat_rate_percent`. `computed_from_excl_vat` stays for older clients and is true
+only for `excl_vat`. `substitute_note` is set when the registered version is no
+longer listed and the nearest current version supplies the price.
 
 Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,

@@ -254,9 +254,14 @@ class AdvisorListPrice(ApiModel):
 
     price_eur: float
     computed_from_excl_vat: bool
+    # How price_eur was obtained: as printed, from an ex-VAT figure, or from a
+    # turnkey price minus its stated on-road charge (ADR-015).
+    derivation: Literal["printed", "computed_from_excl_vat", "computed_from_turnkey"]
     printed_amount_eur: float
-    printed_basis: Literal["incl_vat", "excl_vat"]
+    printed_basis: Literal["incl_vat", "excl_vat", "turnkey"]
     vat_rate_percent: float | None = None
+    on_road_charge_eur: float | None = None
+    on_road_charge_includes_vat: bool | None = None
     trim_label: str
     price_list_valid_from: date
     substitute_note: str | None = None

@@ -1,3 +1,4 @@
+import decimal
 import importlib.util
 import json
 import os
@@ -24,6 +25,50 @@ LIST_PRICE_TERMS = {
     "price_list_valid_from": "2026-01-01",
     "substitute_note": None,
 }
+
+
+# Synthetic turnkey row: 20,000.00 printed, on-road charge 1,000.00 + 22% VAT.
+TURNKEY_TERMS = {
+    **LIST_PRICE_TERMS,
+    "printed_amount_eur": "20000.00",
+    "printed_basis": "turnkey",
+    "vat_rate_percent": "22",
+    "on_road_charge_eur": "1000.00",
+    "on_road_charge_includes_vat": False,
+}
+# Rows a direct INSERT must not store: each once made the Advisor return HTTP 500
+# or would, because a missing key yields SQL UNKNOWN, which a CHECK accepts.
+_BROKEN_SQL_TERMS = [
+    {k: v for k, v in LIST_PRICE_TERMS.items() if k != "printed_basis"},
+    {k: v for k, v in LIST_PRICE_TERMS.items() if k != "printed_amount_eur"},
+    {k: v for k, v in LIST_PRICE_TERMS.items() if k != "price_list_valid_from"},
+    {**LIST_PRICE_TERMS, "price_list_valid_from": "2026-02-30"},
+    {**LIST_PRICE_TERMS, "price_list_valid_from": "not-a-date"},
+    {**LIST_PRICE_TERMS, "printed_basis": None},
+    {**LIST_PRICE_TERMS, "printed_basis": "gross"},
+    {**LIST_PRICE_TERMS, "printed_amount_eur": "abc"},
+    {**LIST_PRICE_TERMS, "printed_amount_eur": "NaN"},
+    {**LIST_PRICE_TERMS, "trim_label": 42},
+    {**LIST_PRICE_TERMS, "trim_label": "  "},
+    {**LIST_PRICE_TERMS, "vat_rate_percent": "22"},
+    {**LIST_PRICE_TERMS, "printed_basis": "excl_vat"},
+    {**LIST_PRICE_TERMS, "printed_basis": "turnkey"},
+    {**TURNKEY_TERMS, "on_road_charge_includes_vat": "yes"},
+    {**TURNKEY_TERMS, "vat_rate_percent": None},
+    ["not", "an", "object"],
+]
+# (terms, VAT-inclusive value) pairs a direct INSERT accepts.
+_VALID_SQL_TERMS = [
+    # 10.25 x 1.22 = 12.505: the half-cent tie rounds up, as in Python.
+    ({**LIST_PRICE_TERMS, "printed_amount_eur": "10.25", "printed_basis": "excl_vat",
+      "vat_rate_percent": "22"}, "12.51"),
+    # 20,000.00 - 1,000.00 x 1.22 = 18,780.00.
+    (TURNKEY_TERMS, "18780.00"),
+    ({**TURNKEY_TERMS, "vat_rate_percent": None, "on_road_charge_eur": "900.50",
+      "on_road_charge_includes_vat": True}, "19099.50"),
+    # A JSON number is as good as a decimal string.
+    ({**LIST_PRICE_TERMS, "printed_amount_eur": 100}, "100.00"),
+]
 
 
 def test_v2_represents_identity_uncertainty_and_keeps_conflict_history():
@@ -385,7 +430,14 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
                 if metric == "list_price_eur":
                     observation.update(value_min=Decimal("100.00"), value_max=Decimal("100.00"))
                     # Terms are required for a list price and refused on any other metric.
-                    for broken in [{"list_price": None}, {"value_max": Decimal("101.00")}]:
+                    for broken in [
+                        {"list_price": None},
+                        {"value_max": Decimal("101.00")},
+                        *(
+                            {"list_price": Jsonb(terms)}
+                            for terms in _BROKEN_SQL_TERMS
+                        ),
+                    ]:
                         with pytest.raises(psycopg.errors.CheckViolation):
                             with conn.transaction():
                                 insert(
@@ -393,6 +445,19 @@ def test_evidence_migration_preserves_catalog_and_enforces_history():
                                     "spec_observations",
                                     {**observation, "id": uuid4(), **broken},
                                 )
+                    # The SQL twin accepts what the contract accepts, cent for cent.
+                    for terms, value in _VALID_SQL_TERMS:
+                        insert(
+                            conn,
+                            "spec_observations",
+                            {
+                                **observation,
+                                "id": uuid4(),
+                                "list_price": Jsonb(terms),
+                                "value_min": Decimal(value),
+                                "value_max": Decimal(value),
+                            },
+                        )
                 elif metric == "seats":
                     with pytest.raises(psycopg.errors.CheckViolation):
                         with conn.transaction():
@@ -495,3 +560,101 @@ def test_list_price_carries_its_terms_and_vat_inclusive_value():
     raw["observations"][0]["list_price"] = LIST_PRICE_TERMS
     with pytest.raises(ValidationError, match="list price terms are required"):
         CatalogV2.model_validate(raw)
+
+
+def test_turnkey_list_price_keeps_the_printed_row_and_stores_the_list_price():
+    # ADR-015: turnkey price minus the stated on-road charge, marked as computed.
+    observation = CatalogV2.model_validate(
+        _list_price_bundle(TURNKEY_TERMS, "18780.00")
+    ).observations[-1]
+    terms = observation.list_price
+    assert terms.derivation == "computed_from_turnkey"
+    assert terms.computed_from_excl_vat is False
+    assert terms.printed_amount_eur == Decimal("20000.00")
+    assert terms.on_road_charge_incl_vat() == Decimal("1220.00")
+    dumped = observation.model_dump(mode="json")["list_price"]
+    assert dumped["on_road_charge_eur"] == "1000.00"
+    assert dumped["on_road_charge_includes_vat"] is False
+    with_vat_charge = {
+        **TURNKEY_TERMS,
+        "vat_rate_percent": None,
+        "on_road_charge_eur": "900.50",
+        "on_road_charge_includes_vat": True,
+    }
+    assert CatalogV2.model_validate(
+        _list_price_bundle(with_vat_charge, "19099.50")
+    ).observations[-1].list_price.incl_vat_amount() == Decimal("19099.50")
+    for terms, value, message in [
+        (TURNKEY_TERMS, "20000.00", "VAT-inclusive amount"),
+        ({**TURNKEY_TERMS, "on_road_charge_eur": None}, "18780.00", "on-road charge"),
+        (
+            {**TURNKEY_TERMS, "on_road_charge_includes_vat": None},
+            "18780.00",
+            "on-road charge",
+        ),
+        ({**TURNKEY_TERMS, "vat_rate_percent": None}, "18780.00", "VAT rate"),
+        ({**with_vat_charge, "vat_rate_percent": "22"}, "19099.50", "VAT rate"),
+        (
+            {**TURNKEY_TERMS, "on_road_charge_eur": "17000.00"},
+            "-740.00",
+            "below the turnkey price",
+        ),
+        (
+            {**LIST_PRICE_TERMS, "on_road_charge_eur": "10.00"},
+            "100.00",
+            "on-road charge",
+        ),
+    ]:
+        with pytest.raises(ValidationError, match=message):
+            CatalogV2.model_validate(_list_price_bundle(terms, value))
+    # Terms without an on-road charge serialize exactly as before turnkey existed.
+    assert set(
+        CatalogV2.model_validate(_list_price_bundle(LIST_PRICE_TERMS, "100.00"))
+        .observations[-1]
+        .model_dump(mode="json")["list_price"]
+    ) == set(LIST_PRICE_TERMS)
+
+
+@pytest.mark.parametrize("rounding", [decimal.ROUND_HALF_EVEN, decimal.ROUND_DOWN])
+def test_list_price_rounding_ignores_the_callers_decimal_context(rounding):
+    terms = {
+        **LIST_PRICE_TERMS,
+        "printed_amount_eur": "10.25",
+        "printed_basis": "excl_vat",
+        "vat_rate_percent": "22",
+    }
+    # 10.25 x 1.22 = 12.505: a tie, always rounded half up to 12.51.
+    with decimal.localcontext(decimal.Context(prec=3, rounding=rounding)):
+        observation = CatalogV2.model_validate(
+            _list_price_bundle(terms, "12.51")
+        ).observations[-1]
+        assert observation.list_price.incl_vat_amount() == Decimal("12.51")
+
+
+@pytest.mark.parametrize("amount", ["1e27", "1e400", "10000000000.00"])
+def test_out_of_range_list_price_is_a_validation_error(amount):
+    for terms in [
+        {**LIST_PRICE_TERMS, "printed_amount_eur": amount},
+        {**LIST_PRICE_TERMS, "printed_amount_eur": amount, "printed_basis": "excl_vat",
+         "vat_rate_percent": "22"},
+        {**TURNKEY_TERMS, "on_road_charge_eur": amount},
+    ]:
+        with pytest.raises(ValidationError, match="below 10\\^10"):
+            CatalogV2.model_validate(_list_price_bundle(terms, "100.00"))
+
+
+# Recorded on 2026-11-24 by staging the shipped fixture with the pre-list-price
+# code (commit 44988f4) into a disposable database: catalog_v2_batches.dataset_hash.
+PRE_UPGRADE_FIXTURE_DIGEST = (
+    "51fe270a979d39964f2780cf5531dab1f091c6276d7db638dd4fb55d2ba77a44"
+)
+
+
+def test_a_bundle_staged_before_list_prices_keeps_its_dataset_hash():
+    from app.ingestion.catalog_v2_writer import dataset_hash
+
+    payload = load_catalog_v2(FIXTURE)
+    data = payload.model_dump(mode="json")
+    assert all("list_price" not in observation for observation in data["observations"])
+    # Re-staging that bundle finds the published batch instead of adding a second one.
+    assert dataset_hash(data) == PRE_UPGRADE_FIXTURE_DIGEST

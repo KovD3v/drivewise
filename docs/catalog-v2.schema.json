@@ -181,7 +181,8 @@
         "printed_basis": {
           "enum": [
             "incl_vat",
-            "excl_vat"
+            "excl_vat",
+            "turnkey"
           ],
           "title": "Printed Basis",
           "type": "string"
@@ -201,6 +202,34 @@
           ],
           "default": null,
           "title": "Vat Rate Percent"
+        },
+        "on_road_charge_eur": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Road Charge Eur"
+        },
+        "on_road_charge_includes_vat": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Road Charge Includes Vat"
         },
         "trim_label": {
           "maxLength": 500,

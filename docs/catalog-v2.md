@@ -83,20 +83,44 @@ also carry `list_price`, the terms of the price-list row it was read from:
 
 | Field | Meaning |
 | --- | --- |
-| `printed_amount_eur` | The amount as printed in the row |
-| `printed_basis` | `incl_vat`, or `excl_vat` when the list prints the price without VAT |
-| `vat_rate_percent` | Required exactly when `printed_basis` is `excl_vat` |
+| `printed_amount_eur` | The amount as printed in the row: the list price, or the turnkey price for `turnkey` |
+| `printed_basis` | `incl_vat`; `excl_vat` when the list prints the price without VAT; `turnkey` when it prints only the turnkey price |
+| `vat_rate_percent` | Required exactly when a printed amount excludes VAT: the price for `excl_vat`, or the on-road charge for `turnkey` |
+| `on_road_charge_eur` | Required exactly for `turnkey`: the on-road charge the price list states |
+| `on_road_charge_includes_vat` | Required exactly for `turnkey`: whether that charge includes VAT |
 | `trim_label` | The row's version label, as printed |
 | `price_list_valid_from` | The validity date the price list prints |
 | `substitute_note` | Set when the registered version is no longer listed and the nearest current row supplies the price; says which row and what differs |
 
-A value computed from an ex-VAT figure is marked by `printed_basis: excl_vat`; the
-validator checks that the value equals the printed amount times the VAT rate,
-rounded to the cent. Other metrics refuse `list_price`. The terms sit on the
+The stored value is always VAT-inclusive, and the validator checks it against
+the terms, rounding half up to the cent:
+
+| `printed_basis` | Stored value | Shown as |
+| --- | --- | --- |
+| `incl_vat` | the printed amount | printed |
+| `excl_vat` | printed x (1 + rate/100) | computed from ex-VAT |
+| `turnkey` | printed - charge, or printed - charge x (1 + rate/100) when the charge excludes VAT | computed from turnkey |
+
+The on-road charge must be below the turnkey price. Amounts are positive, below
+10^10 and have at most two decimals; the rate is a percentage with at most two
+decimals. The arithmetic uses its own decimal context, so the caller's context
+never changes a result, and an amount out of range is a validation error.
+Other metrics refuse `list_price`. The terms sit on the
 observation, not in the context, because the context is part of the fact key: a
 new price list adds an observation and a decision that supersedes the old one in
 the same context, instead of a second current fact. Keep the context to the
 market only, so the compatibility read below can project the price.
+
+The SQL check in `0011` repeats these rules for any direct write: required keys
+and their JSON types, basis, rate and charge consistency, a real calendar date,
+and the same amount with the same rounding (PostgreSQL's `round()` on these
+positive amounts rounds half up, like Python). A missing key fails the check
+instead of passing as SQL UNKNOWN.
+
+An observation without terms serializes without a `list_price` key, and terms
+without an on-road charge serialize without its two keys. A bundle staged before
+these fields existed therefore keeps its dataset hash, and staging it again
+finds the published batch instead of adding a second one.
 
 An exact measurement uses equal `value_min` and `value_max`. Intervals stay
 intervals. Original value/unit, source excerpt/locator and extractor version are
