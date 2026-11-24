@@ -219,10 +219,10 @@ ambiguous:
   an offer or a list price, and every returned item has
   `decision_status: "complete"`;
 - `provisional`: Advisor v3 returned at least one item, and at least one
-  returned item has `decision_status: "insufficient_data"` (the profile or the
-  evidence is not enough for a full decision score);
+  returned item has `decision_status: "insufficient_data"`;
 - `insufficient_inventory`: the profile is rankable, but Advisor v3 returned no
-  item: no variant has an eligible reviewed offer or list price.
+  item, whatever the exclusion reasons (no eligible offer or list price, budget,
+  condition, mileage or missing facts).
 
 `previewRanking.groups` uses the Advisor recommendation item shape unchanged,
 with its snake_case field names (`docs/api-contract.md`). A list-price item has
