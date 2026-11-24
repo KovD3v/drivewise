@@ -221,6 +221,17 @@ adds the following groups:
   Ranges and competing contexts stay in `GET /vehicles/{vehicle_id}/facts`.
   The block carries no scores.
 
+Every spec also has `consumption_l_100km_basis` and
+`energy_consumption_kwh_100km_basis`. For a catalog v2 spec, `exact` means the
+value is a point value. `interval_upper` means the source gave an interval and
+the value is its upper end (ADR-018), so the product must say "upper value". The
+basis is `null` for v1 specs and when there is no value. Only these two
+consumptions are published from an interval; every other interval stays `null`
+here. Each fact in `GET /vehicles/{vehicle_id}/facts` keeps `value_min` and
+`value_max` and adds `published_value` and `published_basis`: the exact scalar
+the read catalogue and the Advisor use, or `null` when the fact is not
+published as a scalar.
+
 For catalog v2 specs, `powertrain.displacement_cc` comes from an eligible,
 exact, whole-number `engine_displacement_cc` fact; other v2 profile fields
 stay `null` until a reviewed projection exists.

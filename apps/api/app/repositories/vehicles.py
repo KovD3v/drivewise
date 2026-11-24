@@ -159,6 +159,8 @@ class VehiclesRepository:
               battery_kwh,
               energy_consumption_kwh_100km,
               consumption_l_100km,
+              consumption_l_100km_basis,
+              energy_consumption_kwh_100km_basis,
               wltp_range_km,
               co2_g_km,
               euro_emission_standard,
@@ -562,8 +564,12 @@ class VehiclesRepository:
 
     def list_facts(self, vehicle_id: UUID) -> list[dict[str, Any]]:
         return list(self.conn.execute(
-            """SELECT f.*, s.variant_key FROM catalog_current_facts f
+            """SELECT f.*, s.variant_key,
+                      published.scalar_value AS published_value,
+                      published.scalar_basis AS published_basis
+               FROM catalog_current_facts f
                JOIN vehicle_specs s ON s.id = f.spec_id
+               LEFT JOIN catalog_scalar_facts published ON published.id = f.id
                WHERE s.vehicle_id = %s ORDER BY s.variant_key, f.metric, f.id""",
             (vehicle_id,),
         ).fetchall())

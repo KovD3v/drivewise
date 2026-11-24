@@ -397,6 +397,11 @@ export interface components {
              */
             decision_id: string;
             /**
+             * Derivation
+             * @enum {string}
+             */
+            derivation: "printed" | "computed_from_excl_vat" | "computed_from_turnkey";
+            /**
              * Observation Id
              * Format: uuid
              */
@@ -406,6 +411,10 @@ export interface components {
              * Format: date-time
              */
             observed_at: string;
+            /** On Road Charge Eur */
+            on_road_charge_eur: number | null;
+            /** On Road Charge Includes Vat */
+            on_road_charge_includes_vat: boolean | null;
             /** Price Eur */
             price_eur: number;
             /**
@@ -419,7 +428,7 @@ export interface components {
              * Printed Basis
              * @enum {string}
              */
-            printed_basis: "incl_vat" | "excl_vat";
+            printed_basis: "incl_vat" | "excl_vat" | "turnkey";
             /** Source Name */
             source_name: string;
             /** Source Url */
@@ -654,10 +663,14 @@ export interface components {
             co2_g_km: number | null;
             /** Consumption L 100Km */
             consumption_l_100km: number | null;
+            /** Consumption L 100Km Basis */
+            consumption_l_100km_basis: ("exact" | "interval_upper") | null;
             /** Drivetrain */
             drivetrain: string | null;
             /** Energy Consumption Kwh 100Km */
             energy_consumption_kwh_100km: number | null;
+            /** Energy Consumption Kwh 100Km Basis */
+            energy_consumption_kwh_100km_basis: ("exact" | "interval_upper") | null;
             /** Engine */
             engine: string | null;
             /** Engine Code */
@@ -777,6 +790,10 @@ export interface components {
             metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw" | "seat_height_mm" | "fuel_tank_capacity_liters" | "underseat_storage_liters" | "list_price_eur";
             /** Policy Version */
             policy_version: string;
+            /** Published Basis */
+            published_basis: ("exact" | "interval_upper") | null;
+            /** Published Value */
+            published_value: number | null;
             /** Reason */
             reason: string;
             /** Retrieved At */
@@ -1823,10 +1840,14 @@ export interface components {
             co2_g_km: number | null;
             /** Consumption L 100Km */
             consumption_l_100km: number | null;
+            /** Consumption L 100Km Basis */
+            consumption_l_100km_basis: ("exact" | "interval_upper") | null;
             /** Drivetrain */
             drivetrain: string | null;
             /** Energy Consumption Kwh 100Km */
             energy_consumption_kwh_100km: number | null;
+            /** Energy Consumption Kwh 100Km Basis */
+            energy_consumption_kwh_100km_basis: ("exact" | "interval_upper") | null;
             /** Engine */
             engine: string | null;
             /** Engine Code */
@@ -1889,11 +1910,15 @@ export interface components {
             co2_g_km: number | null;
             /** Consumption L 100Km */
             consumption_l_100km: number | null;
+            /** Consumption L 100Km Basis */
+            consumption_l_100km_basis: ("exact" | "interval_upper") | null;
             dimensions: components["schemas"]["VehicleDimensions"];
             /** Drivetrain */
             drivetrain: string | null;
             /** Energy Consumption Kwh 100Km */
             energy_consumption_kwh_100km: number | null;
+            /** Energy Consumption Kwh 100Km Basis */
+            energy_consumption_kwh_100km_basis: ("exact" | "interval_upper") | null;
             /** Engine */
             engine: string | null;
             /** Engine Code */

@@ -332,9 +332,15 @@ def test_intervals_and_multiple_contexts_are_not_flattened(conn, tmp_path):
     data["observations"][-1]["value_max"] = 5.5
     publish(conn, data, tmp_path)
     row = conn.execute(
-        "SELECT seats, consumption_l_100km FROM catalog_read_specs WHERE variant_key = 'metro-g1-ice'"
+        """SELECT seats, consumption_l_100km, consumption_l_100km_basis
+           FROM catalog_read_specs WHERE variant_key = 'metro-g1-ice'"""
     ).fetchone()
-    assert row == {"seats": None, "consumption_l_100km": None}
+    # ADR-018: a consumption interval is published at its upper value, and says so.
+    assert row == {
+        "seats": None,
+        "consumption_l_100km": Decimal("5.5"),
+        "consumption_l_100km_basis": "interval_upper",
+    }
     assert (
         conn.execute(
             "SELECT value_max FROM catalog_current_facts WHERE metric = 'liquid_consumption_l_100km'"

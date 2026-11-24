@@ -172,7 +172,9 @@ adds `list_price_eur` (unit `EUR`) and the nullable `spec_observations.list_pric
 column, required exactly for that metric.
 [`0012_list_price_read_view.sql`](../apps/api/migrations/0012_list_price_read_view.sql)
 replaces `catalog_read_specs` so a v2 spec exposes `list_price_eur` from its
-eligible list-price fact. It must run after `0009`, which creates that view.
+eligible list-price fact, and applies ADR-018 to `catalog_scalar_facts` (see
+"Current facts and consumers"). It must run after `0009`, which creates those
+views.
 
 | New table | Responsibility |
 | --- | --- |
@@ -318,9 +320,16 @@ head **before** checking eligibility. Source revocation or a new negative decisi
 therefore removes a fact from calculations immediately, with no cache refresh or
 fallback to an older verified value.
 
-Compatibility reads project only exact, unambiguous values from one current
-context covering the whole variant. Intervals, multiple contexts and configured
-measurements stay available in the facts API but are not flattened. Consumption,
+Compatibility reads project only unambiguous values from one current context
+covering the whole variant. Multiple contexts and configured measurements stay
+available in the facts API but are not flattened. Intervals are not flattened
+either, with one exception (ADR-018): liquid and electric consumption given as
+an interval are published at the upper value. `catalog_scalar_facts` carries
+the published `scalar_value` and its `scalar_basis` (`exact` or
+`interval_upper`); `catalog_read_specs` exposes the basis as
+`consumption_l_100km_basis` and `energy_consumption_kwh_100km_basis`, and the
+facts API adds `published_value` and `published_basis` to each fact, so the
+engine and the facts API read the same number. Consumption,
 range and CO₂ require WLTP combined and a known non-PHEV powertrain; cargo requires
 `method: VDA` and `seating_configuration: all_seats_up`. The legacy scalar mapping
 covers seats, cargo, liquid/electric consumption, WLTP range, CO₂ and the list

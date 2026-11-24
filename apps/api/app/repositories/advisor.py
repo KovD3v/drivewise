@@ -45,6 +45,8 @@ _CANDIDATE_SPEC_COLUMNS = """
               s.battery_kwh,
               s.energy_consumption_kwh_100km,
               s.consumption_l_100km,
+              s.consumption_l_100km_basis,
+              s.energy_consumption_kwh_100km_basis,
               s.wltp_range_km,
               s.co2_g_km,
               s.euro_emission_standard,
@@ -723,6 +725,8 @@ class AdvisorRepository:
               s.battery_kwh,
               s.energy_consumption_kwh_100km,
               s.consumption_l_100km,
+              s.consumption_l_100km_basis,
+              s.energy_consumption_kwh_100km_basis,
               s.wltp_range_km,
               s.co2_g_km,
               s.euro_emission_standard,
@@ -954,6 +958,10 @@ def _candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
             "energy_consumption_kwh_100km"
         ],
         "consumption_l_100km": row["consumption_l_100km"],
+        "consumption_l_100km_basis": row.get("consumption_l_100km_basis"),
+        "energy_consumption_kwh_100km_basis": row.get(
+            "energy_consumption_kwh_100km_basis"
+        ),
         "wltp_range_km": row["wltp_range_km"],
         "co2_g_km": row["co2_g_km"],
         "euro_emission_standard": row["euro_emission_standard"],
@@ -1075,6 +1083,10 @@ def _model_analysis_spec(row: dict[str, Any]) -> dict[str, Any]:
             "energy_consumption_kwh_100km"
         ],
         "consumption_l_100km": row["consumption_l_100km"],
+        "consumption_l_100km_basis": row.get("consumption_l_100km_basis"),
+        "energy_consumption_kwh_100km_basis": row.get(
+            "energy_consumption_kwh_100km_basis"
+        ),
         "wltp_range_km": row["wltp_range_km"],
         "co2_g_km": row["co2_g_km"],
         "euro_emission_standard": row["euro_emission_standard"],

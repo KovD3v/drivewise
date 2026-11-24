@@ -12,6 +12,8 @@ from app.ingestion.catalog_v2 import (
 )
 from app.schemas.base import ApiModel
 
+ScalarBasis = Literal["exact", "interval_upper"]
+
 
 class VehicleProvenance(ApiModel):
     source_id: UUID
@@ -189,6 +191,10 @@ class VehicleSpec(ApiModel):
     battery_kwh: float | None = None
     energy_consumption_kwh_100km: float | None = None
     consumption_l_100km: float | None = None
+    # ADR-018: "interval_upper" when a v2 consumption is the upper value of an
+    # interval, "exact" for a point value, null for v1 rows or no value.
+    consumption_l_100km_basis: ScalarBasis | None = None
+    energy_consumption_kwh_100km_basis: ScalarBasis | None = None
     wltp_range_km: int | None = None
     co2_g_km: int | None = None
     euro_emission_standard: str | None = None
@@ -268,6 +274,10 @@ class CatalogFact(ApiModel):
     eligible: bool
     value_min: float | None
     value_max: float | None
+    # The value the read catalogue and the Advisor use, null when the fact is not
+    # published as a scalar; "interval_upper" marks an ADR-018 upper value.
+    published_value: float | None = None
+    published_basis: ScalarBasis | None = None
     unit: str | None
     selected_observation_id: UUID | None
     evidence_ids: list[UUID]
