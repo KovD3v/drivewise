@@ -129,7 +129,9 @@ public site.
 
 The price shown is the public list price including VAT, not the turnkey price.
 When a document prints only the price without VAT, the value is computed from
-it and marked as computed. When a registered version is no longer in the
+it and marked as computed. When a document prints only the turnkey price, the
+value is that price minus the on-road charge the document states, also marked
+as computed. When a registered version is no longer in the
 current price list, the nearest current version supplies the price, and the
 product says so.
 
