@@ -194,6 +194,60 @@ def test_model_analysis_credits_the_list_price_it_uses(client, conn):  # noqa: F
     assert credit["observed_at"].startswith("2026-10-01")
 
 
+def test_vehicle_detail_credits_identity_before_ranking_permission(conn, tmp_path):  # noqa: F811
+    # No source is permitted yet: facts stay hidden, but body style and fuel type
+    # are shown, so their sources are credited.
+    assert publish(conn, readiness_bundle(tmp_path), tmp_path) == "published"
+    app.dependency_overrides[get_connection] = lambda: conn
+    try:
+        response = TestClient(app).get(f"/vehicles/{_car(conn)}")
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200, response.text
+    for spec in response.json()["specs"]:
+        assert spec["fuel_type"] is not None
+        credited = {
+            (metric, entry["source_key"])
+            for entry in spec["provenance"]
+            for metric in entry["supported_metrics"]
+        }
+        assert credited == {
+            ("fuel_type", "lumen-registry"),
+            ("body_style", "coachwork-notes"),
+        }
+
+
+def test_model_analysis_leaves_out_a_list_price_it_cannot_cite(conn, tmp_path):  # noqa: F811
+    data = _with_http_mirror(readiness_bundle(tmp_path), tmp_path)
+    for observation in data["observations"]:
+        if (observation["variant_key"], observation["metric"]) == (
+            "tavo-electric",
+            "list_price_eur",
+        ):
+            observation["snapshot_id"] = MIRROR
+    assert publish(conn, data, tmp_path) == "published"
+    conn.execute("UPDATE sources SET ranking_permission = 'permitted'")
+    spec_id = conn.execute(
+        "SELECT id FROM vehicle_specs WHERE variant_key = %s", ("tavo-electric",)
+    ).fetchone()["id"]
+    app.dependency_overrides[get_connection] = lambda: conn
+    try:
+        response = TestClient(app).post(
+            "/advisor/model-analysis",
+            json={
+                "vehicle_id": str(_car(conn)),
+                "spec_id": str(spec_id),
+                "analysis_scope": ["price"],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200, response.text
+    costs = response.json()["estimated_costs"]
+    assert costs["market_reference_list_price"] is None
+    assert costs["market_reference_price_eur"] is None
+
+
 def test_guided_preview_carries_the_same_list_price_item(client):
     created = client.post(
         "/guided-decisions",

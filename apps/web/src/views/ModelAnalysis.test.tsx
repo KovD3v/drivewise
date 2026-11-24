@@ -170,6 +170,10 @@ test('credits the price list when the reference price is a list price', async ()
   expect(screen.getByText('Crediti delle fonti')).toBeVisible()
   expect(screen.getByText('Lumen registry (synthetic)')).toBeVisible()
   expect(screen.getByText('Synthetic fixture only')).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Apri il listino' })).toHaveAttribute(
+    'href',
+    'https://lumen-registry.example.com/export',
+  )
   expect(
     screen.getByText(
       'Non ci sono offerte valide. Il prezzo di riferimento è il prezzo di listino di questa versione.',

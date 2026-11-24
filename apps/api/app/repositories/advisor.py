@@ -1044,6 +1044,12 @@ def _model_analysis_vehicle(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _model_analysis_spec(row: dict[str, Any]) -> dict[str, Any]:
+    # A v2 list price is shown only with its document, under the Advisor URL rule.
+    # A v1 price has no reviewed decision and stays as it was.
+    reviewed_price = row.get("list_price_decision_id") is not None
+    citable_price = reviewed_price and str(
+        row.get("list_price_source_url") or ""
+    ).startswith("https://")
     return {
         "id": row["spec_id"],
         "variant_key": row["variant_key"],
@@ -1058,7 +1064,9 @@ def _model_analysis_spec(row: dict[str, Any]) -> dict[str, Any]:
         "trim": row["trim"],
         "body_style": row["spec_body_style"],
         "fuel_type": row["spec_fuel_type"],
-        "list_price_eur": row["list_price_eur"],
+        "list_price_eur": (
+            None if reviewed_price and not citable_price else row["list_price_eur"]
+        ),
         "drivetrain": row["drivetrain"],
         "transmission": row["transmission"],
         "engine": row["engine"],
@@ -1078,12 +1086,7 @@ def _model_analysis_spec(row: dict[str, Any]) -> dict[str, Any]:
         "seats": row["seats"],
         "cargo_volume_liters": row["cargo_volume_liters"],
         # The source and terms of list_price_eur, under the Advisor URL rule.
-        "list_price": (
-            list_price_block(row)
-            if row.get("list_price_decision_id") is not None
-            and str(row.get("list_price_source_url") or "").startswith("https://")
-            else None
-        ),
+        "list_price": list_price_block(row) if citable_price else None,
     }
 
 

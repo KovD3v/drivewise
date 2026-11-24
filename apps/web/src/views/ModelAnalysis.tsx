@@ -290,6 +290,16 @@ function ModelAnalysisResult({ response }: { response: ModelAnalysisResponse }) 
           />
         </dl>
         {response.estimated_costs.market_reference_list_price ? (
+          <a
+            className="text-link source-link"
+            href={response.estimated_costs.market_reference_list_price.source_url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Apri il listino
+          </a>
+        ) : null}
+        {response.estimated_costs.market_reference_list_price ? (
           <SourceCredits
             credits={[
               {
