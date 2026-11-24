@@ -1,4 +1,4 @@
-import type { ListPrice } from '../api/drivewise'
+import type { ListPrice } from '@/api/drivewise'
 
 // Copy and blocks shared by the Advisor result and the vehicle detail for a
 // price taken from a public price list instead of a seller's offer (ADR-013).

@@ -356,4 +356,4 @@ export function sectionOf(slug: FeatureKey): SectionId {
   return SECTIONS.find((s) => s.items.includes(slug))?.id ?? "services";
 }
 
-export const existingFeatureRoutes = { 'ai-advisor': '/advisor', 'document-wallet': '/documents', 'decision-history': '/app/me' } as const;
+export const existingFeatureRoutes = { 'ai-advisor': '/app/start', 'decision-history': '/app/me' } as const;

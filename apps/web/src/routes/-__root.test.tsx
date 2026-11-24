@@ -26,32 +26,7 @@ test('configures a root not found page with navigation links', () => {
   expect(
     screen.getByRole('heading', { name: 'Pagina non trovata' }),
   ).toBeVisible()
-  expect(
-    screen.getByText(/non esiste o e stata spostata/i),
-  ).toBeVisible()
+  expect(screen.getByText(/non esiste o è stata spostata/i)).toBeVisible()
   expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/')
-  expect(screen.getByRole('link', { name: 'Veicoli' })).toHaveAttribute(
-    'href',
-    '/vehicles',
-  )
-  expect(screen.getByRole('link', { name: 'Annunci' })).toHaveAttribute(
-    'href',
-    '/listings',
-  )
-  expect(screen.getByRole('link', { name: 'Documenti' })).toHaveAttribute(
-    'href',
-    '/documents',
-  )
-  expect(screen.getByRole('link', { name: 'Search' })).toHaveAttribute(
-    'href',
-    '/search',
-  )
-  expect(screen.getByRole('link', { name: 'Advisor' })).toHaveAttribute(
-    'href',
-    '/advisor',
-  )
-  expect(screen.getByRole('link', { name: 'Analisi modello' })).toHaveAttribute(
-    'href',
-    '/model-analysis',
-  )
+  expect(screen.getByRole('link', { name: 'Scelta Guidata' })).toHaveAttribute('href', '/app/start')
 })

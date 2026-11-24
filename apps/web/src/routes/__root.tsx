@@ -11,7 +11,7 @@ import {
 import { useEffect } from 'react'
 import { PageTransition } from '@/components/transition/PageTransition'
 import { CONTACT_SOURCE_KEY } from '@/lib/contact-intelligence'
-import legacyStyles from '../legacy.css?url'
+import { AppHeader } from '@/components/app/AppHeader'
 
 import appStyles from '../styles.css?url'
 
@@ -33,7 +33,6 @@ export const Route = createRootRoute({
       { name: 'twitter:description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
     ],
     links: [
-      ...(legacyStyles ? [{ rel: 'stylesheet', href: legacyStyles }] : []),
       { rel: 'icon', href: '/favicon.png?v=3', type: 'image/png' },
       ...(appStyles ? [{ rel: 'stylesheet', href: appStyles }] : []),
       { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
@@ -49,10 +48,9 @@ function RootComponent() {
     if (path === '/contact') return
     try { sessionStorage.setItem(CONTACT_SOURCE_KEY, path) } catch { /* storage unavailable */ }
   }, [path])
-  const legacy = !['/', '/contact', '/privacy', '/terms'].includes(path) && !path.startsWith('/app/');
   return (
     <RootDocument>
-      <div className={legacy ? "legacy-ui" : undefined}><Outlet /></div>
+      <Outlet />
       <PageTransition />
     </RootDocument>
   )
@@ -60,38 +58,29 @@ function RootComponent() {
 
 export function NotFoundPage() {
   return (
-    <main className="app-shell">
-      <section className="intro-panel" aria-labelledby="not-found-title">
-        <p className="eyebrow">Drivewise MVP</p>
-        <h1 id="not-found-title">Pagina non trovata</h1>
-        <p className="summary">
-          La pagina richiesta non esiste o e stata spostata.
+    <div className="min-h-screen bg-background">
+      <AppHeader label="Pagina non trovata" />
+      <main className="mx-auto w-full max-w-[46rem] px-6 py-24 text-center sm:px-8">
+        <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.03em]">Pagina non trovata</h1>
+        <p className="mt-4 text-[0.95rem] text-muted-foreground">
+          La pagina richiesta non esiste o è stata spostata.
         </p>
-        <nav className="home-actions" aria-label="Navigazione 404">
-          <Link className="primary-link" to="/">
+        <nav className="mt-8 flex flex-wrap justify-center gap-3" aria-label="Navigazione 404">
+          <Link
+            to="/"
+            className="inline-flex h-12 items-center rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
             Home
           </Link>
-          <Link className="secondary-link" to="/vehicles">
-            Veicoli
-          </Link>
-          <Link className="secondary-link" to="/listings">
-            Annunci
-          </Link>
-          <Link className="secondary-link" to="/documents">
-            Documenti
-          </Link>
-          <Link className="secondary-link" to="/search">
-            Search
-          </Link>
-          <Link className="secondary-link" to="/advisor">
-            Advisor
-          </Link>
-          <Link className="secondary-link" to="/model-analysis">
-            Analisi modello
+          <Link
+            to="/app/start"
+            className="inline-flex h-12 items-center rounded-full border border-border bg-card px-7 text-[0.95rem]"
+          >
+            Scelta Guidata
           </Link>
         </nav>
-      </section>
-    </main>
+      </main>
+    </div>
   )
 }
 

@@ -1,4 +1,4 @@
-import { formatResultLabel } from "@/views/ModelAnalysis";
+import { formatAssumption, formatResultLabel } from "@/lib/model-analysis-labels";
 import { analyzeModel } from "@/api/drivewise";
 /** Risposte della Decision Bar contestuale: solo dati presenti nel dataset. */
 import type { Vehicle } from "@/services/vehicleService";

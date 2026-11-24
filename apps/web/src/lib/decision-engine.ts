@@ -1,7 +1,7 @@
 import { fetchGuidedDecision, type AdvisorOffer, type GuidedDecisionResponse } from '@/api/drivewise';
 import type { DecisionProfile } from './decision-profile';
 import { getVehiclesByType, fromApiVehicle, type Vehicle, type VehicleTypeKey } from '@/services/vehicleService';
-export type ScoredVehicle = { vehicle: Vehicle; score: number; decisionStatus?: 'complete' | 'insufficient_data'; why: string[]; tradeoffs: string[]; offer?: AdvisorOffer };
+export type ScoredVehicle = { vehicle: Vehicle; score: number; decisionStatus?: 'complete' | 'insufficient_data'; why: string[]; tradeoffs: string[]; offer?: AdvisorOffer | null };
 
 export function guidedRanking(response: GuidedDecisionResponse): ScoredVehicle[] {
   const seen = new Set<string>();
