@@ -20,7 +20,6 @@ import { loadState } from "@/lib/decision-state";
 import { EASE } from "@/lib/motion";
 import { buildReportSections } from "@/lib/report-sections";
 import { useCountUp } from "@/lib/use-count-up";
-import teslaModelYImage from "@/assets/tesla-model-y-studio.jpg";
 import { Button } from "@/components/ui/button";
 import { categoryLabel, categoryText } from "@/lib/category-labels";
 
@@ -191,17 +190,6 @@ function ReportContent({
               {winner.decisionStatus === 'insufficient_data' ? 'Punteggio provvisorio: dati insufficienti' : 'Decision Score'} · {winner.score}/100
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Punteggio DriveWise</p>
-            {winner.vehicle.brand === "Tesla" && winner.vehicle.model.startsWith("Model Y") && (
-              <div className="mt-7 w-full max-w-2xl overflow-hidden rounded-lg border border-border/70 bg-background">
-                <img
-                  src={teslaModelYImage}
-                  alt="Tesla Model Y bianca vista di tre quarti anteriore"
-                  width={1536}
-                  height={1024}
-                  className="aspect-[3/2] w-full object-contain"
-                />
-              </div>
-            )}
             <h1 className="font-heading mt-6 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
               {winner.vehicle.brand} {winner.vehicle.model}
             </h1>
