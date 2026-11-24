@@ -240,7 +240,10 @@ needed. After publication, catalog v2 treats three kinds of data differently:
 - **Identity** (make, model, generation, phase, body, year, market, powertrain,
   fuel, transmission, drivetrain, type-approval references and the evidence the
   identity rests on) cannot be changed by the import, not even from "unknown" to a
-  value. A correction needs a hand-written, reviewed migration. "Frozen" means
+  value. The one exception is body style: a later bundle may fill an unknown body
+  style, appending the snapshot that states it, and never overwrite a known one
+  (see [catalog v2](catalog-v2.md), "Identity migration and ownership"). Any
+  other correction needs a hand-written, reviewed migration. "Frozen" means
   only this: the automatic import refuses the change, and a person makes it.
   Tried on a disposable local database (2026-11-24) for one published hybrid,
   from `MHEV` to `HEV`: the import of a bundle with the new kind was rejected and

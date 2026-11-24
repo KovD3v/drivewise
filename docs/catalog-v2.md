@@ -299,6 +299,16 @@ match exactly, including their identity evidence; the ingestion path cannot
 silently rename, merge, split or reparent them. Such corrections require a
 separately reviewed migration/mapping.
 
+One change is allowed: a later bundle may turn an unknown body style (`null`)
+into a known one. The vehicle must keep its stored identity evidence as a prefix
+and append at least one snapshot, the one that states the body style; that
+snapshot can come from any source. Every published v2 variant of the vehicle
+must be in the bundle, and gets the same body style. Identity eligibility then
+also requires the appended source to be permitted, so the fill can only make
+eligibility stricter. A known body style is never overwritten, and every other
+identity field stays frozen. Body style is part of the identity key, so a fill
+that collides with an existing identity is rejected by the unique index.
+
 Publication derives `fuel_type` from powertrain and fuel. A petrol plug-in
 hybrid is `plug_in_hybrid_petrol`, the name the Advisor scores. A diesel plug-in
 is `plug_in_hybrid_diesel`, which the Advisor counts as `unsupported_fuel_type`

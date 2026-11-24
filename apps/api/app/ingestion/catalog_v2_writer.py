@@ -102,6 +102,23 @@ def _fuel_type(variant) -> str | None:
     return variant.fuel
 
 
+def _fills_body_style(row, values, differing, *, table) -> bool:
+    """True when a bundle only turns an unknown body style into a known one.
+
+    The stored identity evidence must stay a prefix of the bundle's: evidence is
+    appended, never replaced, so eligibility can only become stricter. A vehicle
+    must append the snapshot that states the body style; its variants inherit it.
+    """
+    if set(differing) - {"body_style", "identity_evidence"}:
+        return False
+    if row["body_style"] is not None or values["body_style"] is None:
+        return False
+    stored, bundled = list(row["identity_evidence"]), list(values["identity_evidence"])
+    if bundled[: len(stored)] != stored:
+        return False
+    return table == "vehicle_specs" or len(bundled) > len(stored)
+
+
 def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
     row = conn.execute(
         sql.SQL("SELECT * FROM {} WHERE {} = %s FOR UPDATE").format(
@@ -135,10 +152,24 @@ def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
         values["legacy_record"] = Jsonb(json.loads(json.dumps(row, default=str)))
     else:
         # Identity corrections need a reviewed migration; scraping cannot rewrite identity.
-        for field, value in values.items():
-            expected = value.obj if isinstance(value, Jsonb) else value
-            if row[field] != expected:
-                raise CatalogValidationError(f"Published identity differs at {field}.")
+        # One exception: an unknown body style may be filled, with its evidence appended.
+        differing = [
+            field
+            for field, value in values.items()
+            if row[field] != (value.obj if isinstance(value, Jsonb) else value)
+        ]
+        if not differing:
+            return row["id"]
+        if not _fills_body_style(row, values, differing, table=table):
+            raise CatalogValidationError(
+                f"Published identity differs at {differing[0]}."
+            )
+        conn.execute(
+            sql.SQL(
+                "UPDATE {} SET body_style = %s, identity_evidence = %s WHERE id = %s"
+            ).format(sql.Identifier(table)),
+            (values["body_style"], values["identity_evidence"], row["id"]),
+        )
         return row["id"]
     conn.execute(
         sql.SQL("UPDATE {} SET {} WHERE id = %s").format(
@@ -258,6 +289,17 @@ def publish_catalog_v2(
                 variant.variant_key,
                 values,
                 adopt_legacy=adopt_legacy,
+            )
+        # A filled body style must reach every published variant of its vehicle.
+        unfilled = conn.execute(
+            """SELECT 1 FROM vehicle_specs s JOIN vehicles v ON v.id = s.vehicle_id
+               WHERE v.id = ANY(%s) AND s.catalog_version = 2
+                 AND s.body_style IS DISTINCT FROM v.body_style LIMIT 1""",
+            (list(vehicles.values()),),
+        ).fetchone()
+        if unfilled:
+            raise CatalogValidationError(
+                "Include every published variant when filling a body style."
             )
         # Adopting a vehicle requires an explicit mapping for all its existing variants.
         remaining = conn.execute(
