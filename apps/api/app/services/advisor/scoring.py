@@ -574,7 +574,7 @@ def _score_candidate(
     constraint_missing: tuple[str, ...] = (),
 ) -> AdvisorRecommendationItem:
     vehicle_data = candidate["vehicle"]
-    spec_data = candidate["spec"]
+    spec_data = _cited_spec(candidate)
     offer_data = priced_terms(candidate)
 
     price = float(offer_data["price_eur"])
@@ -1324,6 +1324,31 @@ def _efficiency_factor_metric(
 
 def _cargo_high_band(primary_use: str) -> int:
     return 350 if primary_use in {"city", "new_driver"} else 450 if primary_use == "highway" else 500
+
+
+# Optional facts the gates do not demand for every fuel type. A value no HTTPS
+# source supports cannot be credited, so the payload omits it; the gates already
+# exclude a candidate whose required metrics lack HTTPS evidence.
+OPTIONAL_CITED_METRICS = (
+    "consumption_l_100km",
+    "energy_consumption_kwh_100km",
+    "wltp_range_km",
+)
+
+
+def _cited_spec(candidate: dict[str, Any]) -> dict[str, Any]:
+    cited = {
+        entry.get("metric")
+        for entry in candidate.get("provenance", [])
+        if _is_https_url(entry.get("source_url"))
+    }
+    spec = dict(candidate["spec"])
+    for metric in OPTIONAL_CITED_METRICS:
+        if metric not in cited:
+            spec[metric] = None
+            if f"{metric}_basis" in spec:
+                spec[f"{metric}_basis"] = None
+    return spec
 
 
 def _build_provenance(

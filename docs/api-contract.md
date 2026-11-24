@@ -860,7 +860,11 @@ and `source_license` the licence or attribution text to show with
 Every `provenance` entry of an item also has `source_license` (null when no
 licence is stored, as for the MIMIT and ARERA energy prices). Entries whose
 `source_url` is not HTTPS are left out: the gates already require HTTPS evidence
-for every required metric, so only extra evidence is dropped.
+for every required metric, so only extra evidence is dropped. An optional fact
+(`consumption_l_100km`, `energy_consumption_kwh_100km`, `wltp_range_km`) left
+with no HTTPS evidence is dropped with it: `selected_spec` returns it as null,
+with its `_basis`, and `evidence` and the factors omit it, so every value shown
+keeps a credit.
 
 Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,

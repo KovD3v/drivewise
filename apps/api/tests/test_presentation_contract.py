@@ -151,6 +151,26 @@ def test_recommendations_carry_list_price_credits_and_skip_http_evidence(
         assert "of offer price" not in " ".join(item["evidence"]["assessments"]["tco"]["assumptions"])
 
 
+def test_recommendations_omit_a_value_whose_only_source_is_http(client):
+    response = client.post(
+        "/advisor/recommendations",
+        json={"budget_max_eur": 25000, "primary_use": "family"},
+    )
+    assert response.status_code == 200, response.text
+    items = [item for group in response.json()["groups"] for item in group["items"]]
+    petrol = [i for i in items if i["selected_spec"]["variant_key"] == "tavo-petrol"]
+    assert len(petrol) == 1, [i["selected_spec"]["variant_key"] for i in items]
+    item = petrol[0]
+    # The 40 km range cites only an http:// page, so neither value nor credit is shown.
+    assert item["selected_spec"]["wltp_range_km"] is None
+    assert "wltp_range_km" not in item["evidence"]
+    assert "wltp_range_km" not in {p["metric"] for p in item["provenance"]}
+    # A value with an HTTPS source keeps both value and credit.
+    assert item["selected_spec"]["consumption_l_100km"] is not None
+    assert item["evidence"]["consumption_l_100km"] is not None
+    assert "consumption_l_100km" in {p["metric"] for p in item["provenance"]}
+
+
 def test_guided_preview_carries_the_same_list_price_item(client):
     created = client.post(
         "/guided-decisions",
