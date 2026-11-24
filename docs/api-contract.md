@@ -34,6 +34,20 @@ Example response:
 }
 ```
 
+### GET /version
+
+Returns which build and which logic answer requests, without touching PostgreSQL: `service`, `api_version` (package metadata), `git_commit` (`VERCEL_GIT_COMMIT_SHA`, `null` outside Vercel), `scoring_version` (the advisor `SCORING_VERSION`), and `schema_version` (the newest migration file shipped with the build, not the state of the connected database).
+
+```json
+{
+  "service": "drivewise-api",
+  "api_version": "0.1.0",
+  "git_commit": "cca1072…",
+  "scoring_version": "advisor-v3.0",
+  "schema_version": "0009_catalog_publication.sql"
+}
+```
+
 ### GET /ready
 
 Verifies database readiness with a lightweight `SELECT 1`.
