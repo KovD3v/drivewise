@@ -81,11 +81,20 @@ def _insert_immutable(conn, table: str, values: dict) -> None:
         raise CatalogValidationError(f"Immutable {table} ID has different content.")
 
 
+# Plug-in hybrids get the Advisor's own fuel names. Only the petrol one is scored;
+# a diesel plug-in keeps its fuel in the name and is counted as unsupported.
+_PLUG_IN_FUEL_TYPES = {
+    "petrol": "plug_in_hybrid_petrol",
+    "diesel": "plug_in_hybrid_diesel",
+}
+
+
 def _fuel_type(variant) -> str | None:
     if variant.powertrain_type == "BEV":
         return "electric"
     if variant.powertrain_type == "PHEV":
-        return "phev"
+        # An unknown or unusual plug-in fuel stays the generic, unscored "phev".
+        return _PLUG_IN_FUEL_TYPES.get(variant.fuel, "phev")
     if variant.fuel == "petrol":
         return {"MHEV": "mild_hybrid_petrol", "HEV": "full_hybrid_petrol"}.get(
             variant.powertrain_type, "petrol"

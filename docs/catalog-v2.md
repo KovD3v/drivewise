@@ -175,6 +175,9 @@ replaces `catalog_read_specs` so a v2 spec exposes `list_price_eur` from its
 eligible list-price fact, and applies ADR-018 to `catalog_scalar_facts` (see
 "Current facts and consumers"). It must run after `0009`, which creates those
 views.
+[`0013_plug_in_hybrid_fuel_type.sql`](../apps/api/migrations/0013_plug_in_hybrid_fuel_type.sql)
+renames the `fuel_type` of published v2 plug-in hybrids from `phev` to the
+Advisor's names (see "Identity migration and ownership").
 
 | New table | Responsibility |
 | --- | --- |
@@ -295,6 +298,12 @@ New identities use stable canonical/variant keys. Existing v2 identities must
 match exactly, including their identity evidence; the ingestion path cannot
 silently rename, merge, split or reparent them. Such corrections require a
 separately reviewed migration/mapping.
+
+Publication derives `fuel_type` from powertrain and fuel. A petrol plug-in
+hybrid is `plug_in_hybrid_petrol`, the name the Advisor scores. A diesel plug-in
+is `plug_in_hybrid_diesel`, which the Advisor counts as `unsupported_fuel_type`
+because it has no diesel plug-in energy model. Any other or unknown plug-in fuel
+stays `phev`. Mild and full hybrids keep their existing names.
 
 Adopting existing v1 records requires `--adopt-legacy` at publication and the
 existing canonical/variant keys as the explicit mapping. Make, model, market,

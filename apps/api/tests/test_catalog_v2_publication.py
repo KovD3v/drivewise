@@ -604,8 +604,8 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            # 0012 replaces a 0009 view, so it can only follow 0009.
-            if migration.name[:4] not in {"0001", "0009", "0012"}:
+            # 0012 replaces 0009 views and 0013 updates 0009 columns: both follow it.
+            if migration.name[:4] not in {"0001", "0009", "0012", "0013"}:
                 conn.execute(migration.read_text())
         conn.execute(
             """INSERT INTO vehicles (id, canonical_key, model_family_key, make, model,
@@ -641,12 +641,13 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            # 0012 replaces a 0009 view, so it can only follow 0009.
-            if migration.name[:4] not in {"0001", "0009", "0012"}:
+            # 0012 replaces 0009 views and 0013 updates 0009 columns: both follow it.
+            if migration.name[:4] not in {"0001", "0009", "0012", "0013"}:
                 conn.execute(migration.read_text())
         conn.execute("UPDATE vehicle_specs SET engine_code = 'reviewed-code'")
         conn.execute((MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text())
         conn.execute((MIGRATIONS_PATH / "0012_list_price_read_view.sql").read_text())
+        conn.execute((MIGRATIONS_PATH / "0013_plug_in_hybrid_fuel_type.sql").read_text())
         codes = conn.execute("SELECT engine_code FROM catalog_read_specs").fetchall()
         assert codes and all(row["engine_code"] == "reviewed-code" for row in codes)
 
@@ -965,3 +966,82 @@ def test_list_price_from_an_unreviewed_source_is_excluded_and_counted(conn, tmp_
     # Seed offers from unreviewed sources keep their own count; the variant leaves it.
     assert permitted.get("source_not_permitted", 0) == excluded["source_not_permitted"] - 1
     assert [c["price_basis"] for c in repo.list_candidates()] == ["list_price"]
+
+
+def publish_phev_ready(conn, tmp_path, data=None):
+    """metro-g2-phev, permitted, with every fact a petrol plug-in needs to rank."""
+    data = data or bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_fact(data, "seats", 5, variant="metro-g2-phev")
+    add_fact(
+        data,
+        "cargo_volume_liters",
+        300,
+        {"market": "IT", "method": "VDA", "seating_configuration": "all_seats_up"},
+        variant="metro-g2-phev",
+    )
+    add_list_price(data, variant="metro-g2-phev")
+    publish(conn, data, tmp_path)
+    return data
+
+
+def test_plug_in_hybrids_get_the_advisor_fuel_names_and_petrol_ones_rank(
+    conn, tmp_path
+):
+    data = bundle(tmp_path)
+    diesel = {
+        **copy.deepcopy(data["variants"][2]),
+        "variant_key": "metro-g2-phev-diesel",  # gitleaks:allow (synthetic key)
+        "fuel": "diesel",
+    }
+    data["variants"].append(diesel)
+    add_list_price(data, variant="metro-g2-phev-diesel")
+    publish_phev_ready(conn, tmp_path, data)
+    fuel_types = dict(
+        (row["variant_key"], row["fuel_type"])
+        for row in conn.execute(
+            "SELECT variant_key, fuel_type FROM vehicle_specs WHERE powertrain_type = 'PHEV'"
+        ).fetchall()
+    )
+    # Diesel plug-ins keep their fuel in the name; the Advisor counts them unsupported.
+    assert fuel_types == {
+        "metro-g2-phev": "plug_in_hybrid_petrol",
+        "metro-g2-phev-diesel": "plug_in_hybrid_diesel",
+    }
+    repo = AdvisorRepository(conn)
+    candidates = repo.list_candidates()
+    assert [(c["spec"]["variant_key"], c["spec"]["fuel_type"]) for c in candidates] == [
+        ("metro-g2-phev", "plug_in_hybrid_petrol")
+    ]
+    assert repo.count_excluded_candidates()["unsupported_fuel_type"] == 1
+    items = build_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=15000, primary_use="city"),
+        candidates,
+    )
+    assert [i.selected_spec.variant_key for i in items] == ["metro-g2-phev"]
+
+
+def test_plug_in_fuel_migration_lets_a_later_bundle_match(conn, tmp_path):
+    data = publish_phev_ready(conn, tmp_path)
+    # What the publisher stored before this fix.
+    conn.execute("SELECT set_config('drivewise.catalog_writer', 'v2', true)")
+    conn.execute(
+        "UPDATE vehicle_specs SET fuel_type = 'phev' WHERE variant_key = 'metro-g2-phev'"
+    )
+    conn.execute("SELECT set_config('drivewise.catalog_writer', '', true)")
+    later = copy.deepcopy(data)
+    add_fact(later, "seats", 5, variant="metro-g2-hev")
+    with pytest.raises(CatalogValidationError, match="differs at fuel_type"):
+        with conn.transaction():
+            publish(conn, later, tmp_path)
+    conn.execute((MIGRATIONS_PATH / "0013_plug_in_hybrid_fuel_type.sql").read_text())
+    assert conn.execute(
+        "SELECT fuel_type FROM vehicle_specs WHERE variant_key = 'metro-g2-phev'"
+    ).fetchone()["fuel_type"] == "plug_in_hybrid_petrol"
+    # The migration leaves the legacy-write guard armed.
+    assert conn.execute(
+        "SELECT current_setting('drivewise.catalog_writer', true) AS writer"
+    ).fetchone()["writer"] != "v2"
+    publish(conn, later, tmp_path)
+
