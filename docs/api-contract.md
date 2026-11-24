@@ -73,8 +73,14 @@ Supported query filters:
 - `body_style`, exact
 - `market`, exact
 - `max_price_eur`
+- `vehicle_type`, one of `car`, `motorcycle`, `scooter`; any other value returns
+  `422`. `car` also matches legacy (catalog v1) rows, whose `vehicle_type` is
+  `null` because that contract is car-only.
 - `limit`, default `50`, maximum `100`
 - `offset`, default `0`
+
+Every summary includes `vehicle_type` (`car`, `motorcycle`, `scooter` or
+`null` for legacy rows).
 
 Example:
 
@@ -208,6 +214,43 @@ adds the following groups:
 - `official_efficiency`: `homologation_cycle`, `consumption_l_100km`,
   `energy_consumption_kwh_100km`, `co2_g_km`, `euro_emission_standard`
 - `maintenance_schedule`, `safety`, `technology_comfort`, and `media`
+- `two_wheel`: `seat_height_mm`, `wet_weight_kg`, `fuel_tank_capacity_liters`,
+  `underseat_storage_liters`. Filled only for `motorcycle` and `scooter`
+  vehicles, from eligible catalog v2 facts with one exact value per spec
+  (`wet_weight_kg` is `mass_kg` with `method: wet`); otherwise each is `null`.
+  Ranges and competing contexts stay in `GET /vehicles/{vehicle_id}/facts`.
+  The block carries no scores.
+
+Every spec also has `consumption_l_100km_basis` and
+`energy_consumption_kwh_100km_basis`. For a catalog v2 spec, `exact` means the
+value is a point value. `interval_upper` means the source gave an interval and
+the value is its upper end (ADR-018), so the product must say "upper value". The
+basis is `null` for v1 specs and when there is no value. Only these two
+consumptions are published from an interval; every other interval stays `null`
+here. Each fact in `GET /vehicles/{vehicle_id}/facts` keeps `value_min` and
+`value_max` and adds `published_value` and `published_basis`: the scalar the
+catalogue derives from that fact (`exact` for a point value, `interval_upper`
+for the upper end of a published consumption interval). Both are `null`
+whenever the fact has no row in `catalog_scalar_facts`, even when `eligible` is
+`true`; for example an interval that is not one of the two consumptions, or a
+non-whole value where the scalar needs a whole number. A read that needs a whole number leaves
+out a non-whole value: a displacement fact of 1399.5 cc has
+`published_value` 1399.5 here, while `powertrain.displacement_cc` in vehicle
+detail stays `null`. The same holds for `dimensions.length_mm`, `width_mm` and
+`height_mm`. For `seats`, `electric_range_km` and `co2_g_km` the scalar view
+itself needs a whole number, so a non-whole value has no `published_value`,
+although the fact can still be `eligible`.
+Each fact also names its source with `source_name`,
+`source_url` (the document), `retrieved_at`, and `source_license`, the licence
+or attribution text to show with it.
+
+For catalog v2 specs, these fields come from eligible, exact facts:
+`powertrain.displacement_cc`, `dimensions.length_mm`, `dimensions.width_mm`
+(body width) and `dimensions.height_mm`, as whole numbers, and
+`powertrain.power_kw` (system power, or engine power when the powertrain is
+`ICE`). A value published as a range, a value from a source that is not
+reviewed, and every other v2 profile field (curb weight included) stay `null`;
+ranges are in `GET /vehicles/{vehicle_id}/facts`.
 
 `maintenance_schedule` items contain `id`, `operation_code`, `title`,
 `interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings
@@ -227,6 +270,24 @@ Vehicle and flat-spec `provenance` arrays use record-level claims with
 `supported_metrics`. Each profile child has its own `provenance` object with
 `source_id`, `source_key`, `source_name`, `source_url`, `source_license`, and
 `observed_at`; this is the source that supplied that particular child record.
+
+Catalog v2 publication writes no record-level claims, so for v2 rows these
+arrays are built from the evidence behind what the response shows. A v2 spec
+gets one entry per source snapshot behind its published facts and its identity:
+`observed_at` and `record_observed_at` are the snapshot retrieval time,
+`content_hash` its SHA-256, and `supported_metrics` lists the catalogue metrics
+it backs (legacy names where they exist, such as `list_price_eur`,
+`consumption_l_100km`, `body_style`). A v2 vehicle gets one entry per snapshot
+of its identity evidence, with empty `supported_metrics`. A source cited over
+plain `http://` keeps its URL here. `source_license` is the licence or
+attribution text the product must show with the source name (ADR-015; the EEA
+dataset, for example, requires a visible credit).
+
+Each detail spec also has `list_price`: the terms and source behind
+`list_price_eur`, in the same shape as the Advisor `list_price` block below
+(`ListPrice`). It is `null` for v1 specs, when the list price is not an eligible
+catalog v2 fact, and when its price-list URL is not HTTPS (the Advisor URL
+rule); `list_price_eur` itself is unchanged in those cases.
 
 The profile deliberately excludes contextual or time-series domains: insurance,
 vehicle tax, real-world consumption, reliability scores or defect probabilities,
@@ -617,14 +678,21 @@ request is documented separately in `docs/guided-decision-contract.md`.
 
 ### POST /advisor/recommendations
 
-Creates a deterministic Advisor v3 run from reviewed, imported Italian catalog
-offers. It does not call an LLM, search documents, generate embeddings, or
-ingest external data.
+Creates a deterministic Advisor v3 run that ranks exact Italian catalog variants
+(ADR-013). A variant with an eligible reviewed offer is evaluated with that
+offer. A catalog v2 variant with no eligible offer is evaluated as a new vehicle
+at its reviewed public list price including VAT (ADR-015). It does not call an
+LLM, search documents, generate embeddings, or ingest external data.
+
+Recommendations, Model Analysis and Guided Decisions rank cars only. Offers
+for a `motorcycle` or `scooter` are never candidates and are counted under
+`excluded_counts_by_reason.unsupported_vehicle_type`.
 
 The endpoint persists the normalized request, scoring version, energy
 assumptions, exclusion counts, and completion status on the run. Each selected
 item persists its exact listing/spec pair, new/used group, group rank, score,
-version, and complete score breakdown.
+version, and complete score breakdown. A list-price item persists a null
+listing, and its breakdown stores `price_basis` and `list_price`.
 
 Request body:
 
@@ -697,6 +765,8 @@ Example response:
           "vehicle": {"id": "...", "model_family_key": "it-fiat-panda"},
           "selected_spec": {"id": "...", "variant_key": "..."},
           "offer": {"id": "...", "spec_id": "...", "price_eur": 17500},
+          "price_basis": "offer",
+          "list_price": null,
           "score": 86.42,
           "decision_status": "complete",
           "decision_score": 86.42,
@@ -740,9 +810,81 @@ Example response:
 }
 ```
 
+Every item has a `price_basis`. With `offer`, `offer` is set and `list_price`
+is null. With `list_price`, `offer` is null and `list_price` holds the price
+that stands in for it:
+
+```json
+{
+  "offer": null,
+  "price_basis": "list_price",
+  "list_price": {
+    "price_eur": 12200.01,
+    "computed_from_excl_vat": true,
+    "derivation": "computed_from_excl_vat",
+    "printed_amount_eur": 10000.01,
+    "printed_basis": "excl_vat",
+    "vat_rate_percent": 22,
+    "on_road_charge_eur": null,
+    "on_road_charge_includes_vat": null,
+    "trim_label": "Synthetic Trim 50/68",
+    "price_list_valid_from": "2026-01-01",
+    "substitute_note": null,
+    "source_name": "Synthetic manufacturer list",
+    "source_url": "https://example.test/price-list",
+    "source_license": "Synthetic fixture only",
+    "observed_at": "2026-07-15T00:00:00Z",
+    "decision_id": "...",
+    "observation_id": "..."
+  }
+}
+```
+
+A list-price item is always in the `new` group and has no mileage. The values
+above are synthetic. `price_eur` is always the list price including VAT.
+`derivation` says how it was obtained:
+
+| `derivation` | `printed_basis` | `price_eur` |
+| --- | --- | --- |
+| `printed` | `incl_vat` | the printed amount |
+| `computed_from_excl_vat` | `excl_vat` | printed x (1 + `vat_rate_percent`/100), rounded half up to the cent |
+| `computed_from_turnkey` | `turnkey` | the printed turnkey price minus the stated on-road charge |
+
+For `turnkey`, `printed_amount_eur` is the turnkey price as printed and
+`on_road_charge_eur` the charge the price list states. When
+`on_road_charge_includes_vat` is false, the charge is first grossed up with
+`vat_rate_percent`. `computed_from_excl_vat` stays for older clients and is true
+only for `excl_vat`. `substitute_note` is set when the registered version is no
+longer listed and the nearest current version supplies the price.
+`source_url` is the price-list document, `observed_at` when it was retrieved,
+and `source_license` the licence or attribution text to show with
+`source_name`. `price_list_valid_from` is the date the price list applies from.
+
+Every `provenance` entry of an item also has `source_license` (null when no
+licence is stored, as for the MIMIT and ARERA energy prices). Entries whose
+`source_url` is not HTTPS are left out: the gates already require HTTPS evidence
+for every required metric, so only extra evidence is dropped. An optional fact
+(`consumption_l_100km`, `energy_consumption_kwh_100km`, `wltp_range_km`) left
+with no HTTPS evidence is dropped with it: `selected_spec` returns it as null,
+with its `_basis`, and `evidence` and the factors omit it, so every value shown
+keeps a credit.
+
 Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,
-and backed by spec provenance. Price, model-family identity, body, fuel, seats,
+and backed by spec provenance. A variant with no such offer is a list-price
+candidate only when it is a catalog v2 car spec and its list price is a
+current fact whose evidence and identity come from permitted, sourced and
+licensed sources; otherwise it is counted under `missing_list_price`, or under
+`source_not_permitted` when a list price exists but its source is not
+permitted.
+
+`excluded_counts_by_reason` counts rejected alternatives, not distinct
+vehicles. Each offer is one alternative, and each Italian catalog v2 car variant without an
+eligible offer is one more: its list price. A variant whose only offer is stale
+and that has no list price therefore adds one to `stale_offer` and one to
+`missing_list_price`. Do not add the counts up as a number of vehicles.
+
+Price, model-family identity, body, fuel, seats,
 cargo, and powertrain consumption evidence are required. Used/certified offers
 also require mileage. Recognized powertrains are assessed or marked
 `insufficient_data`; PHEVs and highway EVs are not blanket exclusions. The
@@ -778,12 +920,14 @@ score below 70. Any soft budget overrun is always reported with exact euros and
 percentage. Offers are ranked before keeping the best offer per
 `model_family_key`; at most five are returned per group. Complete items sort
 before insufficient-data items. Within each status, stable ties use effective
-score, confidence, price, mileage with missing last, listing reference, then
-listing ID.
+score, confidence, price, mileage with missing last, listing reference (variant
+key for a list price), then listing ID (spec ID for a list price).
 
 ### POST /advisor/model-analysis
 
 Analyzes a model already chosen by the user. The endpoint accepts either a free-text `query` resolved through `POST /vehicles/resolve` semantics or a canonical `vehicle_id`. It is deterministic, read-only, and does not create recommendation runs.
+
+The query resolves among cars only. A two-wheel `vehicle_id` returns `needs_input` with `resolved_vehicle_not_found`; a query that matches only two-wheelers returns `vehicle_resolution_no_match`.
 
 Request body:
 
@@ -832,6 +976,7 @@ Response:
   "price_assessment": "in_range",
   "estimated_costs": {
     "market_reference_price_eur": 14200.0,
+    "market_reference_list_price": null,
     "estimated_annual_maintenance_eur": 576.0,
     "estimated_monthly_energy_eur": 92.5,
     "estimated_depreciation_3y_eur": 4060.0,
@@ -865,7 +1010,8 @@ Model analysis rules:
 - returns only estimates selected by `analysis_scope`; `tco` includes the price reference, energy/fuel cost, maintenance, and depreciation estimates
 - requires asking price only for price or red-flag analysis, and current kilometres only for maintenance or red-flag analysis
 - returns `requested_spec_not_found` instead of silently substituting another trim when an explicit `spec_id` is unknown
-- compares asking price against available listing prices, then base price fallback
+- takes the reference price from the first available of: the mean price of eligible, fresh offers for the selected variant (or, when no offer names a variant, of the model's offers); the selected variant's list price; the model's base price; otherwise no reference price (`market_reference_price_eur: null`). `assumptions[1]` names the basis used
+- returns `estimated_costs.market_reference_list_price` only when the reference price is the variant's list price: the same block as vehicle detail's `list_price` (price-list terms, `source_name`, `source_url`, `source_license`, `observed_at`), so the amount keeps its source credit; null for any other reference and for a catalog v1 list price, which has no reviewed fact. A catalog v2 list price whose price-list URL is not HTTPS is not used as a reference at all, because it could not be cited
 - estimates maintenance, monthly energy/fuel cost, and 3-year depreciation with deterministic MVP assumptions
 - emits rule-based red flags for above-reference asking price and high mileage for age
 - returns assumptions, warnings, missing data, and next actions for frontend display

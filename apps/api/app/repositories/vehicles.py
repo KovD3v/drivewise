@@ -1,7 +1,12 @@
 from typing import Any
 from uuid import UUID
 
-from app.repositories.filters import VehicleFilters
+from app.repositories.filters import EFFECTIVE_VEHICLE_TYPE_SQL, VehicleFilters
+from app.repositories.list_price import (
+    LIST_PRICE_COLUMNS,
+    LIST_PRICE_FACT_JOIN,
+    list_price_block,
+)
 
 
 PROFILE_PROVENANCE_FIELDS = (
@@ -23,6 +28,29 @@ def _group_by_spec_id(rows: list[dict[str, Any]]) -> dict[UUID, list[dict[str, A
     for row in rows:
         grouped.setdefault(row["spec_id"], []).append(row)
     return grouped
+
+
+TWO_WHEEL_TYPES = {"motorcycle", "scooter"}
+# Catalog v2 metric -> two_wheel field. mass_kg counts only as wet weight.
+TWO_WHEEL_METRICS = {
+    "seat_height_mm": "seat_height_mm",
+    "mass_kg": "wet_weight_kg",
+    "fuel_tank_capacity_liters": "fuel_tank_capacity_liters",
+    "underseat_storage_liters": "underseat_storage_liters",
+}
+
+
+# Catalog v2 metric -> legacy detail field with the same meaning, as whole numbers.
+# Mass is absent on purpose: mass in running order is not curb weight.
+DETAIL_METRICS = {
+    "engine_displacement_cc": "displacement_cc",
+    "length_mm": "length_mm",
+    "body_width_mm": "width_mm",
+    "height_mm": "height_mm",
+}
+# power_kw is the power of the whole vehicle. An engine's power says that only
+# when the engine is the one motor.
+POWER_METRICS = ("system_power_kw", "engine_power_kw")
 
 
 def _feature_response(row: dict[str, Any]) -> dict[str, Any]:
@@ -72,6 +100,9 @@ class VehiclesRepository:
         if filters.market:
             where_clauses.append("v.market = %s")
             params.append(filters.market)
+        if filters.vehicle_type:
+            where_clauses.append(f"{EFFECTIVE_VEHICLE_TYPE_SQL} = %s")
+            params.append(filters.vehicle_type)
 
         where_sql = ""
         if where_clauses:
@@ -146,6 +177,8 @@ class VehiclesRepository:
               battery_kwh,
               energy_consumption_kwh_100km,
               consumption_l_100km,
+              consumption_l_100km_basis,
+              energy_consumption_kwh_100km_basis,
               wltp_range_km,
               co2_g_km,
               euro_emission_standard,
@@ -183,6 +216,36 @@ class VehiclesRepository:
         ).fetchall()
 
         spec_ids = [spec["id"] for spec in specs]
+        two_wheel_by_spec: dict[UUID, dict[str, Any]] = {}
+        # v2 rows have no legacy columns: these fields come from their facts.
+        facts_by_spec: dict[UUID, dict[str, Any]] = {}
+        powertrains = {spec["id"]: spec["powertrain_type"] for spec in specs}
+        fact_metrics = [*DETAIL_METRICS, *POWER_METRICS]
+        if vehicle["vehicle_type"] in TWO_WHEEL_TYPES:
+            fact_metrics += list(TWO_WHEEL_METRICS)
+        # The scalar view already keeps only eligible, single-context point values.
+        for row in self.conn.execute(
+            """
+            SELECT spec_id, metric, value_min
+            FROM catalog_scalar_facts
+            WHERE spec_id = ANY(%s) AND metric = ANY(%s)
+              AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
+              AND (metric <> ALL(%s) OR value_min = trunc(value_min))
+            """,
+            (spec_ids, fact_metrics, list(DETAIL_METRICS)),
+        ).fetchall():
+            metric, facts = row["metric"], facts_by_spec.setdefault(row["spec_id"], {})
+            if metric in DETAIL_METRICS:
+                facts[DETAIL_METRICS[metric]] = int(row["value_min"])
+            elif metric == "system_power_kw":
+                facts["power_kw"] = row["value_min"]
+            elif metric == "engine_power_kw":
+                if powertrains[row["spec_id"]] == "ICE":
+                    facts.setdefault("power_kw", row["value_min"])
+            else:
+                two_wheel_by_spec.setdefault(row["spec_id"], {})[
+                    TWO_WHEEL_METRICS[metric]
+                ] = row["value_min"]
         maintenance_by_spec = _group_by_spec_id(
             list(
                 self.conn.execute(
@@ -318,6 +381,30 @@ class VehiclesRepository:
             """,
             (vehicle_id,),
         ).fetchall()
+        # A v2 vehicle is credited with the snapshots that establish its identity
+        # (make, model, body style); v2 publication writes no vehicle_provenance.
+        vehicle_provenance = [*vehicle_provenance, *self.conn.execute(
+            """
+            SELECT
+              snapshot.source_id,
+              source.source_key,
+              source.name AS source_name,
+              snapshot.source_url,
+              source.license AS source_license,
+              snapshot.retrieved_at AS observed_at,
+              snapshot.retrieved_at AS record_observed_at,
+              snapshot.content_sha256 AS content_hash,
+              true AS is_current,
+              '[]'::jsonb AS supported_metrics
+            FROM vehicles vehicle
+            CROSS JOIN unnest(vehicle.identity_evidence) AS evidence(snapshot_id)
+            JOIN source_snapshots snapshot ON snapshot.id = evidence.snapshot_id
+            JOIN sources source ON source.id = snapshot.source_id
+            WHERE vehicle.id = %s AND vehicle.catalog_version = 2
+            ORDER BY snapshot.retrieved_at DESC, source.source_key
+            """,
+            (vehicle_id,),
+        ).fetchall()]
 
         spec_provenance_rows = self.conn.execute(
             """
@@ -344,6 +431,75 @@ class VehiclesRepository:
             """,
             (vehicle_id,),
         ).fetchall()
+        # v2 publication writes no vehicle_spec_provenance: a v2 spec is credited
+        # with the snapshots behind its published facts and its identity, so every
+        # value shown can name its source, licence and document.
+        spec_provenance_rows = [*spec_provenance_rows, *self.conn.execute(
+            """
+            WITH evidence AS (
+              SELECT fact.spec_id, observation.snapshot_id, fact.legacy_metric AS metric
+              FROM catalog_scalar_facts fact
+              JOIN spec_observations observation
+                ON observation.id = fact.selected_observation_id
+              UNION ALL
+              -- Identity values are shown whatever the ranking permission, so
+              -- their credit is too.
+              SELECT spec.id, spec.identity_evidence[1], 'fuel_type'
+              FROM vehicle_specs spec
+              WHERE spec.fuel_type IS NOT NULL
+              UNION ALL
+              -- Body style belongs to the vehicle: the snapshot that states it is
+              -- the last of the vehicle's identity evidence (migration 0014).
+              SELECT spec.id,
+                     vehicle.identity_evidence[cardinality(vehicle.identity_evidence)],
+                     'body_style'
+              FROM vehicle_specs spec
+              JOIN vehicles vehicle
+                ON vehicle.id = spec.vehicle_id AND vehicle.body_style IS NOT NULL
+            )
+            SELECT
+              evidence.spec_id,
+              snapshot.source_id,
+              source.source_key,
+              source.name AS source_name,
+              snapshot.source_url,
+              source.license AS source_license,
+              snapshot.retrieved_at AS observed_at,
+              snapshot.retrieved_at AS record_observed_at,
+              snapshot.content_sha256 AS content_hash,
+              true AS is_current,
+              jsonb_agg(DISTINCT evidence.metric) AS supported_metrics
+            FROM evidence
+            JOIN vehicle_specs spec
+              ON spec.id = evidence.spec_id AND spec.catalog_version = 2
+            JOIN source_snapshots snapshot ON snapshot.id = evidence.snapshot_id
+            JOIN sources source ON source.id = snapshot.source_id
+            WHERE spec.vehicle_id = %s
+            GROUP BY evidence.spec_id, snapshot.id, source.id
+            ORDER BY snapshot.retrieved_at DESC, source.source_key
+            """,
+            (vehicle_id,),
+        ).fetchall()]
+        # The terms behind each v2 list price, under the Advisor URL rule.
+        list_price_by_spec = {
+            row["spec_id"]: list_price_block(row)
+            for row in self.conn.execute(
+                """
+                SELECT s.id AS spec_id,
+"""
+                + LIST_PRICE_COLUMNS
+                + """              s.list_price_eur
+                FROM catalog_read_specs s
+"""
+                + LIST_PRICE_FACT_JOIN
+                + """                WHERE s.vehicle_id = %s
+                  AND s.list_price_eur IS NOT NULL
+                  AND list_price.decision_id IS NOT NULL
+                  AND list_price.source_url LIKE 'https://%%'
+                """,
+                (vehicle_id,),
+            ).fetchall()
+        }
         provenance_by_spec: dict[UUID, list[dict[str, Any]]] = {}
         for row in spec_provenance_rows:
             provenance_by_spec.setdefault(row["spec_id"], []).append(
@@ -356,6 +512,11 @@ class VehiclesRepository:
 
         specs_with_provenance = []
         for spec in specs:
+            facts = facts_by_spec.get(spec["id"], {})
+
+            def from_fact(field: str, spec=spec, facts=facts):
+                return spec[field] if spec[field] is not None else facts.get(field)
+
             maintenance = maintenance_by_spec.get(spec["id"], [])
             ratings = safety_ratings_by_spec.get(spec["id"], [])
             features = features_by_spec.get(spec["id"], [])
@@ -386,9 +547,9 @@ class VehiclesRepository:
                     "doors": spec["doors"],
                 },
                 "dimensions": {
-                    "length_mm": spec["length_mm"],
-                    "width_mm": spec["width_mm"],
-                    "height_mm": spec["height_mm"],
+                    "length_mm": from_fact("length_mm"),
+                    "width_mm": from_fact("width_mm"),
+                    "height_mm": from_fact("height_mm"),
                     "wheelbase_mm": spec["wheelbase_mm"],
                     "curb_weight_kg": spec["curb_weight_kg"],
                     "gross_weight_kg": spec["gross_weight_kg"],
@@ -399,10 +560,10 @@ class VehiclesRepository:
                 "powertrain": {
                     "engine_description": spec["engine"],
                     "engine_code": spec["engine_code"],
-                    "displacement_cc": spec["displacement_cc"],
+                    "displacement_cc": from_fact("displacement_cc"),
                     "cylinders": spec["cylinders"],
                     "horsepower": spec["horsepower"],
-                    "power_kw": spec["power_kw"],
+                    "power_kw": from_fact("power_kw"),
                     "torque_nm": spec["torque_nm"],
                     "fuel_type": spec["fuel_type"],
                     "battery_total_kwh": spec["battery_kwh"],
@@ -483,6 +644,8 @@ class VehiclesRepository:
                     }
                     for row in media
                 ],
+                "two_wheel": two_wheel_by_spec.get(spec["id"], {}),
+                "list_price": list_price_by_spec.get(spec["id"]),
             }
             for field in (
                 "generation_name",
@@ -520,8 +683,14 @@ class VehiclesRepository:
 
     def list_facts(self, vehicle_id: UUID) -> list[dict[str, Any]]:
         return list(self.conn.execute(
-            """SELECT f.*, s.variant_key FROM catalog_current_facts f
+            """SELECT f.*, s.variant_key,
+                      published.scalar_value AS published_value,
+                      published.scalar_basis AS published_basis,
+                      source.license AS source_license
+               FROM catalog_current_facts f
                JOIN vehicle_specs s ON s.id = f.spec_id
+               LEFT JOIN catalog_scalar_facts published ON published.id = f.id
+               LEFT JOIN sources source ON source.source_key = f.source_key
                WHERE s.vehicle_id = %s ORDER BY s.variant_key, f.metric, f.id""",
             (vehicle_id,),
         ).fetchall())

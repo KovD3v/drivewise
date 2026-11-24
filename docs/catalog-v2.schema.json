@@ -58,7 +58,11 @@
             "cargo_volume_liters",
             "mass_kg",
             "ac_charge_power_kw",
-            "dc_peak_charge_power_kw"
+            "dc_peak_charge_power_kw",
+            "seat_height_mm",
+            "fuel_tank_capacity_liters",
+            "underseat_storage_liters",
+            "list_price_eur"
           ],
           "title": "Metric",
           "type": "string"
@@ -156,6 +160,110 @@
         "decided_at"
       ],
       "title": "FactDecision",
+      "type": "object"
+    },
+    "ListPriceTerms": {
+      "additionalProperties": false,
+      "description": "How a list price row was read. The observation value is always VAT-inclusive.",
+      "properties": {
+        "printed_amount_eur": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Printed Amount Eur"
+        },
+        "printed_basis": {
+          "enum": [
+            "incl_vat",
+            "excl_vat",
+            "turnkey"
+          ],
+          "title": "Printed Basis",
+          "type": "string"
+        },
+        "vat_rate_percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vat Rate Percent"
+        },
+        "on_road_charge_eur": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Road Charge Eur"
+        },
+        "on_road_charge_includes_vat": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Road Charge Includes Vat"
+        },
+        "trim_label": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Trim Label",
+          "type": "string"
+        },
+        "price_list_valid_from": {
+          "format": "date",
+          "title": "Price List Valid From",
+          "type": "string"
+        },
+        "substitute_note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Substitute Note"
+        }
+      },
+      "required": [
+        "printed_amount_eur",
+        "printed_basis",
+        "trim_label",
+        "price_list_valid_from"
+      ],
+      "title": "ListPriceTerms",
       "type": "object"
     },
     "MeasurementContext": {
@@ -507,7 +615,11 @@
             "cargo_volume_liters",
             "mass_kg",
             "ac_charge_power_kw",
-            "dc_peak_charge_power_kw"
+            "dc_peak_charge_power_kw",
+            "seat_height_mm",
+            "fuel_tank_capacity_liters",
+            "underseat_storage_liters",
+            "list_price_eur"
           ],
           "title": "Metric",
           "type": "string"
@@ -581,6 +693,17 @@
           "pattern": "^[a-z0-9][a-z0-9._-]*$",
           "title": "Extractor Version",
           "type": "string"
+        },
+        "list_price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ListPriceTerms"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -614,12 +737,16 @@
         "electric_range_km": "km",
         "engine_displacement_cc": "cm3",
         "engine_power_kw": "kW",
+        "fuel_tank_capacity_liters": "l",
         "height_mm": "mm",
         "length_mm": "mm",
         "liquid_consumption_l_100km": "l/100km",
+        "list_price_eur": "EUR",
         "mass_kg": "kg",
+        "seat_height_mm": "mm",
         "seats": "count",
         "system_power_kw": "kW",
+        "underseat_storage_liters": "l",
         "width_with_mirrors_mm": "mm"
       }
     },

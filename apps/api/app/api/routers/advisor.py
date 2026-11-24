@@ -110,10 +110,15 @@ def create_model_analysis(
             fuel_type=request.fuel_type,
             body_style=request.body_style,
         )
-        resolve_response = resolve_vehicle_query(
-            resolve_request,
-            vehicles_repository.list_resolve_candidates(resolve_request.market),
-        )
+        # Model Analysis is a car flow: a query must never resolve to a two-wheeler.
+        car_candidates = [
+            row
+            for row in vehicles_repository.list_resolve_candidates(
+                resolve_request.market
+            )
+            if (row.get("vehicle_type") or "car") == "car"
+        ]
+        resolve_response = resolve_vehicle_query(resolve_request, car_candidates)
 
     list_model_candidates = getattr(
         advisor_repository,

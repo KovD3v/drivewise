@@ -394,6 +394,8 @@ export interface components {
             observation_id: string | null;
             /** Observed At */
             observed_at: string;
+            /** Source License */
+            source_license: string | null;
             /** Source Name */
             source_name: string;
             /** Source Url */
@@ -482,13 +484,14 @@ export interface components {
             evidence: {
                 [key: string]: unknown;
             };
+            list_price: components["schemas"]["ListPrice"] | null;
             /** Missing Factors */
             missing_factors: string[];
             /** Module Versions */
             module_versions: {
                 [key: string]: string;
             };
-            offer: components["schemas"]["AdvisorOffer"];
+            offer: components["schemas"]["AdvisorOffer"] | null;
             /** Penalties */
             penalties: string[];
             /** Pillar Scores */
@@ -499,6 +502,12 @@ export interface components {
             positive_factors: components["schemas"]["AdvisorFactor"][];
             /** Preference Fit */
             preference_fit: number | null;
+            /**
+             * Price Basis
+             * @default offer
+             * @enum {string}
+             */
+            price_basis: "offer" | "list_price";
             /** Provenance */
             provenance: components["schemas"]["AdvisorMetricProvenance"][];
             /** Score */
@@ -600,10 +609,14 @@ export interface components {
             co2_g_km: number | null;
             /** Consumption L 100Km */
             consumption_l_100km: number | null;
+            /** Consumption L 100Km Basis */
+            consumption_l_100km_basis: ("exact" | "interval_upper") | null;
             /** Drivetrain */
             drivetrain: string | null;
             /** Energy Consumption Kwh 100Km */
             energy_consumption_kwh_100km: number | null;
+            /** Energy Consumption Kwh 100Km Basis */
+            energy_consumption_kwh_100km_basis: ("exact" | "interval_upper") | null;
             /** Engine */
             engine: string | null;
             /** Engine Code */
@@ -687,7 +700,7 @@ export interface components {
             /** Phase Key */
             phase_key: string | null;
             /** Vehicle Type */
-            vehicle_type: string | null;
+            vehicle_type: ("car" | "motorcycle" | "scooter") | null;
         };
         /** CatalogFact */
         CatalogFact: {
@@ -720,9 +733,13 @@ export interface components {
              * Metric
              * @enum {string}
              */
-            metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw";
+            metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw" | "seat_height_mm" | "fuel_tank_capacity_liters" | "underseat_storage_liters" | "list_price_eur";
             /** Policy Version */
             policy_version: string;
+            /** Published Basis */
+            published_basis: ("exact" | "interval_upper") | null;
+            /** Published Value */
+            published_value: number | null;
             /** Reason */
             reason: string;
             /** Retrieved At */
@@ -731,6 +748,8 @@ export interface components {
             selected_observation_id: string | null;
             /** Source Key */
             source_key: string | null;
+            /** Source License */
+            source_license: string | null;
             /** Source Name */
             source_name: string | null;
             /** Source Url */
@@ -1204,6 +1223,66 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * ListPrice
+         * @description The public list price of a variant, with its price-list terms (ADR-015).
+         *
+         *     The Advisor uses it in place of an offer (ADR-013); vehicle detail shows it.
+         */
+        ListPrice: {
+            /** Computed From Excl Vat */
+            computed_from_excl_vat: boolean;
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /**
+             * Derivation
+             * @enum {string}
+             */
+            derivation: "printed" | "computed_from_excl_vat" | "computed_from_turnkey";
+            /**
+             * Observation Id
+             * Format: uuid
+             */
+            observation_id: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** On Road Charge Eur */
+            on_road_charge_eur: number | null;
+            /** On Road Charge Includes Vat */
+            on_road_charge_includes_vat: boolean | null;
+            /** Price Eur */
+            price_eur: number;
+            /**
+             * Price List Valid From
+             * Format: date
+             */
+            price_list_valid_from: string;
+            /** Printed Amount Eur */
+            printed_amount_eur: number;
+            /**
+             * Printed Basis
+             * @enum {string}
+             */
+            printed_basis: "incl_vat" | "excl_vat" | "turnkey";
+            /** Source License */
+            source_license: string | null;
+            /** Source Name */
+            source_name: string;
+            /** Source Url */
+            source_url: string;
+            /** Substitute Note */
+            substitute_note: string | null;
+            /** Trim Label */
+            trim_label: string;
+            /** Vat Rate Percent */
+            vat_rate_percent: number | null;
+        };
         /** ListingWithVehicle */
         ListingWithVehicle: {
             /** Condition */
@@ -1303,6 +1382,7 @@ export interface components {
             estimated_depreciation_3y_eur: number | null;
             /** Estimated Monthly Energy Eur */
             estimated_monthly_energy_eur: number | null;
+            market_reference_list_price: components["schemas"]["ListPrice"] | null;
             /** Market Reference Price Eur */
             market_reference_price_eur: number | null;
             /** Notes */
@@ -1486,7 +1566,7 @@ export interface components {
             /** Specs */
             specs: components["schemas"]["VehicleSpecDetail"][];
             /** Vehicle Type */
-            vehicle_type: string | null;
+            vehicle_type: ("car" | "motorcycle" | "scooter") | null;
         };
         /** VehicleDimensions */
         VehicleDimensions: {
@@ -1769,10 +1849,14 @@ export interface components {
             co2_g_km: number | null;
             /** Consumption L 100Km */
             consumption_l_100km: number | null;
+            /** Consumption L 100Km Basis */
+            consumption_l_100km_basis: ("exact" | "interval_upper") | null;
             /** Drivetrain */
             drivetrain: string | null;
             /** Energy Consumption Kwh 100Km */
             energy_consumption_kwh_100km: number | null;
+            /** Energy Consumption Kwh 100Km Basis */
+            energy_consumption_kwh_100km_basis: ("exact" | "interval_upper") | null;
             /** Engine */
             engine: string | null;
             /** Engine Code */
@@ -1835,11 +1919,15 @@ export interface components {
             co2_g_km: number | null;
             /** Consumption L 100Km */
             consumption_l_100km: number | null;
+            /** Consumption L 100Km Basis */
+            consumption_l_100km_basis: ("exact" | "interval_upper") | null;
             dimensions: components["schemas"]["VehicleDimensions"];
             /** Drivetrain */
             drivetrain: string | null;
             /** Energy Consumption Kwh 100Km */
             energy_consumption_kwh_100km: number | null;
+            /** Energy Consumption Kwh 100Km Basis */
+            energy_consumption_kwh_100km_basis: ("exact" | "interval_upper") | null;
             /** Engine */
             engine: string | null;
             /** Engine Code */
@@ -1865,6 +1953,7 @@ export interface components {
              * @default false
              */
             is_default: boolean;
+            list_price: components["schemas"]["ListPrice"] | null;
             /** List Price Eur */
             list_price_eur: number | null;
             /** Maintenance Schedule */
@@ -1888,6 +1977,7 @@ export interface components {
             transmission_details: components["schemas"]["VehicleTransmission"];
             /** Trim */
             trim: string | null;
+            two_wheel: components["schemas"]["VehicleTwoWheelSpecs"];
             /** Valid From */
             valid_from: string | null;
             /** Valid To */
@@ -1932,7 +2022,7 @@ export interface components {
             /** Phase Key */
             phase_key: string | null;
             /** Vehicle Type */
-            vehicle_type: string | null;
+            vehicle_type: ("car" | "motorcycle" | "scooter") | null;
         };
         /** VehicleTransmission */
         VehicleTransmission: {
@@ -1946,6 +2036,20 @@ export interface components {
             transmission: string | null;
             /** Transmission Type */
             transmission_type: string | null;
+        };
+        /**
+         * VehicleTwoWheelSpecs
+         * @description Reviewed point values from catalog v2 facts; null when unknown or ambiguous.
+         */
+        VehicleTwoWheelSpecs: {
+            /** Fuel Tank Capacity Liters */
+            fuel_tank_capacity_liters: number | null;
+            /** Seat Height Mm */
+            seat_height_mm: number | null;
+            /** Underseat Storage Liters */
+            underseat_storage_liters: number | null;
+            /** Wet Weight Kg */
+            wet_weight_kg: number | null;
         };
     };
     responses: never;
@@ -2347,6 +2451,7 @@ export interface operations {
                 body_style?: string | null;
                 market?: string | null;
                 max_price_eur?: number | null;
+                vehicle_type?: ("car" | "motorcycle" | "scooter") | null;
                 limit?: number;
                 offset?: number;
             };

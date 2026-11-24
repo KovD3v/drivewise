@@ -29,12 +29,17 @@ def verify_artifacts(payload: CatalogV2, artifact_root: Path) -> None:
             ) from error
 
 
+def dataset_hash(data: dict) -> str:
+    """SHA-256 of the canonical JSON; absent optional terms are omitted, not null."""
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+
 def stage_catalog_v2(conn, payload: CatalogV2, *, artifact_root: Path) -> UUID:
     # Revalidate even callers that constructed or mutated Pydantic instances.
     payload = CatalogV2.model_validate(payload.model_dump(mode="json"))
     verify_artifacts(payload, artifact_root)
     data = payload.model_dump(mode="json")
-    digest = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    digest = dataset_hash(data)
     with conn.transaction():
         conn.execute(
             """INSERT INTO catalog_v2_batches (id, dataset_hash, payload)
@@ -76,16 +81,46 @@ def _insert_immutable(conn, table: str, values: dict) -> None:
         raise CatalogValidationError(f"Immutable {table} ID has different content.")
 
 
+# Plug-in hybrids get the Advisor's own fuel names. Only the petrol one is scored;
+# a diesel plug-in keeps its fuel in the name and is counted as unsupported.
+_PLUG_IN_FUEL_TYPES = {
+    "petrol": "plug_in_hybrid_petrol",
+    "diesel": "plug_in_hybrid_diesel",
+}
+
+
 def _fuel_type(variant) -> str | None:
     if variant.powertrain_type == "BEV":
         return "electric"
     if variant.powertrain_type == "PHEV":
-        return "phev"
+        # An unknown or unusual plug-in fuel stays the generic, unscored "phev".
+        return _PLUG_IN_FUEL_TYPES.get(variant.fuel, "phev")
     if variant.fuel == "petrol":
         return {"MHEV": "mild_hybrid_petrol", "HEV": "full_hybrid_petrol"}.get(
             variant.powertrain_type, "petrol"
         )
     return variant.fuel
+
+
+def _fills_body_style(row, values, differing, *, table) -> bool:
+    """True when a bundle only turns an unknown body style into a known one.
+
+    The stored identity evidence must stay a prefix of the bundle's: evidence is
+    appended, never replaced, so eligibility can only become stricter. A vehicle
+    must append the snapshot that states the body style; its variants inherit it.
+    """
+    if set(differing) - {"body_style", "identity_evidence"}:
+        return False
+    if row["body_style"] is not None or values["body_style"] is None:
+        return False
+    stored, bundled = list(row["identity_evidence"]), list(values["identity_evidence"])
+    if bundled[: len(stored)] != stored:
+        return False
+    # A repeated snapshot is no new source. Read provenance credits the body style to
+    # the last snapshot, so the last one must be new to the stored evidence.
+    return table == "vehicle_specs" or (
+        len(bundled) > len(stored) and bundled[-1] not in stored
+    )
 
 
 def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
@@ -121,10 +156,24 @@ def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
         values["legacy_record"] = Jsonb(json.loads(json.dumps(row, default=str)))
     else:
         # Identity corrections need a reviewed migration; scraping cannot rewrite identity.
-        for field, value in values.items():
-            expected = value.obj if isinstance(value, Jsonb) else value
-            if row[field] != expected:
-                raise CatalogValidationError(f"Published identity differs at {field}.")
+        # One exception: an unknown body style may be filled, with its evidence appended.
+        differing = [
+            field
+            for field, value in values.items()
+            if row[field] != (value.obj if isinstance(value, Jsonb) else value)
+        ]
+        if not differing:
+            return row["id"]
+        if not _fills_body_style(row, values, differing, table=table):
+            raise CatalogValidationError(
+                f"Published identity differs at {differing[0]}."
+            )
+        conn.execute(
+            sql.SQL(
+                "UPDATE {} SET body_style = %s, identity_evidence = %s WHERE id = %s"
+            ).format(sql.Identifier(table)),
+            (values["body_style"], values["identity_evidence"], row["id"]),
+        )
         return row["id"]
     conn.execute(
         sql.SQL("UPDATE {} SET {} WHERE id = %s").format(
@@ -244,6 +293,17 @@ def publish_catalog_v2(
                 variant.variant_key,
                 values,
                 adopt_legacy=adopt_legacy,
+            )
+        # A filled body style must reach every published variant of its vehicle.
+        unfilled = conn.execute(
+            """SELECT 1 FROM vehicle_specs s JOIN vehicles v ON v.id = s.vehicle_id
+               WHERE v.id = ANY(%s) AND s.catalog_version = 2
+                 AND s.body_style IS DISTINCT FROM v.body_style LIMIT 1""",
+            (list(vehicles.values()),),
+        ).fetchone()
+        if unfilled:
+            raise CatalogValidationError(
+                "Include every published variant when filling a body style."
             )
         # Adopting a vehicle requires an explicit mapping for all its existing variants.
         remaining = conn.execute(

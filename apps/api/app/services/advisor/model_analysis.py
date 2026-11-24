@@ -10,6 +10,7 @@ from app.schemas.advisor import (
     ModelAnalysisResponse,
 )
 from app.schemas.vehicles import (
+    ListPrice,
     VehicleResolveResponse,
     VehicleSpec,
     VehicleSummary,
@@ -40,7 +41,6 @@ def build_model_analysis(
     analysis_year = _resolve_analysis_year(as_of)
     assumptions = [
         "No live market sources are used in Model Analysis V1.",
-        "Reference prices use eligible, fresh offers for the selected variant.",
         "Annual kilometres are estimated deterministically from usage_profile.",
         flat_rate_assumption_sentence(),
         "Maintenance is a heuristic based on body style, powertrain, age, and mileage.",
@@ -93,7 +93,8 @@ def build_model_analysis(
         warnings.append(warning)
         missing_data.append("resolved_spec")
 
-    reference_price = _market_reference_price(candidate, vehicle, spec)
+    reference_price, reference_basis = _market_reference_price(candidate, vehicle, spec)
+    assumptions.insert(1, REFERENCE_PRICE_ASSUMPTIONS[reference_basis])
     price_assessment, price_warnings, price_flags = (
         _assess_price(
             asking_price=request.asking_price_eur,
@@ -133,6 +134,14 @@ def build_model_analysis(
         include_tco=include_tco,
         analysis_year=analysis_year,
     )
+    if include_price and reference_basis == "list_price":
+        # Credit the price list the reference amount comes from.
+        list_price = next(
+            (raw.get("list_price") for raw in candidate.get("specs", []) if raw["id"] == spec.id),
+            None,
+        )
+        if list_price is not None:
+            estimated_costs.market_reference_list_price = ListPrice.model_validate(list_price)
     checklist = _build_checklist(vehicle, spec, red_flags)
     verdict = _build_verdict(
         missing_data,
@@ -225,11 +234,26 @@ def _select_spec(
     return None
 
 
+# The assumption that says where the reference price came from, by basis.
+REFERENCE_PRICE_ASSUMPTIONS = {
+    "offers": "Reference prices use eligible, fresh offers for the selected variant.",
+    "list_price": (
+        "No eligible offer was found, so the reference price is the list price "
+        "of the selected variant."
+    ),
+    "base_price": (
+        "No eligible offer or variant list price was found, so the reference "
+        "price is the model's base price."
+    ),
+    "none": "No reference price is available: no eligible offer and no list price.",
+}
+
+
 def _market_reference_price(
     candidate: dict[str, Any],
     vehicle: VehicleSummary,
     spec: VehicleSpec | None,
-) -> float | None:
+) -> tuple[float | None, str]:
     listings = candidate.get("listings", [])
     exact_spec_listings = (
         [
@@ -251,10 +275,11 @@ def _market_reference_price(
         if listing.get("price_eur") is not None
     ]
     if listing_prices:
-        return round(mean(listing_prices), 2)
+        return round(mean(listing_prices), 2), "offers"
     if spec is not None and spec.list_price_eur is not None:
-        return spec.list_price_eur
-    return _as_float(vehicle.base_price_eur)
+        return spec.list_price_eur, "list_price"
+    base_price = _as_float(vehicle.base_price_eur)
+    return base_price, "base_price" if base_price is not None else "none"
 
 
 def _assess_price(

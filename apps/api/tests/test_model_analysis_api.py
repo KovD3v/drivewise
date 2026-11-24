@@ -462,3 +462,41 @@ def test_model_analysis_uses_exact_selected_variant_for_price_energy_and_checks(
     assert default_variant.estimated_costs.market_reference_price_eur == 18_000
     assert default_variant.estimated_costs.estimated_monthly_energy_eur == 95.83
     assert default_variant.estimated_costs.estimated_annual_maintenance_eur == 590
+
+
+@pytest.mark.parametrize(
+    ("listings", "list_price", "base_price", "expected_price", "says"),
+    [
+        ([{"price_eur": 21_000}], 20_000, 19_000, 21_000, "fresh offers"),
+        ([], 20_000, 19_000, 20_000, "list price of the selected variant"),
+        ([], None, 19_000, 19_000, "model's base price"),
+        ([], None, None, None, "No reference price is available"),
+    ],
+)
+def test_model_analysis_says_where_its_reference_price_comes_from(
+    listings, list_price, base_price, expected_price, says
+):
+    spec_id = UUID("20000000-0000-4000-8000-0000000000c1")
+    vehicle_id = UUID("00000000-0000-4000-8000-0000000000c1")
+    candidate = {
+        "vehicle": {
+            "id": vehicle_id, "make": "Zephra", "model": "Tavo", "model_year": 2026,
+            "body_style": "hatchback", "fuel_type": "petrol", "market": "IT",
+            "base_price_eur": base_price,
+        },
+        "specs": [
+            {
+                "id": spec_id, "variant_key": "zephra-tavo-petrol", "is_default": True,
+                "trim": "Synthetic", "body_style": "hatchback", "fuel_type": "petrol",
+                "list_price_eur": list_price, "consumption_l_100km": 5.9,
+            }
+        ],
+        "listings": [{**listing, "spec_id": spec_id} for listing in listings],
+    }
+    result = build_model_analysis(
+        ModelAnalysisRequest(vehicle_id=vehicle_id, analysis_scope=["price"]),
+        [candidate],
+    )
+    assert result.estimated_costs.market_reference_price_eur == expected_price
+    reference = [line for line in result.assumptions if "reference price" in line.lower()]
+    assert len(reference) == 1 and says in reference[0]

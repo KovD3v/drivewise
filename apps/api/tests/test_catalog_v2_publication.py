@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ from fastapi.testclient import TestClient
 from psycopg import sql
 from psycopg.rows import dict_row
 
-from app.api.dependencies import get_vehicles_repository
+from app.api.dependencies import get_advisor_repository, get_vehicles_repository
 from app.db.migrations import MIGRATIONS_PATH, run_migrations
 from app.ingestion.catalog import CatalogValidationError
 from app.ingestion.catalog_v2 import CatalogV2
@@ -31,6 +32,8 @@ from app.services.advisor.scoring import build_recommendations
 from app.schemas.listings import ListingWithVehicle
 from app.schemas.vehicles import VehicleDetail, VehicleResolveRequest, VehicleSpec
 from app.services.advisor.model_analysis import build_model_analysis
+from app.services.guided_decisions.engine import process_guided_decision_turn
+from app.schemas.guided_decisions import DecisionProfile
 from app.services.vehicles.resolver import resolve_vehicle_query
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -107,7 +110,7 @@ def test_staging_publication_retry_and_api(conn, tmp_path):
     assert publish_catalog_v2(conn, batch, artifact_root=tmp_path) == "published"
     assert publish_catalog_v2(conn, batch, artifact_root=tmp_path) == "unchanged"
     repo = VehiclesRepository(conn)
-    vehicles = repo.list_vehicles(VehicleFilters(make="Acme"))
+    vehicles = repo.list_vehicles(VehicleFilters(make="Acme", vehicle_type="car"))
     assert len(vehicles) == 3
     assert len({v["generation_key"] for v in vehicles}) == 2
     unknown = next(v for v in vehicles if v["model_year"] is None)
@@ -120,7 +123,7 @@ def test_staging_publication_retry_and_api(conn, tmp_path):
     assert response.status == "ambiguous"
     assert all("model_year" not in m.matched_fields for m in response.matches)
     counts = conn.execute("SELECT count(*) AS n FROM fact_decisions").fetchone()["n"]
-    assert counts == 3
+    assert counts == len(data["decisions"])
     vehicle = next(v for v in vehicles if v["canonical_key"] == "metro-g2-2026")
     app.dependency_overrides[get_vehicles_repository] = lambda: repo
     try:
@@ -169,7 +172,16 @@ def add_fact(data, metric, value, context=None, variant="metro-g1-ice"):
         "evidence_locator": "test",
         "extractor_version": "test-1",
     }
-    units = {"cargo_volume_liters": "l", "liquid_consumption_l_100km": "l/100km"}
+    units = {
+        "cargo_volume_liters": "l",
+        "liquid_consumption_l_100km": "l/100km",
+        "mass_kg": "kg",
+        "length_mm": "mm",
+        "body_width_mm": "mm",
+        "height_mm": "mm",
+        "engine_power_kw": "kW",
+        "system_power_kw": "kW",
+    }
     observation["unit"] = observation["raw_unit"] = units.get(metric, "count")
     decision = {
         "id": str(uuid4()),
@@ -258,6 +270,58 @@ def test_revocation_conflicts_contexts_and_stale_replay(conn, tmp_path):
     )
 
 
+def add_list_price(data, value="12200.01", variant="metro-g1-ice", **terms):
+    """Synthetic price-list row printed without VAT; the fact stores the VAT-inclusive value."""
+    decision = add_fact(data, "list_price_eur", value, variant=variant)
+    observation = data["observations"][-1]
+    observation.update(
+        unit="EUR",
+        raw_unit="EUR excl. VAT",
+        raw_value="10000.01",
+        list_price={
+            "printed_amount_eur": "10000.01",
+            "printed_basis": "excl_vat",
+            "vat_rate_percent": "22",
+            "trim_label": "Synthetic Trim 50/68",
+            "price_list_valid_from": "2026-01-01",
+            **terms,
+        },
+    )
+    return decision
+
+
+def test_list_price_is_read_from_permitted_v2_facts_only(conn, tmp_path):
+    data = bundle(tmp_path)
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_list_price(data)
+    publish(conn, data, tmp_path)
+
+    def price(view):
+        return conn.execute(
+            sql.SQL("SELECT list_price_eur FROM {} WHERE variant_key = 'metro-g1-ice'").format(
+                sql.Identifier(view)
+            )
+        ).fetchone()["list_price_eur"]
+
+    # manual_validation_only: stored and visible as a fact, never projected.
+    assert price("catalog_read_specs") is None
+    assert price("catalog_analysis_specs") is None
+    stored = conn.execute(
+        "SELECT list_price FROM spec_observations WHERE metric = 'list_price_eur'"
+    ).fetchone()["list_price"]
+    assert stored["printed_basis"] == "excl_vat"
+    assert stored["trim_label"] == "Synthetic Trim 50/68"
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'permitted' WHERE source_key = 'synthetic-v2'"
+    )
+    assert price("catalog_read_specs") == Decimal("12200.01")
+    assert price("catalog_analysis_specs") == Decimal("12200.01")
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'not_permitted' WHERE source_key = 'synthetic-v2'"
+    )
+    assert price("catalog_read_specs") is None
+
+
 def test_intervals_and_multiple_contexts_are_not_flattened(conn, tmp_path):
     data = bundle(tmp_path)
     data["sources"][0]["ranking_permission"] = "permitted"
@@ -273,9 +337,15 @@ def test_intervals_and_multiple_contexts_are_not_flattened(conn, tmp_path):
     data["observations"][-1]["value_max"] = 5.5
     publish(conn, data, tmp_path)
     row = conn.execute(
-        "SELECT seats, consumption_l_100km FROM catalog_read_specs WHERE variant_key = 'metro-g1-ice'"
+        """SELECT seats, consumption_l_100km, consumption_l_100km_basis
+           FROM catalog_read_specs WHERE variant_key = 'metro-g1-ice'"""
     ).fetchone()
-    assert row == {"seats": None, "consumption_l_100km": None}
+    # ADR-018: a consumption interval is published at its upper value, and says so.
+    assert row == {
+        "seats": None,
+        "consumption_l_100km": Decimal("5.5"),
+        "consumption_l_100km_basis": "interval_upper",
+    }
     assert (
         conn.execute(
             "SELECT value_max FROM catalog_current_facts WHERE metric = 'liquid_consumption_l_100km'"
@@ -525,7 +595,7 @@ def test_publish_rechecks_artifacts_and_identity_collision_rolls_back(conn, tmp_
         conn.execute(
             "SELECT count(*) AS n FROM vehicles WHERE make = 'Acme'"
         ).fetchone()["n"]
-        == 3
+        == len(data["vehicles"])
     )
 
 
@@ -539,7 +609,8 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            if migration.name[:4] not in {"0001", "0009"}:
+            # 0012 and 0014 replace 0009 views and 0013 updates 0009 columns: all follow it.
+            if migration.name[:4] not in {"0001", "0009", "0012", "0013", "0014"}:
                 conn.execute(migration.read_text())
         conn.execute(
             """INSERT INTO vehicles (id, canonical_key, model_family_key, make, model,
@@ -575,9 +646,472 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            if migration.name[:4] not in {"0001", "0009"}:
+            # 0012 and 0014 replace 0009 views and 0013 updates 0009 columns: all follow it.
+            if migration.name[:4] not in {"0001", "0009", "0012", "0013", "0014"}:
                 conn.execute(migration.read_text())
         conn.execute("UPDATE vehicle_specs SET engine_code = 'reviewed-code'")
         conn.execute((MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text())
+        conn.execute((MIGRATIONS_PATH / "0012_list_price_read_view.sql").read_text())
+        conn.execute((MIGRATIONS_PATH / "0013_plug_in_hybrid_fuel_type.sql").read_text())
+        conn.execute((MIGRATIONS_PATH / "0014_body_style_provenance.sql").read_text())
         codes = conn.execute("SELECT engine_code FROM catalog_read_specs").fetchall()
         assert codes and all(row["engine_code"] == "reviewed-code" for row in codes)
+
+
+def test_detail_reads_same_meaning_fields_from_reviewed_facts(conn, tmp_path):
+    data = bundle(tmp_path)
+    # Simulated permitted source, not real vehicle data.
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    for metric, value in (
+        ("length_mm", 4010),
+        ("body_width_mm", 1750),
+        ("height_mm", 1480.5),
+        ("engine_power_kw", 74),
+    ):
+        add_fact(data, metric, value)
+    add_fact(data, "mass_kg", 1180, {"market": "IT", "method": "mass_in_running_order"})
+    # A hybrid's engine is not its whole power; its system power is.
+    add_fact(data, "engine_power_kw", 68, variant="metro-g2-hev")
+    add_fact(data, "engine_power_kw", 100, variant="metro-g2-phev")
+    add_fact(data, "system_power_kw", 180, variant="metro-g2-phev")
+    publish(conn, data, tmp_path)
+    repo = VehiclesRepository(conn)
+    def spec(canonical_key, variant_key):
+        detail = repo.get_vehicle(vehicle_id(conn, canonical_key))
+        VehicleDetail.model_validate(detail)
+        return next(s for s in detail["specs"] if s["variant_key"] == variant_key)
+
+    petrol = spec("metro-g1-2026", "metro-g1-ice")
+    assert petrol["dimensions"]["length_mm"] == 4010
+    assert petrol["dimensions"]["width_mm"] == 1750
+    assert petrol["dimensions"]["height_mm"] is None  # not a whole number
+    assert petrol["dimensions"]["curb_weight_kg"] is None
+    assert petrol["powertrain"]["power_kw"] == 74
+    assert spec("metro-g2-2026", "metro-g2-hev")["powertrain"]["power_kw"] is None
+    assert spec("metro-g2-2026", "metro-g2-phev")["powertrain"]["power_kw"] == 180
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'manual_validation_only' "
+        "WHERE source_key = 'synthetic-v2'"
+    )
+    unreviewed = spec("metro-g1-2026", "metro-g1-ice")
+    assert unreviewed["dimensions"]["length_mm"] is None
+    assert unreviewed["powertrain"]["power_kw"] is None
+
+
+RIDGE = "it-acme-ridge-2026"
+GLIDE = "it-acme-glide-2026"
+
+
+def vehicle_id(conn, canonical_key):
+    return conn.execute(
+        "SELECT id FROM vehicles WHERE canonical_key = %s", (canonical_key,)
+    ).fetchone()["id"]
+
+
+def test_two_wheelers_are_listed_typed_and_detailed(conn, tmp_path):
+    data = bundle(tmp_path)
+    # Simulated permitted source, not real vehicle data.
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    publish(conn, data, tmp_path)
+    repo = VehiclesRepository(conn)
+    app.dependency_overrides[get_vehicles_repository] = lambda: repo
+    try:
+        with TestClient(app) as client:
+
+            def listed(**params):
+                response = client.get("/vehicles", params={"limit": 100, **params})
+                assert response.status_code == 200
+                return response.json()
+
+            motorcycles = listed(make="Acme", vehicle_type="motorcycle")
+            assert [v["canonical_key"] for v in motorcycles] == [RIDGE]
+            assert motorcycles[0]["vehicle_type"] == "motorcycle"
+            scooters = listed(make="Acme", vehicle_type="scooter")
+            assert [v["canonical_key"] for v in scooters] == [GLIDE]
+            cars = listed(vehicle_type="car")
+            assert {v["vehicle_type"] for v in cars} == {"car", None}
+            # Legacy v1 rows are untyped but car-only by contract.
+            assert any(v["catalog_version"] == 1 for v in cars)
+            assert not {RIDGE, GLIDE} & {v["canonical_key"] for v in cars}
+            assert len(listed()) == len(cars) + 2
+            assert client.get("/vehicles?vehicle_type=truck").status_code == 422
+
+            def spec(canonical_key):
+                response = client.get(f"/vehicles/{vehicle_id(conn, canonical_key)}")
+                assert response.status_code == 200
+                return response.json()["specs"][0]
+
+            def two_wheel(canonical_key):
+                return spec(canonical_key)["two_wheel"]
+
+            assert spec(RIDGE)["powertrain"]["displacement_cc"] == 689
+            assert spec(GLIDE)["powertrain"]["displacement_cc"] == 278
+
+            assert two_wheel(RIDGE) == {
+                "seat_height_mm": 795,
+                "wet_weight_kg": 189,
+                "fuel_tank_capacity_liters": 14,
+                "underseat_storage_liters": None,
+            }
+            assert two_wheel(GLIDE) == {
+                "seat_height_mm": 780,
+                "wet_weight_kg": 162,
+                "fuel_tank_capacity_liters": 12,
+                "underseat_storage_liters": 35,
+            }
+            assert set(two_wheel("metro-g1-2026").values()) == {None}
+            conn.execute(
+                "UPDATE sources SET ranking_permission = 'not_permitted' WHERE source_key = 'synthetic-v2'"
+            )
+            assert set(two_wheel(RIDGE).values()) == {None}
+            assert spec(RIDGE)["powertrain"]["displacement_cc"] is None
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_two_wheel_detail_withholds_ranges_and_ambiguous_mass(conn, tmp_path):
+    data = bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    seat = next(
+        o
+        for o in data["observations"]
+        if o["variant_key"] == f"{RIDGE}-petrol" and o["metric"] == "seat_height_mm"
+    )
+    seat.update(raw_value="795-815", value_max=815)  # adjustable seat
+    add_fact(data, "mass_kg", 175, {"market": "IT", "method": "dry"}, f"{RIDGE}-petrol")
+    publish(conn, data, tmp_path)
+    repo = VehiclesRepository(conn)
+    ridge = vehicle_id(conn, RIDGE)
+    detail = VehicleDetail.model_validate(repo.get_vehicle(ridge))
+    assert detail.specs[0].two_wheel.model_dump() == {
+        "seat_height_mm": None,
+        "wet_weight_kg": None,
+        "fuel_tank_capacity_liters": 14,
+        "underseat_storage_liters": None,
+    }
+    facts = repo.list_facts(ridge)
+    assert {f["context"]["method"] for f in facts if f["metric"] == "mass_kg"} == {
+        "dry",
+        "wet",
+    }
+    assert any(
+        f["metric"] == "seat_height_mm" and f["value_max"] == 815 for f in facts
+    )
+
+
+def publish_offer_ready(conn, tmp_path, vehicle_type):
+    """metro-g1 with every fact the advisor needs and one fresh permitted offer."""
+    data = bundle(tmp_path)
+    data["vehicles"][0]["vehicle_type"] = vehicle_type
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_fact(data, "seats", 2 if vehicle_type != "car" else 5)
+    add_fact(
+        data,
+        "cargo_volume_liters",
+        300,
+        {"market": "IT", "method": "VDA", "seating_configuration": "all_seats_up"},
+    )
+    add_fact(
+        data,
+        "liquid_consumption_l_100km",
+        4.5,
+        {"market": "IT", "procedure": "WLTP", "cycle": "combined"},
+    )
+    publish(conn, data, tmp_path)
+    spec = conn.execute(
+        "SELECT * FROM vehicle_specs WHERE variant_key = 'metro-g1-ice'"
+    ).fetchone()
+    run_id = uuid4()
+    conn.execute(
+        "INSERT INTO import_runs (id,schema_version,dataset_hash,file_name,status) VALUES (%s,1,'offer-test','test','completed')",
+        (run_id,),
+    )
+    source_id = conn.execute(
+        "SELECT id FROM sources WHERE source_key = 'synthetic-v2'"
+    ).fetchone()["id"]
+    conn.execute(
+        """INSERT INTO listings (id,vehicle_id,spec_id,source_id,listing_ref,title,price_eur,
+                   mileage,condition,source_url,first_seen_at,last_seen_at,content_hash,import_run_id)
+                   VALUES (%s,%s,%s,%s,'test','Test offer',10000,10000,'used','https://example.test/offer',now(),now(),'test',%s)""",
+        (uuid4(), spec["vehicle_id"], spec["id"], source_id, run_id),
+    )
+    return spec
+
+
+@pytest.mark.parametrize("vehicle_type", ["car", "motorcycle", "scooter"])
+def test_car_decision_flows_never_return_two_wheelers(conn, tmp_path, vehicle_type):
+    # Same offer-ready data; only vehicle_type changes, so the guard is what differs.
+    spec = publish_offer_ready(conn, tmp_path, vehicle_type)
+    is_car = vehicle_type == "car"
+    repo = AdvisorRepository(conn)
+    candidates = repo.list_candidates()
+    assert [c["vehicle"]["id"] for c in candidates] == (
+        [spec["vehicle_id"]] if is_car else []
+    )
+    excluded = repo.count_excluded_candidates()
+    assert excluded.get("unsupported_vehicle_type", 0) == (0 if is_car else 1)
+    analysis_ids = {c["vehicle"]["id"] for c in repo.list_model_analysis_candidates()}
+    assert (spec["vehicle_id"] in analysis_ids) is is_car
+    vehicles = VehiclesRepository(conn)
+    app.dependency_overrides[get_vehicles_repository] = lambda: vehicles
+    app.dependency_overrides[get_advisor_repository] = lambda: repo
+    try:
+        with TestClient(app) as client:
+            recommended = client.post(
+                "/advisor/recommendations",
+                json={"budget_max_eur": 15000, "primary_use": "city"},
+            )
+            assert recommended.status_code == 200
+            recommended_ids = {
+                item["vehicle"]["id"]
+                for group in recommended.json()["groups"]
+                for item in group["items"]
+            }
+            assert (str(spec["vehicle_id"]) in recommended_ids) is is_car
+            by_id = client.post(
+                "/advisor/model-analysis", json={"vehicle_id": str(spec["vehicle_id"])}
+            ).json()
+            assert (by_id["resolved_vehicle"] is not None) is is_car
+            # Resolution only considers cars, so the query lands on a Metro car.
+            by_query = client.post(
+                "/advisor/model-analysis", json={"query": "Acme Metro City 2026"}
+            ).json()
+            assert by_query["resolved_vehicle"]["vehicle_type"] == "car"
+            ridge = client.post(
+                "/advisor/model-analysis", json={"query": "Acme Ridge 700"}
+            ).json()
+            assert ridge["resolved_vehicle"] is None
+            assert ridge["warnings"] == ["vehicle_resolution_no_match"]
+    finally:
+        app.dependency_overrides.clear()
+    guided = process_guided_decision_turn(
+        decision_id=uuid4(),
+        profile_version=1,
+        current_profile=DecisionProfile(),
+        message="Cerco un'auto in città con budget 15.000 euro",
+        advisor_repository=repo,
+        as_of=datetime.now(timezone.utc),
+    )
+    guided_ids = {
+        item.vehicle.id
+        for group in guided.response.preview_ranking.groups
+        for item in group.items
+    }
+    assert (spec["vehicle_id"] in guided_ids) is is_car
+
+
+def publish_list_price_ready(conn, tmp_path, permission="permitted"):
+    """metro-g1 with every scored fact and a list price, and no offer at all."""
+    data = bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = permission
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_fact(data, "seats", 5)
+    add_fact(
+        data,
+        "cargo_volume_liters",
+        300,
+        {"market": "IT", "method": "VDA", "seating_configuration": "all_seats_up"},
+    )
+    add_fact(
+        data,
+        "liquid_consumption_l_100km",
+        4.5,
+        {"market": "IT", "procedure": "WLTP", "cycle": "combined"},
+    )
+    add_list_price(data, substitute_note="Synthetic: nearest current row.")
+    publish(conn, data, tmp_path)
+    return conn.execute(
+        "SELECT * FROM vehicle_specs WHERE variant_key = 'metro-g1-ice'"
+    ).fetchone()
+
+
+def insert_offer(conn, spec, *, age_days=0):
+    run_id = uuid4()
+    conn.execute(
+        "INSERT INTO import_runs (id,schema_version,dataset_hash,file_name,status) VALUES (%s,1,%s,'test','completed')",
+        (run_id, f"offer-{run_id}"),
+    )
+    source_id = conn.execute(
+        "SELECT id FROM sources WHERE source_key = 'synthetic-v2'"
+    ).fetchone()["id"]
+    conn.execute(
+        """INSERT INTO listings (id,vehicle_id,spec_id,source_id,listing_ref,title,price_eur,
+                   mileage,condition,source_url,first_seen_at,last_seen_at,content_hash,import_run_id)
+                   VALUES (%s,%s,%s,%s,%s,'Test offer',11000,NULL,'new','https://example.test/offer',
+                   now() - make_interval(days => %s), now() - make_interval(days => %s),'test',%s)""",
+        (uuid4(), spec["vehicle_id"], spec["id"], source_id, f"offer-{run_id}", age_days, age_days, run_id),
+    )
+
+
+def test_variant_without_offer_is_ranked_at_its_list_price(conn, tmp_path):
+    spec = publish_list_price_ready(conn, tmp_path)
+    repo = AdvisorRepository(conn)
+    candidates = repo.list_candidates()
+    assert [(c["spec"]["id"], c["price_basis"]) for c in candidates] == [
+        (spec["id"], "list_price")
+    ]
+    assert candidates[0]["offer"] is None
+    assert candidates[0]["list_price"]["price_eur"] == Decimal("12200.01")
+    assert candidates[0]["list_price"]["trim_label"] == "Synthetic Trim 50/68"
+    assert candidates[0]["list_price"]["decision_id"] is not None
+    request = AdvisorRecommendationRequest(budget_max_eur=15000, primary_use="city")
+    items = build_recommendations(request, candidates)
+    assert [(i.price_basis, i.offer, i.list_price.price_eur) for i in items] == [
+        ("list_price", None, 12200.01)
+    ]
+    assert items[0].list_price.computed_from_excl_vat is True
+    assert items[0].list_price.substitute_note == "Synthetic: nearest current row."
+    run_id = repo.create_run({})
+    repo.save_items(run_id, items)
+    saved = conn.execute(
+        "SELECT listing_id, condition_group, score_breakdown FROM recommendation_items WHERE run_id = %s",
+        (run_id,),
+    ).fetchone()
+    assert saved["listing_id"] is None and saved["condition_group"] == "new"
+    assert saved["score_breakdown"]["price_basis"] == "list_price"
+    assert saved["score_breakdown"]["list_price"]["trim_label"] == "Synthetic Trim 50/68"
+
+    guided = process_guided_decision_turn(
+        decision_id=uuid4(),
+        profile_version=1,
+        current_profile=DecisionProfile(),
+        message="Cerco un'auto in città con budget 15.000 euro",
+        advisor_repository=repo,
+        as_of=datetime.now(timezone.utc),
+    )
+    guided_items = [
+        item for group in guided.response.preview_ranking.groups for item in group.items
+    ]
+    assert [(i.selected_spec.id, i.price_basis) for i in guided_items] == [
+        (spec["id"], "list_price")
+    ]
+
+    # A stale offer is not eligible, so the list price still stands in for it.
+    insert_offer(conn, spec, age_days=40)
+    assert [c["price_basis"] for c in repo.list_candidates()] == ["list_price"]
+    # An eligible offer replaces the list-price candidate: current behaviour.
+    insert_offer(conn, spec)
+    candidates = repo.list_candidates()
+    assert [c["price_basis"] for c in candidates] == ["offer"]
+    assert candidates[0]["offer"]["price_eur"] == 11000
+
+
+def test_list_price_from_an_unreviewed_source_is_excluded_and_counted(conn, tmp_path):
+    publish_list_price_ready(conn, tmp_path, permission="manual_validation_only")
+    repo = AdvisorRepository(conn)
+    assert repo.list_candidates() == []
+    excluded = repo.count_excluded_candidates()
+    # The other synthetic cars have no list price at all.
+    assert excluded["missing_list_price"] >= 1
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'permitted' WHERE source_key = 'synthetic-v2'"
+    )
+    permitted = repo.count_excluded_candidates()
+    # Seed offers from unreviewed sources keep their own count; the variant leaves it.
+    assert permitted.get("source_not_permitted", 0) == excluded["source_not_permitted"] - 1
+    assert [c["price_basis"] for c in repo.list_candidates()] == ["list_price"]
+
+
+def publish_phev_ready(conn, tmp_path, data=None):
+    """metro-g2-phev, permitted, with every fact a petrol plug-in needs to rank."""
+    data = data or bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    add_fact(data, "seats", 5, variant="metro-g2-phev")
+    add_fact(
+        data,
+        "cargo_volume_liters",
+        300,
+        {"market": "IT", "method": "VDA", "seating_configuration": "all_seats_up"},
+        variant="metro-g2-phev",
+    )
+    add_list_price(data, variant="metro-g2-phev")
+    publish(conn, data, tmp_path)
+    return data
+
+
+def test_plug_in_hybrids_get_the_advisor_fuel_names_and_petrol_ones_rank(
+    conn, tmp_path
+):
+    data = bundle(tmp_path)
+    diesel = {
+        **copy.deepcopy(data["variants"][2]),
+        "variant_key": "metro-g2-phev-diesel",  # gitleaks:allow (synthetic key)
+        "fuel": "diesel",
+    }
+    data["variants"].append(diesel)
+    add_list_price(data, variant="metro-g2-phev-diesel")
+    publish_phev_ready(conn, tmp_path, data)
+    fuel_types = dict(
+        (row["variant_key"], row["fuel_type"])
+        for row in conn.execute(
+            "SELECT variant_key, fuel_type FROM vehicle_specs WHERE powertrain_type = 'PHEV'"
+        ).fetchall()
+    )
+    # Diesel plug-ins keep their fuel in the name; the Advisor counts them unsupported.
+    assert fuel_types == {
+        "metro-g2-phev": "plug_in_hybrid_petrol",
+        "metro-g2-phev-diesel": "plug_in_hybrid_diesel",
+    }
+    repo = AdvisorRepository(conn)
+    candidates = repo.list_candidates()
+    assert [(c["spec"]["variant_key"], c["spec"]["fuel_type"]) for c in candidates] == [
+        ("metro-g2-phev", "plug_in_hybrid_petrol")
+    ]
+    assert repo.count_excluded_candidates()["unsupported_fuel_type"] == 1
+    items = build_recommendations(
+        AdvisorRecommendationRequest(budget_max_eur=15000, primary_use="city"),
+        candidates,
+    )
+    assert [i.selected_spec.variant_key for i in items] == ["metro-g2-phev"]
+
+
+def test_plug_in_fuel_migration_lets_a_later_bundle_match(conn, tmp_path):
+    data = publish_phev_ready(conn, tmp_path)
+    # What the publisher stored before this fix.
+    conn.execute("SELECT set_config('drivewise.catalog_writer', 'v2', true)")
+    conn.execute(
+        "UPDATE vehicle_specs SET fuel_type = 'phev' WHERE variant_key = 'metro-g2-phev'"
+    )
+    conn.execute("SELECT set_config('drivewise.catalog_writer', '', true)")
+    later = copy.deepcopy(data)
+    add_fact(later, "seats", 5, variant="metro-g2-hev")
+    with pytest.raises(CatalogValidationError, match="differs at fuel_type"):
+        with conn.transaction():
+            publish(conn, later, tmp_path)
+    conn.execute((MIGRATIONS_PATH / "0013_plug_in_hybrid_fuel_type.sql").read_text())
+    assert conn.execute(
+        "SELECT fuel_type FROM vehicle_specs WHERE variant_key = 'metro-g2-phev'"
+    ).fetchone()["fuel_type"] == "plug_in_hybrid_petrol"
+    # The migration leaves the legacy-write guard armed.
+    assert conn.execute(
+        "SELECT current_setting('drivewise.catalog_writer', true) AS writer"
+    ).fetchone()["writer"] != "v2"
+    publish(conn, later, tmp_path)
+
+
+def test_exclusion_counts_count_alternatives_not_vehicles(conn, tmp_path):
+    """One variant with only a stale offer and no list price lands in two reasons."""
+    data = bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    publish(conn, data, tmp_path)
+    spec = conn.execute(
+        "SELECT * FROM vehicle_specs WHERE variant_key = 'metro-g1-ice'"
+    ).fetchone()
+    repo = AdvisorRepository(conn)
+    before = repo.count_excluded_candidates()
+    insert_offer(conn, spec, age_days=40)
+    after = repo.count_excluded_candidates()
+    assert after.get("stale_offer", 0) == before.get("stale_offer", 0) + 1
+    # The same variant still counts once for its missing list price: every v2 car
+    # variant of the fixture lacks one, this one included.
+    v2_cars = conn.execute(
+        """SELECT count(*) AS n FROM vehicle_specs s JOIN vehicles v ON v.id = s.vehicle_id
+           WHERE s.catalog_version = 2 AND v.vehicle_type = 'car'"""
+    ).fetchone()["n"]
+    assert after["missing_list_price"] == before["missing_list_price"] == v2_cars

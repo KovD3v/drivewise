@@ -7,6 +7,7 @@ from typing import Any, Literal
 from app.schemas.advisor import AdvisorRecommendationRequest
 from app.services.advisor.decision import ModuleAssessment
 from app.services.advisor.garage import garage_fit
+from app.services.advisor.pricing import priced_terms
 
 
 ConstraintStatus = Literal["eligible", "excluded", "insufficient_data"]
@@ -26,7 +27,7 @@ def evaluate_constraints(
     garage_assessment: ModuleAssessment | None = None,
 ) -> ConstraintEvaluation:
     spec = candidate.get("spec") or {}
-    offer = candidate.get("offer") or {}
+    offer = priced_terms(candidate)
     reasons: list[str] = []
     missing: list[str] = []
     tradeoffs: list[str] = []

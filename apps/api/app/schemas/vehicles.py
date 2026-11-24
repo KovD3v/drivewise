@@ -4,8 +4,15 @@ from uuid import UUID
 
 from pydantic import Field, field_validator
 
-from app.ingestion.catalog_v2 import ExternalReference, MeasurementContext, Metric
+from app.ingestion.catalog_v2 import (
+    ExternalReference,
+    MeasurementContext,
+    Metric,
+    VehicleType,
+)
 from app.schemas.base import ApiModel
+
+ScalarBasis = Literal["exact", "interval_upper"]
 
 
 class VehicleProvenance(ApiModel):
@@ -25,7 +32,8 @@ class VehicleSummary(ApiModel):
     id: UUID
     canonical_key: str | None = None
     model_family_key: str | None = None
-    vehicle_type: str | None = None
+    # Null only for legacy (catalog v1) rows, whose contract is car-only.
+    vehicle_type: VehicleType | None = None
     generation_key: str | None = None
     phase_key: str | None = None
     catalog_version: int = 1
@@ -152,6 +160,15 @@ class VehicleMediaAsset(ApiModel):
     provenance: ProfileProvenance
 
 
+class VehicleTwoWheelSpecs(ApiModel):
+    """Reviewed point values from catalog v2 facts; null when unknown or ambiguous."""
+
+    seat_height_mm: float | None = None
+    wet_weight_kg: float | None = None
+    fuel_tank_capacity_liters: float | None = None
+    underseat_storage_liters: float | None = None
+
+
 class VehicleSpec(ApiModel):
     catalog_version: int = 1
     powertrain_type: str | None = None
@@ -174,12 +191,52 @@ class VehicleSpec(ApiModel):
     battery_kwh: float | None = None
     energy_consumption_kwh_100km: float | None = None
     consumption_l_100km: float | None = None
+    # ADR-018: "interval_upper" when a v2 consumption is the upper value of an
+    # interval, "exact" for a point value, null for v1 rows or no value.
+    consumption_l_100km_basis: ScalarBasis | None = None
+    energy_consumption_kwh_100km_basis: ScalarBasis | None = None
     wltp_range_km: int | None = None
     co2_g_km: int | None = None
     euro_emission_standard: str | None = None
     seats: int | None = None
     cargo_volume_liters: float | None = None
     provenance: list[VehicleProvenance] = Field(default_factory=list)
+
+
+class ListPrice(ApiModel):
+    """The public list price of a variant, with its price-list terms (ADR-015).
+
+    The Advisor uses it in place of an offer (ADR-013); vehicle detail shows it.
+    """
+
+    price_eur: float
+    computed_from_excl_vat: bool
+    # How price_eur was obtained: as printed, from an ex-VAT figure, or from a
+    # turnkey price minus its stated on-road charge (ADR-015).
+    derivation: Literal["printed", "computed_from_excl_vat", "computed_from_turnkey"]
+    printed_amount_eur: float
+    printed_basis: Literal["incl_vat", "excl_vat", "turnkey"]
+    vat_rate_percent: float | None = None
+    on_road_charge_eur: float | None = None
+    on_road_charge_includes_vat: bool | None = None
+    trim_label: str
+    price_list_valid_from: date
+    substitute_note: str | None = None
+    source_name: str
+    source_url: str
+    # Licence or attribution text the product shows next to the source name.
+    source_license: str | None = None
+    # When the price-list document was retrieved.
+    observed_at: datetime
+    decision_id: UUID
+    observation_id: UUID
+
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
 
 
 class VehicleSpecDetail(VehicleSpec):
@@ -197,6 +254,10 @@ class VehicleSpecDetail(VehicleSpec):
     safety: VehicleSafety = Field(default_factory=VehicleSafety)
     technology_comfort: list[VehicleFeature] = Field(default_factory=list)
     media: list[VehicleMediaAsset] = Field(default_factory=list)
+    two_wheel: VehicleTwoWheelSpecs = Field(default_factory=VehicleTwoWheelSpecs)
+    # The terms and source behind list_price_eur; null for v1 specs, for no
+    # eligible list-price fact, and for a price-list URL that is not HTTPS.
+    list_price: ListPrice | None = None
 
 
 class VehicleDetail(VehicleSummary):
@@ -252,6 +313,10 @@ class CatalogFact(ApiModel):
     eligible: bool
     value_min: float | None
     value_max: float | None
+    # The value the read catalogue and the Advisor use, null when the fact is not
+    # published as a scalar; "interval_upper" marks an ADR-018 upper value.
+    published_value: float | None = None
+    published_basis: ScalarBasis | None = None
     unit: str | None
     selected_observation_id: UUID | None
     evidence_ids: list[UUID]
@@ -264,6 +329,7 @@ class CatalogFact(ApiModel):
     source_key: str | None
     source_name: str | None
     source_url: str | None
+    source_license: str | None = None
     retrieved_at: datetime | None
     content_sha256: str | None
     evidence_excerpt: str | None
