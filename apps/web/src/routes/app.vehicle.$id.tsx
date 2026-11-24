@@ -14,9 +14,11 @@ import { rankVehicles, type ScoredVehicle } from "@/lib/decision-engine";
 import type { DecisionProfile } from "@/lib/decision-profile";
 import { loadState } from "@/lib/decision-state";
 import { buildReportSections } from "@/lib/report-sections";
-import { euro, fuelLabel, mm2cm, typeLabel, vehicleName } from "@/lib/vehicle-format";
+import { fuelLabel, mm2cm, typeLabel, vehicleName } from "@/lib/vehicle-format";
 import { getVehicleById, type Vehicle } from "@/services/vehicleService";
 import { categoryLabel } from "@/lib/category-labels";
+import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts";
+import { PriceLine } from "@/components/vehicle/PriceLine";
 
 export const Route = createFileRoute("/app/vehicle/$id")({
   loader: async ({ params }) => {
@@ -163,11 +165,7 @@ function VehiclePage() {
               <h1 className="font-heading mt-3 text-[2rem] leading-tight font-extrabold tracking-[-0.03em] sm:text-[2.6rem]">
                 {vehicleName(v)}
               </h1>
-              {v.pricing.new_price_estimate && (
-                <p className="mt-3 text-[0.95rem] text-muted-foreground">
-                  Prezzo indicativo del nuovo {euro(v.pricing.new_price_estimate)}
-                </p>
-              )}
+              <PriceLine vehicle={v} />
             </div>
             {scored && (
               <div className="shrink-0 text-left sm:text-right">
@@ -180,6 +178,14 @@ function VehiclePage() {
               </div>
             )}
           </div>
+
+          <Link
+            to="/app/compare"
+            search={{ vehicle: v.id }}
+            className="relative mt-6 inline-flex h-11 items-center rounded-full border border-border/70 bg-background px-5 text-[0.875rem] font-medium transition-colors hover:border-primary/40"
+          >
+            Confronta
+          </Link>
 
           {scored ? (
             <div className="relative mt-10 grid gap-8 border-t border-border/70 pt-8 sm:grid-cols-2">
@@ -254,9 +260,21 @@ function VehiclePage() {
           </VSection>
         )}
 
+        {v.list_price && (
+          <VSection title="Prezzo di listino" intro="Il prezzo pubblicato nel listino ufficiale: non è un'offerta di un venditore.">
+            <ListPricePanel price={v.list_price} />
+          </VSection>
+        )}
+
         <VSection title="Specifiche" intro="Tutti i campi che il catalogo restituisce per questo veicolo.">
           <TechSpecs specs={specs} />
         </VSection>
+
+        {v.credits.length > 0 && (
+          <Card>
+            <SourceCredits credits={v.credits} />
+          </Card>
+        )}
 
         {alternatives.length > 0 && (
           <VSection title="Alternative dello stesso tipo" intro="Ordinate sul tuo profilo, quando disponibile.">

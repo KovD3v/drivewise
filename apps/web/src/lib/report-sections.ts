@@ -3,7 +3,7 @@
  * Regola: solo dati restituiti dall'API, nessuna sezione se il dato è assente
  * (mai card vuote) e nessun indice o costo calcolato nel sito.
  */
-import { withBasis } from "@/components/vehicle/source-facts";
+import { basisLabel } from "@/components/vehicle/source-facts";
 import { garageFit, type GarageFitResult } from "@/lib/decision-engine";
 import type { DecisionProfile } from "@/lib/decision-profile";
 import { fuelLabel } from "@/lib/vehicle-format";
@@ -54,24 +54,25 @@ export function buildReportSections(v: Vehicle, profile: DecisionProfile): Repor
           icon: "garage",
         });
     }
-    const c = v.consumption;
-    if (num(c.liquid_l_100km))
-      out.push({
-        id: "consumption",
-        label: "Consumo dichiarato",
-        value: withBasis(`${decimal(c.liquid_l_100km)} l/100 km`, c.liquid_basis),
-        detail: `${fuelLabel(v.powertrain.fuel)} · ciclo WLTP combinato`,
-        icon: "cost",
-      });
-    else if (num(c.energy_kwh_100km))
-      out.push({
-        id: "consumption",
-        label: "Consumo dichiarato",
-        value: withBasis(`${decimal(c.energy_kwh_100km)} kWh/100 km`, c.energy_basis),
-        detail: `${fuelLabel(v.powertrain.fuel)} · ciclo WLTP combinato`,
-        icon: "cost",
-      });
   }
+
+  const c = v.consumption;
+  if (num(c.liquid_l_100km))
+    out.push({
+      id: "consumption",
+      label: "Consumo dichiarato",
+      value: `${decimal(c.liquid_l_100km)} l/100 km`,
+      detail: `${fuelLabel(v.powertrain.fuel)} · ${basisLabel(c.liquid_basis)}`,
+      icon: "cost",
+    });
+  else if (num(c.energy_kwh_100km))
+    out.push({
+      id: "consumption",
+      label: "Consumo dichiarato",
+      value: `${decimal(c.energy_kwh_100km)} kWh/100 km`,
+      detail: `${fuelLabel(v.powertrain.fuel)} · ${basisLabel(c.energy_basis)}`,
+      icon: "cost",
+    });
 
   const t = v.two_wheel;
   if (v.vehicle_type !== "car" && t) {

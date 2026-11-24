@@ -1,4 +1,4 @@
-/** Formatter condivisi per il dataset funzionale v1. */
+/** Formatter condivisi per i veicoli del catalogo DriveWise. */
 import type { Vehicle } from "@/services/vehicleService";
 
 export const NA = "Informazione non disponibile";
@@ -15,9 +15,13 @@ export const typeLabel: Record<Vehicle["vehicle_type"], string> = {
   scooter: "Scooter",
 };
 
-export const fuelLabel = (f?: string | null) => {
-  const k = (f ?? "").toLowerCase();
-  if (!k) return NA;
+export const fuelLabel = (f?: string | null): string => {
+  const raw = (f ?? "").toLowerCase();
+  if (!raw) return NA;
+  // Catalog v2 adds the engine fuel to hybrids: "full_hybrid_petrol" reads as "Full hybrid benzina".
+  const engine = raw.match(/^(mild_hybrid|full_hybrid|plug_in_hybrid)_(petrol|diesel)$/);
+  if (engine) return `${fuelLabel(engine[1])} ${engine[2] === "petrol" ? "benzina" : "diesel"}`;
+  const k = raw;
   if (k === "electric") return "Elettrico";
   if (k === "mild_hybrid" || k === "mild hybrid") return "Mild hybrid";
   if (k === "full_hybrid" || k === "hybrid" || k === "full hybrid") return "Full hybrid";

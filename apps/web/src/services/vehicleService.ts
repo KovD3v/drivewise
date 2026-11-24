@@ -12,7 +12,9 @@ import {
   type SourceProvenance,
   type VehicleSummary,
 } from "@/api/drivewise";
-import type { ScalarBasis } from "@/components/vehicle/source-facts";
+import type { Credit, ScalarBasis } from "@/components/vehicle/source-facts";
+
+export type { Credit };
 
 export type VehicleTypeKey = "car" | "motorcycle" | "scooter";
 
@@ -40,9 +42,6 @@ export type Consumption = {
   energy_kwh_100km: number | null;
   energy_basis: ScalarBasis;
 };
-
-/** One licensed source behind the facts on a screen. */
-export type Credit = { name: string; url: string | null; license: string | null };
 
 export type Vehicle = {
   id: string;

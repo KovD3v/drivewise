@@ -7,6 +7,8 @@ import { ScoreCelebration } from "@/components/app/ScoreCelebration";
 import { SaveAnalysisPrompt } from "@/components/app/SaveAnalysisPrompt";
 import { DynamicSections } from "@/components/vehicle/DynamicSections";
 import { VSection } from "@/components/vehicle/primitives";
+import { PriceLine } from "@/components/vehicle/PriceLine";
+import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts";
 import { loadDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
 import {
   dnaLabels,
@@ -203,12 +205,8 @@ function ReportContent({
             <h1 className="font-heading mt-6 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
               {winner.vehicle.brand} {winner.vehicle.model}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {categoryLabel(winner.vehicle.category)}
-              {winner.vehicle.pricing.new_price_estimate
-                ? ` · ${winner.vehicle.pricing.new_price_estimate.toLocaleString("it-IT")} €`
-                : ""}
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{categoryLabel(winner.vehicle.category)}</p>
+            <PriceLine vehicle={winner.vehicle} className="mt-1 text-sm text-muted-foreground" />
             {winner.offer && <p className="mt-3 text-sm text-muted-foreground">{winner.offer.title} · {winner.offer.condition === 'new' ? 'Nuova' : 'Usata'} · {winner.offer.price_eur.toLocaleString('it-IT')} €{winner.offer.source_url && <> · <a href={winner.offer.source_url} target="_blank" rel="noopener noreferrer" className="underline">Vedi offerta</a></>}</p>}
             <p className="mt-3 text-sm text-muted-foreground">
               Affidabilità della scelta {shownConfidence}%
@@ -263,6 +261,15 @@ function ReportContent({
               </ul>
             </div>
           </div>
+
+          {winner.vehicle.list_price && (
+            <div className="relative mt-10 text-left">
+              <h2 className="mb-4 text-sm font-semibold">Prezzo di listino</h2>
+              <ListPricePanel price={winner.vehicle.list_price} />
+            </div>
+          )}
+
+          <SourceCredits credits={winner.vehicle.credits} className="relative mt-8 text-left" />
 
           <div className="relative mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Button
