@@ -149,6 +149,7 @@ QUESTION_DEFINITIONS = (
                     "mild_hybrid_petrol",
                     "petrol",
                     "petrol_lpg",
+                    "plug_in_hybrid_petrol",
                 ]
             ),
         ),

@@ -20,7 +20,11 @@ from app.schemas.guided_decisions import (
     DecisionProfile,
     GuidedDecisionResponse,
 )
-from app.services.guided_decisions.engine import process_guided_decision_turn
+from app.services.guided_decisions.engine import (
+    MAX_GUIDED_DECISION_TURNS,
+    process_guided_decision_turn,
+    recompute_guided_decision_response,
+)
 
 
 router = APIRouter(prefix="/guided-decisions", tags=["guided-decisions"])
@@ -94,6 +98,12 @@ def add_guided_decision_turn(
                     "status": record.status,
                 },
             )
+        # Checked before any catalogue query, so a capped link costs nothing.
+        if record.profile_version >= MAX_GUIDED_DECISION_TURNS:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "max_turns_reached"},
+            )
 
         result = process_guided_decision_turn(
             decision_id=decision_id,
@@ -131,6 +141,11 @@ def get_guided_decision(
         GuidedDecisionsRepository,
         Depends(get_guided_decisions_repository),
     ],
+    advisor_repository: Annotated[
+        AdvisorRepository,
+        Depends(get_advisor_repository),
+    ],
+    as_of: Annotated[datetime, Depends(get_guided_decision_clock)],
 ) -> GuidedDecisionResponse:
     try:
         record = decisions_repository.get(decision_id)
@@ -145,4 +160,11 @@ def get_guided_decision(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "guided_decision_has_no_response"},
         )
-    return GuidedDecisionResponse.model_validate(record.last_response)
+    # The ranking is rebuilt from the stored profile on every read, so a
+    # reopened link follows the current catalogue and source permissions.
+    return recompute_guided_decision_response(
+        GuidedDecisionResponse.model_validate(record.last_response),
+        record.decision_profile,
+        advisor_repository=advisor_repository,
+        as_of=as_of,
+    )
