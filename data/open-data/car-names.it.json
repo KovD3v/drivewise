@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "market": "IT",
- "note": "Hand-reviewed mapping from EEA (Mk, Cn) commercial names to a make and model. An exact name wins over a prefix. Names that match no rule are never imported; they are listed in the gap register.",
+ "note": "Hand-reviewed mapping from EEA (Mk, Cn) commercial names to a make and model. An exact name wins over a prefix. A rule with type_approvals takes only the registrations under those approval numbers, for a name shared by two models; the rule without them keeps the rest. Names that match no rule are never imported; they are listed in the gap register.",
  "families": [
   {
    "make": "Fiat",
@@ -120,6 +120,21 @@
      "mk": "TOYOTA",
      "names": [
       "TOYOTA COROLLA"
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Toyota",
+   "model": "Corolla Cross",
+   "eea": [
+    {
+     "mk": "TOYOTA",
+     "names": [
+      "TOYOTA COROLLA"
+     ],
+     "type_approvals": [
+      "E6*2018/858*00186"
      ]
     }
    ]
