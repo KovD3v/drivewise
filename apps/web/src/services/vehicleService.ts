@@ -1,22 +1,25 @@
 /**
- * DriveWise data layer — unica sorgente dati del frontend.
- *
- * Oggi legge il dataset locale `DriveWise Functional Coverage Dataset v1`
- * (30 veicoli: 12 auto, 8 moto, 10 scooter).
- * Domani le stesse firme potranno chiamare il Decision Engine / REST API
- * (es. getVehicleById -> GET /api/vehicles/:id) senza toccare i componenti:
- * tutte le funzioni sono già asincrone e restituiscono DTO serializzabili.
+ * DriveWise data layer: every vehicle comes from the API (ADR-008).
+ * The mapper keeps only fields the API returns; a missing value stays null and
+ * the screens hide it. Nothing here scores, estimates or fills a gap.
  */
-import { fetchVehicles, fetchVehicle, isApiNotFoundError, type VehicleSummary } from "@/api/drivewise";
-import vehiclesJson from "@/data/drivewise/functional-v1/vehicles.json";
-import theftReferenceJson from "@/data/drivewise/functional-v1/theft_reference_italy_2024.json";
+import {
+  fetchVehicle,
+  fetchVehicles,
+  isApiNotFoundError,
+  type AdvisorMetricProvenance,
+  type ListPrice,
+  type SourceProvenance,
+  type VehicleSummary,
+} from "@/api/drivewise";
+import type { ScalarBasis } from "@/components/vehicle/source-facts";
 
 export type VehicleTypeKey = "car" | "motorcycle" | "scooter";
 
+/** Base price of a legacy catalogue row. Never a list price and never an offer. */
 export type Pricing = { new_price_estimate: number | null; currency: string | null };
-export type Powertrain = { fuel?: string | null; engine_cc?: number | null };
+export type Powertrain = { fuel?: string | null };
 
-/** Solo auto (vedi coverage_matrix.csv). */
 export type CarDimensions = {
   length_mm?: number | null;
   width_with_mirrors_mm?: number | null;
@@ -24,143 +27,140 @@ export type CarDimensions = {
   boot_liters?: number | null;
 };
 
-/** Solo moto. */
-export type MotorcycleSpecific = {
-  seat_height_mm?: number | null;
-  wet_weight_kg?: number | null;
-  recommended_experience?: string | null;
-  passenger_comfort_score?: number | null;
-  wind_protection_score?: number | null;
+export type TwoWheelFacts = {
+  seat_height_mm: number | null;
+  wet_weight_kg: number | null;
+  fuel_tank_capacity_liters: number | null;
+  underseat_storage_liters: number | null;
 };
 
-/** Solo scooter. */
-export type ScooterSpecific = {
-  wet_weight_kg?: number | null;
-  underseat_storage_l?: number | null;
-  urban_agility_score?: number | null;
-  passenger_comfort_score?: number | null;
-  helmet_storage_full_face?: boolean | null;
-  ring_road_fit_score?: number | null;
+export type Consumption = {
+  liquid_l_100km: number | null;
+  liquid_basis: ScalarBasis;
+  energy_kwh_100km: number | null;
+  energy_basis: ScalarBasis;
 };
 
-/** safety / family / sport sono presenti solo sulle auto. */
-export type VehicleDna = {
-  reliability?: number | null;
-  comfort?: number | null;
-  technology?: number | null;
-  city?: number | null;
-  travel?: number | null;
-  running_cost?: number | null;
-  safety?: number | null;
-  family?: number | null;
-  sport?: number | null;
-};
-
-export type TheftRisk = {
-  observed_thefts_italy_2024: number | null;
-  recovery_rate_pct: number | null;
-  observed_volume_band: string | null;
-  /** Sempre null in v1: senza denominatore di circolante non è calcolabile. */
-  normalized_theft_risk_index: number | null;
-  normalized_risk_status: string | null;
-  source: string | null;
-  data_year: number | null;
-};
+/** One licensed source behind the facts on a screen. */
+export type Credit = { name: string; url: string | null; license: string | null };
 
 export type Vehicle = {
   id: string;
-  mock?: boolean;
-  mockDetails?: boolean;
   vehicle_type: VehicleTypeKey;
   brand: string;
   model: string;
   category: string;
   pricing: Pricing;
-  powertrain?: Powertrain;
-  dimensions?: CarDimensions;
-  motorcycle_specific?: MotorcycleSpecific;
-  scooter_specific?: ScooterSpecific;
-  vehicle_dna: VehicleDna;
-  theft_risk: TheftRisk;
+  /** Public list price of the shown version (ADR-015), when the catalogue has one. */
+  list_price: ListPrice | null;
+  powertrain: Powertrain;
+  seats: number | null;
+  dimensions: CarDimensions;
+  consumption: Consumption;
+  two_wheel: TwoWheelFacts | null;
+  credits: Credit[];
 };
-
-export type TheftReference = {
-  scope: string;
-  data_year: number;
-  vehicle_thefts_total: number;
-  two_wheel_thefts_total: number;
-  two_wheel_recovery_rate_pct: number;
-  top_regions_all_vehicles: Record<string, number>;
-  top_regions_two_wheels: Record<string, number>;
-  model_observed_counts: Record<string, number>;
-  model_recovery_rates_pct: Record<string, number>;
-  warning: string;
-  source: string;
-};
-
-// ponytail: two-wheel catalog mock until the existing API supports those vehicle types.
-const VEHICLES = (vehiclesJson as unknown as Vehicle[]).filter(v => v.vehicle_type !== "car").map(v => ({ ...v, mock: true }));
-export const theftReference = theftReferenceJson as unknown as TheftReference;
 
 // Catalog v2 leaves an unreviewed body style empty; show it, but never offer it as a filter.
 const UNKNOWN_CATEGORY = "Categoria non indicata";
 
-// Accepts a list item, a detail or an advisor result: only the boot volume is read from a spec.
-type ApiVehicle = VehicleSummary & { specs?: { cargo_volume_liters: number | null }[] };
-export function fromApiVehicle(v: ApiVehicle): Vehicle {
+const EMPTY_CONSUMPTION: Consumption = {
+  liquid_l_100km: null,
+  liquid_basis: null,
+  energy_kwh_100km: null,
+  energy_basis: null,
+};
+
+type SpecInput = {
+  cargo_volume_liters?: number | null;
+  seats?: number | null;
+  consumption_l_100km?: number | null;
+  consumption_l_100km_basis?: ScalarBasis;
+  energy_consumption_kwh_100km?: number | null;
+  energy_consumption_kwh_100km_basis?: ScalarBasis;
+  list_price?: ListPrice | null;
+  provenance?: SourceProvenance[];
+  dimensions?: { length_mm: number | null; height_mm: number | null };
+  two_wheel?: TwoWheelFacts;
+};
+
+/** A list item, a detail or a ranked vehicle; detail and ranking add one spec. */
+export type ApiVehicleInput = Omit<VehicleSummary, "vehicle_type"> & {
+  vehicle_type?: VehicleSummary["vehicle_type"];
+  provenance?: SourceProvenance[];
+  specs?: SpecInput[];
+};
+
+/** Credits for every licensed source named by the facts a screen shows. */
+type SourceRef = Pick<SourceProvenance | AdvisorMetricProvenance | ListPrice, "source_name" | "source_url" | "source_license">;
+
+export function creditsFrom(sources: (SourceRef | null | undefined)[]): Credit[] {
+  const byName = new Map<string, Credit>();
+  for (const source of sources) {
+    if (!source || byName.has(source.source_name)) continue;
+    byName.set(source.source_name, {
+      name: source.source_name,
+      url: source.source_url || null,
+      license: source.source_license,
+    });
+  }
+  return [...byName.values()];
+}
+
+export function fromApiVehicle(v: ApiVehicleInput): Vehicle {
   const spec = v.specs?.[0];
+  const twoWheel = spec?.two_wheel;
+  const hasTwoWheelFact = twoWheel && Object.values(twoWheel).some((value) => value !== null);
   return {
-    id: v.id, vehicle_type: 'car', brand: v.make, model: v.model, category: v.body_style ?? UNKNOWN_CATEGORY,
-    pricing: { new_price_estimate: v.base_price_eur, currency: 'EUR' },
-    powertrain: { fuel: v.fuel_type }, dimensions: { boot_liters: spec?.cargo_volume_liters },
-    // ponytail: presentation-only mock metrics until the API exposes reliability data. Never used for ranking.
-    mockDetails: true,
-    vehicle_dna: { reliability: 72, comfort: 78, technology: 70, safety: 75 },
-    theft_risk: { observed_thefts_italy_2024: null, recovery_rate_pct: null, observed_volume_band: null, normalized_theft_risk_index: null, normalized_risk_status: null, source: null, data_year: null },
+    id: v.id,
+    // Legacy rows without a type are the car catalogue the Advisor already ranks.
+    vehicle_type: v.vehicle_type ?? "car",
+    brand: v.make,
+    model: v.model,
+    category: v.body_style ?? UNKNOWN_CATEGORY,
+    pricing: { new_price_estimate: v.base_price_eur, currency: "EUR" },
+    list_price: spec?.list_price ?? null,
+    powertrain: { fuel: v.fuel_type },
+    seats: spec?.seats ?? null,
+    dimensions: {
+      boot_liters: spec?.cargo_volume_liters ?? null,
+      length_mm: spec?.dimensions?.length_mm ?? null,
+      height_mm: spec?.dimensions?.height_mm ?? null,
+    },
+    consumption: spec
+      ? {
+          liquid_l_100km: spec.consumption_l_100km ?? null,
+          liquid_basis: spec.consumption_l_100km_basis ?? null,
+          energy_kwh_100km: spec.energy_consumption_kwh_100km ?? null,
+          energy_basis: spec.energy_consumption_kwh_100km_basis ?? null,
+        }
+      : EMPTY_CONSUMPTION,
+    two_wheel: hasTwoWheelFact ? twoWheel : null,
+    credits: creditsFrom([...(v.provenance ?? []), ...(spec?.provenance ?? []), spec?.list_price]),
   };
 }
 
-export type VehicleFilter = {
-  vehicleType?: VehicleTypeKey | undefined;
-  category?: string | undefined;
-  maxPrice?: number | undefined;
-  ids?: string[] | undefined;
-};
+const PAGE = 100;
 
-export async function getVehicles(): Promise<Vehicle[]> {
-  return [...await getVehiclesByType('car'), ...VEHICLES];
-}
 export async function getVehiclesByType(type: VehicleTypeKey): Promise<Vehicle[]> {
-  if (type !== 'car') return VEHICLES.filter(v => v.vehicle_type === type);
   const result: Vehicle[] = [];
-  for (let offset = 0; ; offset += 100) {
-    const page = await fetchVehicles({ limit: 100, offset });
-    result.push(...page.map(fromApiVehicle));
-    if (page.length < 100) return result;
+  for (let offset = 0; ; offset += PAGE) {
+    const page = await fetchVehicles({ vehicle_type: type, limit: PAGE, offset });
+    // The API counts untyped legacy rows as cars; keep only what was asked for.
+    result.push(...page.map(fromApiVehicle).filter((v) => v.vehicle_type === type));
+    if (page.length < PAGE) return result;
   }
 }
+
 export async function getVehicleById(id: string): Promise<Vehicle | null> {
-  const mock = VEHICLES.find(v => v.id === id);
-  if (mock) return mock;
-  try { return fromApiVehicle(await fetchVehicle(id)); }
-  catch (error) { if (isApiNotFoundError(error)) return null; throw error; }
+  try {
+    return fromApiVehicle(await fetchVehicle(id));
+  } catch (error) {
+    if (isApiNotFoundError(error)) return null;
+    throw error;
+  }
 }
+
 export async function getVehiclesByIds(ids: string[]): Promise<Vehicle[]> {
   return (await Promise.all(ids.map(getVehicleById))).filter((v): v is Vehicle => v !== null);
-}
-export async function filterVehicles(criteria: VehicleFilter = {}): Promise<Vehicle[]> {
-  const vehicles = criteria.vehicleType ? await getVehiclesByType(criteria.vehicleType) : await getVehicles();
-  return vehicles.filter(v => (!criteria.category || v.category === criteria.category) &&
-    (!criteria.ids || criteria.ids.includes(v.id)) &&
-    (criteria.maxPrice === undefined || (v.pricing.new_price_estimate !== null && v.pricing.new_price_estimate <= criteria.maxPrice)));
-}
-
-export async function getCategories(type: VehicleTypeKey): Promise<string[]> {
-  const list = await getVehiclesByType(type);
-  return [...new Set(list.map((v) => v.category).filter((c) => c !== UNKNOWN_CATEGORY))].sort((a, b) => a.localeCompare(b, "it-IT"));
-}
-
-/** Regioni con più furti (reference Italia 2024) per il contesto territoriale. */
-export function theftRegionsFor(type: VehicleTypeKey): Record<string, number> {
-  return type === "car" ? theftReference.top_regions_all_vehicles : theftReference.top_regions_two_wheels;
 }

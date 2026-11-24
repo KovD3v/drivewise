@@ -9,9 +9,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export function DecisionConfidence({ value }: { value: number }) {
+/** `value` is the Guided Decision API's confidence in percent; null before the API answers. */
+export function DecisionConfidence({ value }: { value: number | null }) {
   const reduce = useReducedMotion();
-  const shown = useCountUp(value, 1200, !!reduce);
+  const shown = useCountUp(value ?? 0, 1200, !!reduce);
 
   return (
     <div className="rounded-2xl border border-primary/25 bg-card p-5 shadow-[var(--shadow-soft)]">
@@ -29,21 +30,21 @@ export function DecisionConfidence({ value }: { value: number }) {
                 <Info className="size-3.5" />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-[0.8rem] leading-relaxed">
-                Prima dell’analisi indica la completezza delle informazioni iniziali.
-                Dopo l’analisi viene fornita dal motore decisionale. Non è una probabilità.
+                La fornisce il motore decisionale dopo la tua prima risposta.
+                Non è una probabilità.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
         <span className="font-heading text-[1.35rem] font-bold tabular-nums text-foreground">
-          {shown}%
+          {value === null ? "—" : `${shown}%`}
         </span>
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <motion.div
           className="h-full origin-left rounded-full bg-accent/70"
           initial={{ scaleX: 0 }}
-          animate={{ scaleX: value / 100 }}
+          animate={{ scaleX: (value ?? 0) / 100 }}
           transition={{ duration: reduce ? 0 : 1.3, ease: EASE }}
           style={{ width: "100%" }}
         />

@@ -11,7 +11,8 @@ type Props = {
   known: string[];
   missing: MissingItem[];
   completion: number;
-  confidence: number;
+  /** From the Guided Decision API; null until the API has answered. */
+  confidence: number | null;
   ranking: PreviewVehicle[];
 };
 
@@ -79,7 +80,7 @@ export function DecisionProfilePanel({ known, missing, completion, confidence, r
 
       <ProfileCompletion value={completion} />
       <DecisionConfidence value={confidence} />
-      {confidence > 45 && ranking.length > 0 && <PreviewRanking ranking={ranking} />}
+      {confidence !== null && confidence > 45 && ranking.length > 0 && <PreviewRanking ranking={ranking} />}
     </div>
   );
 }

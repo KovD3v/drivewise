@@ -6,10 +6,8 @@ import { AppHeader } from "@/components/app/AppHeader";
 import { ScoreCelebration } from "@/components/app/ScoreCelebration";
 import { SaveAnalysisPrompt } from "@/components/app/SaveAnalysisPrompt";
 import { DynamicSections } from "@/components/vehicle/DynamicSections";
-import { ReliabilityPanel } from "@/components/vehicle/ReliabilityPanel";
-import { SecurityRisk } from "@/components/vehicle/SecurityRisk";
 import { VSection } from "@/components/vehicle/primitives";
-import { rankVehicles, type ScoredVehicle } from "@/lib/decision-engine";
+import { loadDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
 import {
   dnaLabels,
   usageLabels,
@@ -82,7 +80,7 @@ function ReportMissing() {
 function ReportPage() {
   const { s } = Route.useSearch();
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
-  const [confidence, setConfidence] = useState(0);
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [ranking, setRanking] = useState<ScoredVehicle[] | null>(null);
 
@@ -106,9 +104,11 @@ function ReportPage() {
         return;
       }
       setProfile(state.profile);
-      setConfidence(state.decisionConfidence);
-      void rankVehicles(state.profile).then((list) => {
-        if (alive) setRanking(list);
+      // Ranking and confidence come from the Guided Decision API, never from local storage.
+      void loadDecisionReport(state.profile).then((report) => {
+        if (!alive) return;
+        setConfidence(report.confidence);
+        setRanking(report.ranking);
       }).catch(e => { if (alive) { setError(e instanceof Error ? e.message : 'Report non disponibile.'); setRanking([]); } });
     };
 
@@ -129,8 +129,9 @@ function ReportPage() {
     );
   }
 
-  if (error || (profile && ranking.length === 0)) return <div className="min-h-screen bg-background"><AppHeader label="Decision Report" /><main className="mx-auto max-w-2xl px-8 py-24"><h1 className="font-heading text-3xl">Report non disponibile</h1><p role="alert" className="mt-5">{error || 'Nessuna offerta verificata corrisponde al profilo.'}</p><Link to="/app/start" className="mt-6 inline-block underline">Rivedi la Scelta Guidata</Link></main></div>;
-  if (!profile) return <ReportMissing />;
+  if (error || (profile && ranking.length === 0)) return <div className="min-h-screen bg-background"><AppHeader label="Decision Report" /><main className="mx-auto max-w-2xl px-8 py-24"><h1 className="font-heading text-3xl">Report non disponibile</h1><p role="alert" className="mt-5">{error || 'Nessun veicolo del catalogo corrisponde al profilo.'}</p><Link to="/app/start" className="mt-6 inline-block underline">Rivedi la Scelta Guidata</Link></main></div>;
+  // A ranking only exists for a guided car decision, which always carries the API confidence.
+  if (!profile || confidence === null) return <ReportMissing />;
 
   return <ReportContent profile={profile} ranking={ranking} confidence={confidence} />;
 }
@@ -163,7 +164,6 @@ function ReportContent({
   return (
     <div className="min-h-screen bg-background">
       <AppHeader label="Riepilogo della scelta" maxWidth="max-w-[70rem]" />
-      {winner.vehicle.mock && <p className="mx-auto max-w-[70rem] px-8 pt-5 text-xs text-muted-foreground">Demo: catalogo e ranking simulati.</p>}
       <main className="mx-auto w-full max-w-[70rem] space-y-14 px-6 py-12 sm:px-8 lg:py-20">
         <motion.article
           initial={reduce ? { opacity: 1 } : { opacity: 0, y: 14 }}
@@ -288,22 +288,11 @@ function ReportContent({
         {sections.length > 0 && (
           <VSection
             title="Cosa cambia davvero per te"
-            intro="Dati del catalogo e anteprime demo indicate nelle schede."
+            intro="Solo dati presenti nel catalogo DriveWise."
           >
             <DynamicSections sections={sections} />
           </VSection>
         )}
-
-        <VSection title="Affidabilità" intro="Profilo tecnico del veicolo consigliato.">
-          <ReliabilityPanel vehicle={winner.vehicle} />
-        </VSection>
-
-        <VSection
-          title="Sicurezza e furti"
-          intro="Anteprima del servizio di statistiche sui furti."
-        >
-          <SecurityRisk vehicle={winner.vehicle} />
-        </VSection>
 
         {alternatives.length > 0 && (
           <VSection title="Alternative valutate" intro="Stesso profilo, punteggi diversi.">

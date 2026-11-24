@@ -6,6 +6,10 @@ const labels: Record<string, string> = {
   "Maxi Scooter": "Maxiscooter", Naked: "Senza carenatura", SUV: "Veicolo rialzato",
   "Sport Touring": "Turismo sportivo", "Station Wagon": "Familiare",
   "Touring Adventure": "Turismo e avventura", "Urban Scooter": "Scooter urbano",
+  // Body style keys returned by the API.
+  city_car: "Auto da città", small_hatchback: "Utilitaria", hatchback: "Berlina compatta",
+  sedan: "Berlina", wagon: "Familiare", mpv: "Monovolume", suv: "SUV", crossover: "Crossover",
+  van: "Furgone", naked: "Naked", touring: "Turismo", scooter: "Scooter",
 };
 
 /** Translate presentation only: canonical dataset category values stay untouched. */

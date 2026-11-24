@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AppCatalogRouteImport } from './routes/app.catalog'
 import { Route as AppCompareRouteImport } from './routes/app.compare'
 import { Route as AppReportRouteImport } from './routes/app.report'
 import { Route as AppStartRouteImport } from './routes/app.start'
@@ -38,6 +39,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppCatalogRoute = AppCatalogRouteImport.update({
+  id: '/app/catalog',
+  path: '/app/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppCompareRoute = AppCompareRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/app/catalog': typeof AppCatalogRoute
   '/app/compare': typeof AppCompareRoute
   '/app/report': typeof AppReportRoute
   '/app/start': typeof AppStartRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/app/catalog': typeof AppCatalogRoute
   '/app/compare': typeof AppCompareRoute
   '/app/report': typeof AppReportRoute
   '/app/start': typeof AppStartRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/app/catalog': typeof AppCatalogRoute
   '/app/compare': typeof AppCompareRoute
   '/app/report': typeof AppReportRoute
   '/app/start': typeof AppStartRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/terms'
+    | '/app/catalog'
     | '/app/compare'
     | '/app/report'
     | '/app/start'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/terms'
+    | '/app/catalog'
     | '/app/compare'
     | '/app/report'
     | '/app/start'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/terms'
+    | '/app/catalog'
     | '/app/compare'
     | '/app/report'
     | '/app/start'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  AppCatalogRoute: typeof AppCatalogRoute
   AppCompareRoute: typeof AppCompareRoute
   AppReportRoute: typeof AppReportRoute
   AppStartRoute: typeof AppStartRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/catalog': {
+      id: '/app/catalog'
+      path: '/app/catalog'
+      fullPath: '/app/catalog'
+      preLoaderRoute: typeof AppCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/compare': {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  AppCatalogRoute: AppCatalogRoute,
   AppCompareRoute: AppCompareRoute,
   AppReportRoute: AppReportRoute,
   AppStartRoute: AppStartRoute,

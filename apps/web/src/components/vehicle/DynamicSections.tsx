@@ -1,20 +1,13 @@
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  Backpack,
-  Bike,
-  Building2,
+  Fuel,
   Gauge,
   Luggage,
   Package,
-  ParkingSquare,
   Ruler,
-  ShieldAlert,
-  Sofa,
   Users,
-  Wallet,
   Warehouse,
   Weight,
-  Wind,
   type LucideIcon,
 } from "lucide-react";
 import { EASE, viewportOnce } from "@/lib/motion";
@@ -25,23 +18,14 @@ const icons: Record<string, LucideIcon> = {
   boot: Luggage,
   family: Users,
   garage: Warehouse,
-  comfort: Sofa,
-  cost: Wallet,
-  tco: Wallet,
+  cost: Fuel,
   seat: Ruler,
   weight: Weight,
-  experience: Bike,
-  passenger: Users,
-  wind: Wind,
-  luggage: Backpack,
   underseat: Package,
-  agility: Building2,
-  ringroad: Gauge,
-  parking: ParkingSquare,
-  theft: ShieldAlert,
+  tank: Fuel,
 };
 
-/** Card generate dinamicamente: compaiono solo se il dato esiste nel dataset. */
+/** Card generate dinamicamente: compaiono solo se l'API restituisce il dato. */
 export function DynamicSections({ sections }: { sections: ReportSection[] }) {
   const reduce = useReducedMotion();
   if (!sections.length) return null;
@@ -68,18 +52,6 @@ export function DynamicSections({ sections }: { sections: ReportSection[] }) {
               </div>
               <p className="font-heading mt-4 text-[1.35rem] leading-tight font-bold">{s.value}</p>
               {s.detail && <p className="mt-2 text-[0.8rem] text-muted-foreground">{s.detail}</p>}
-              {typeof s.score === "number" && (
-                <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <motion.div
-                    className="h-full origin-left rounded-full bg-primary"
-                    initial={{ scaleX: 0 }}
-                    whileInView={{ scaleX: s.score / 100 }}
-                    viewport={viewportOnce}
-                    transition={{ duration: reduce ? 0 : 0.9, ease: EASE }}
-                    style={{ width: "100%" }}
-                  />
-                </div>
-              )}
             </Card>
           </motion.div>
         );

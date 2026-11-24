@@ -1,6 +1,5 @@
 /** Persistenza locale della sessione di Scelta Guidata. */
 import type { DecisionProfile } from "./decision-profile";
-import type { Answers } from "./wizard-questions";
 
 export type FlowStatus = "collecting" | "analysing" | "ready";
 
@@ -9,10 +8,11 @@ export type PersistedState = {
   status: FlowStatus;
   currentStep: string;
   profile: DecisionProfile;
-  answers: Answers;
+  /** Answers live in the Guided Decision API; kept for stored sessions. */
+  answers: Record<string, unknown>;
   profileCompletion: number;
   decisionConfidence: number;
-  /** Solo id: la fonte dei dati resta il dataset. */
+  /** Solo id: i dati restano nella Guided Decision API. */
   rankingIds: string[];
   updatedAt: number;
 };

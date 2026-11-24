@@ -5,7 +5,8 @@ import type { VehicleDetail } from '@/api/drivewise';
 const sampleDetail = carDetail as VehicleDetail;
 import { createGuidedDecision, addGuidedDecisionTurn } from '@/api/drivewise';
 import { fromApiVehicle, getVehicleById, getVehiclesByType } from './vehicleService';
-import { rankVehicles, toPreview } from '@/lib/decision-engine';
+import { loadDecisionReport, rankVehicles, toPreview } from '@/lib/decision-engine';
+import scooterDetail from '@/test/fixtures/scooter-detail.synthetic.json';
 import { saveAnalysis, listSavedAnalyses } from '@/lib/saved-analyses';
 import { signInMock } from '@/lib/mock-account';
 
@@ -46,13 +47,38 @@ test('report preserves backend score, reasons and uncertainty without local resc
   expect(result[0].tradeoffs).toEqual(['Backend tradeoff', 'Assumption', 'Warning', 'Insufficient garage measurements']);
 });
 
-test('missing two-wheel and account services are explicit browser mocks with no network', async () => {
+test('two-wheelers are never ranked and need no guided decision call', async () => {
   vi.stubGlobal('fetch', vi.fn());
-  const ranking = await rankVehicles({ vehicleType: 'motorcycle' });
-  expect(ranking.length).toBeGreaterThan(0);
-  expect(ranking.every(r => r.vehicle.mock)).toBe(true);
+  expect(await loadDecisionReport({ vehicleType: 'motorcycle' })).toEqual({ ranking: [], confidence: null });
+  expect(await loadDecisionReport({ vehicleType: 'car' })).toEqual({ ranking: [], confidence: null });
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('the report confidence is the one the Guided Decision API returns', async () => {
+  const response = { decisionConfidence: 0.634, previewRanking: { groups: [], assumptions: [] }, warnings: [], garageCompatibility: [] };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
+  expect((await loadDecisionReport({ vehicleType: 'car', decisionId: 'decision-123' })).confidence).toBe(63);
+});
+
+test('a two-wheel detail keeps its catalogue facts, list price and credits, with no score', () => {
+  const vehicle = fromApiVehicle(scooterDetail as VehicleDetail);
+  expect(vehicle.vehicle_type).toBe('scooter');
+  expect(vehicle.two_wheel).not.toBeNull();
+  expect(vehicle).not.toHaveProperty('score');
+  expect(vehicle.credits.map(c => c.name)).toContain(scooterDetail.specs[0].list_price?.source_name);
+});
+
+test('the catalogue keeps only the requested type, dropping untyped legacy rows', async () => {
+  const rows = [{ ...scooterDetail, specs: undefined }, { ...sampleDetail, id: 'legacy', vehicle_type: null }];
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => rows }));
+  expect((await getVehiclesByType('scooter')).map(v => v.id)).toEqual([scooterDetail.id]);
+  expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/vehicles?vehicle_type=scooter&limit=100&offset=0');
+});
+
+test('saved analyses stay a local browser mock with no network', async () => {
+  vi.stubGlobal('fetch', vi.fn());
   signInMock();
-  await saveAnalysis({ vehicleId: ranking[0].vehicle.id, brand: 'Demo', model: 'Demo', score: 85, confidence: 50, tags: [], profile: { vehicleType: 'motorcycle' } }, 'demo-local');
+  await saveAnalysis({ vehicleId: sampleDetail.id, brand: 'Demo', model: 'Demo', score: 85, confidence: 50, tags: [], profile: { vehicleType: 'car' } }, 'demo-local');
   expect(await listSavedAnalyses()).toHaveLength(1);
   expect(fetch).not.toHaveBeenCalled();
 });

@@ -7,25 +7,22 @@ import { useCountUp } from "@/lib/use-count-up";
 import { cn } from "@/lib/utils";
 import { Card, KeyValue, VSection } from "@/components/vehicle/primitives";
 import { DynamicSections } from "@/components/vehicle/DynamicSections";
-import { ReliabilityPanel } from "@/components/vehicle/ReliabilityPanel";
-import { SecurityRisk } from "@/components/vehicle/SecurityRisk";
 import { GarageFit, type GarageInput } from "@/components/vehicle/GarageFit";
 import { AppHeader } from "@/components/app/AppHeader";
 import { contextualSuggestions, datasetAnswer } from "@/lib/vehicle-ask";
 import { rankVehicles, type ScoredVehicle } from "@/lib/decision-engine";
-import { experienceLabels, type DecisionProfile } from "@/lib/decision-profile";
+import type { DecisionProfile } from "@/lib/decision-profile";
 import { loadState } from "@/lib/decision-state";
 import { buildReportSections } from "@/lib/report-sections";
 import { euro, fuelLabel, mm2cm, typeLabel, vehicleName } from "@/lib/vehicle-format";
-import { getVehicleById, getVehiclesByType, type Vehicle } from "@/services/vehicleService";
+import { getVehicleById, type Vehicle } from "@/services/vehicleService";
 import { categoryLabel } from "@/lib/category-labels";
 
 export const Route = createFileRoute("/app/vehicle/$id")({
   loader: async ({ params }) => {
     const vehicle = await getVehicleById(params.id);
     if (!vehicle) throw notFound();
-    const siblings = (await getVehiclesByType(vehicle.vehicle_type)).filter((v) => v.id !== vehicle.id);
-    return { vehicle, siblings };
+    return { vehicle };
   },
   head: ({ loaderData }) => {
     if (!loaderData)
@@ -40,7 +37,7 @@ export const Route = createFileRoute("/app/vehicle/$id")({
       ] };
     const v = loaderData.vehicle;
     const title = `${v.brand} ${v.model} — è adatto a te? | DriveWise`;
-    const description = `Dati reali su ${v.brand} ${v.model}: profilo tecnico, affidabilità, furti osservati e compatibilità con il tuo profilo decisionale.`;
+    const description = `${v.brand} ${v.model}: i dati del catalogo DriveWise, con le loro fonti.`;
     return {
       meta: [
         { title },
@@ -105,7 +102,7 @@ function garageInputFrom(profile: DecisionProfile | null): GarageInput | undefin
 }
 
 function VehiclePage() {
-  const { vehicle: v, siblings } = Route.useLoaderData();
+  const { vehicle: v } = Route.useLoaderData();
   const reduce = useReducedMotion();
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
 
@@ -129,56 +126,24 @@ function VehiclePage() {
 
   const alternatives = ranked.filter(item => item.vehicle.id !== v.id).slice(0, 3);
 
+  const t = v.two_wheel;
   const specs: { label: string; value: string }[] = [
     { label: "Tipo", value: typeLabel[v.vehicle_type] },
     { label: "Categoria", value: categoryLabel(v.category) },
-    ...(v.pricing.new_price_estimate
-      ? [{ label: "Prezzo indicativo nuovo", value: euro(v.pricing.new_price_estimate) }]
-      : []),
-    ...(v.powertrain?.fuel ? [{ label: "Alimentazione", value: fuelLabel(v.powertrain.fuel) }] : []),
-    ...(v.powertrain?.engine_cc ? [{ label: "Cilindrata", value: `${v.powertrain.engine_cc} cc` }] : []),
-    ...(v.dimensions?.length_mm ? [{ label: "Lunghezza", value: mm2cm(v.dimensions.length_mm)! }] : []),
-    ...(v.dimensions?.width_with_mirrors_mm
-      ? [{ label: "Larghezza con specchietti", value: mm2cm(v.dimensions.width_with_mirrors_mm)! }]
-      : []),
-    ...(v.dimensions?.height_mm ? [{ label: "Altezza", value: mm2cm(v.dimensions.height_mm)! }] : []),
-    ...(v.dimensions?.boot_liters ? [{ label: "Bagagliaio", value: `${v.dimensions.boot_liters} l` }] : []),
-    ...(v.motorcycle_specific?.seat_height_mm
-      ? [{ label: "Altezza sella", value: `${v.motorcycle_specific.seat_height_mm} mm` }]
-      : []),
-    ...(v.motorcycle_specific?.wet_weight_kg
-      ? [{ label: "Peso in ordine di marcia", value: `${v.motorcycle_specific.wet_weight_kg} kg` }]
-      : []),
-    ...(v.motorcycle_specific?.recommended_experience
-      ? [
-          {
-            label: "Esperienza consigliata",
-            value:
-              experienceLabels[v.motorcycle_specific.recommended_experience] ??
-              v.motorcycle_specific.recommended_experience,
-          },
-        ]
-      : []),
-    ...(v.scooter_specific?.wet_weight_kg
-      ? [{ label: "Peso in ordine di marcia", value: `${v.scooter_specific.wet_weight_kg} kg` }]
-      : []),
-    ...(v.scooter_specific?.underseat_storage_l
-      ? [{ label: "Sottosella", value: `${v.scooter_specific.underseat_storage_l} l` }]
-      : []),
-    ...(typeof v.scooter_specific?.helmet_storage_full_face === "boolean"
-      ? [
-          {
-            label: "Casco integrale sotto la sella",
-            value: v.scooter_specific.helmet_storage_full_face ? "Sì" : "No",
-          },
-        ]
-      : []),
+    ...(v.powertrain.fuel ? [{ label: "Alimentazione", value: fuelLabel(v.powertrain.fuel) }] : []),
+    ...(v.seats ? [{ label: "Posti", value: String(v.seats) }] : []),
+    ...(v.dimensions.length_mm ? [{ label: "Lunghezza", value: mm2cm(v.dimensions.length_mm)! }] : []),
+    ...(v.dimensions.height_mm ? [{ label: "Altezza", value: mm2cm(v.dimensions.height_mm)! }] : []),
+    ...(v.dimensions.boot_liters ? [{ label: "Bagagliaio", value: `${v.dimensions.boot_liters} l` }] : []),
+    ...(t?.seat_height_mm ? [{ label: "Altezza sella", value: `${t.seat_height_mm} mm` }] : []),
+    ...(t?.wet_weight_kg ? [{ label: "Peso in ordine di marcia", value: `${t.wet_weight_kg} kg` }] : []),
+    ...(t?.fuel_tank_capacity_liters ? [{ label: "Serbatoio", value: `${t.fuel_tank_capacity_liters} l` }] : []),
+    ...(t?.underseat_storage_liters ? [{ label: "Sottosella", value: `${t.underseat_storage_liters} l` }] : []),
   ];
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader label="Scheda veicolo" maxWidth="max-w-[70rem]" />
-      {v.mock && <p className="mx-auto max-w-[70rem] px-8 pt-5 text-xs text-muted-foreground">Demo: dati e punteggi simulati.</p>}
       <main className="mx-auto w-full max-w-[70rem] space-y-14 px-6 py-12 sm:px-8 lg:py-20">
         <motion.header
           initial={reduce ? { opacity: 1 } : { opacity: 0, y: 14 }}
@@ -253,6 +218,13 @@ function VehiclePage() {
                 </ul>
               </div>
             </div>
+          ) : v.vehicle_type !== "car" ? (
+            <p className="relative mt-10 border-t border-border/70 pt-8 text-sm text-muted-foreground">
+              Per moto e scooter DriveWise mostra il catalogo senza punteggio: il motore decisionale valuta solo le auto.{" "}
+              <Link to="/app/catalog" search={{ type: v.vehicle_type }} className="text-foreground underline underline-offset-4">
+                Torna al catalogo
+              </Link>
+            </p>
           ) : (
             <p className="relative mt-10 border-t border-border/70 pt-8 text-sm text-muted-foreground">
               Completa la{" "}
@@ -265,18 +237,10 @@ function VehiclePage() {
         </motion.header>
 
         {sections.length > 0 && (
-          <VSection title="I dati che contano" intro="Dati del catalogo e anteprime demo indicate nelle schede.">
+          <VSection title="I dati che contano" intro="Dati del catalogo DriveWise, con le fonti in fondo alla pagina.">
             <DynamicSections sections={sections} />
           </VSection>
         )}
-
-        <VSection title="Affidabilità" intro="Profilo tecnico DriveWise, scala 0-100.">
-          <ReliabilityPanel vehicle={v} />
-        </VSection>
-
-        <VSection title="Sicurezza e furti" intro="Anteprima del servizio di statistiche sui furti.">
-          <SecurityRisk vehicle={v} />
-        </VSection>
 
         {v.vehicle_type === "car" && v.dimensions?.length_mm && (
           <VSection title="Compatibilità garage" intro="Confronto fra le misure reali del veicolo e quelle del tuo garage.">
@@ -284,11 +248,13 @@ function VehiclePage() {
           </VSection>
         )}
 
-        <VSection title="Chiedi a DriveWise" intro="Risposte costruite solo sui dati di questo veicolo.">
-          <AskDriveWise vehicle={v} />
-        </VSection>
+        {v.vehicle_type === "car" && (
+          <VSection title="Chiedi a DriveWise" intro="Risposte costruite solo sui dati di questo veicolo.">
+            <AskDriveWise vehicle={v} />
+          </VSection>
+        )}
 
-        <VSection title="Specifiche" intro="Tutti i campi disponibili nel dataset.">
+        <VSection title="Specifiche" intro="Tutti i campi che il catalogo restituisce per questo veicolo.">
           <TechSpecs specs={specs} />
         </VSection>
 

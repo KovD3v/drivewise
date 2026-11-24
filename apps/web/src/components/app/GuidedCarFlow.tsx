@@ -4,7 +4,7 @@ import { EASE } from '@/lib/motion';
 import { MobilePanel } from './MobilePanel';
 import { useNavigate } from '@tanstack/react-router';
 import { createGuidedDecision, addGuidedDecisionTurn, fetchGuidedDecision, type GuidedDecisionResponse } from '@/api/drivewise';
-import { guidedRanking, toPreview } from '@/lib/decision-engine';
+import { guidedConfidence, guidedRanking, toPreview } from '@/lib/decision-engine';
 import { saveState } from '@/lib/decision-state';
 import type { DecisionProfile } from '@/lib/decision-profile';
 import { AppHeader } from './AppHeader';
@@ -61,8 +61,8 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const optionValue = (label: string) => choices.find(choice => choice.label === label)?.value ?? label;
   const ranking = response ? guidedRanking(response) : [];
   const completion = response ? Math.round(response.profileCompletion * 100) : Math.round((category === null ? 1 : 2) / 8 * 100);
-  // Before the first response this describes the intake only; backend confidence takes over after submission.
-  const confidence = response ? Math.round(response.decisionConfidence * 100) : Math.round((category && category !== 'Non lo so ancora' ? 2 : 1) / 6 * 100);
+  // Confidence belongs to the Guided Decision API: none is shown before its first answer.
+  const confidence = response ? guidedConfidence(response) : null;
   const known = response ? Object.entries(response?.decisionProfile ?? {}).flatMap(([key, fact]) => {
     if (!fact || !('value' in fact)) return [];
     const value = fact.value;
@@ -71,7 +71,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const persist = (next: GuidedDecisionResponse) => saveState({
     sessionId: next.decisionId, status: next.previewRanking.status === 'ready' ? 'ready' : 'collecting',
     currentStep: next.nextQuestion?.id ?? 'report', profile: guidedProfile(next), answers: {},
-    profileCompletion: Math.round(next.profileCompletion * 100), decisionConfidence: Math.round(next.decisionConfidence * 100),
+    profileCompletion: Math.round(next.profileCompletion * 100), decisionConfidence: guidedConfidence(next),
     rankingIds: guidedRanking(next).map(r => r.vehicle.id), updatedAt: Date.now(),
   });
   const submit = async (message: string) => {
