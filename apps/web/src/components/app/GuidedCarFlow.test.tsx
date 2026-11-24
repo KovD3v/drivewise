@@ -65,3 +65,35 @@ test.each([
   await waitFor(() => expect(addGuidedDecisionTurn).toHaveBeenCalledWith('decision-123', 'none', 1));
   expect(await screen.findByText(label)).toBeInTheDocument();
 });
+
+test('a failed turn whose resync brings a newer question never resends the old answer', async () => {
+  const { fetchGuidedDecision } = await import('@/api/drivewise');
+  vi.mocked(createGuidedDecision).mockResolvedValue(response);
+  vi.mocked(addGuidedDecisionTurn).mockRejectedValueOnce(new Error('Conflitto di versione'));
+  const newer = { ...response, profileVersion: 2, nextQuestion: { ...response.nextQuestion, id: 'annual_km', label: 'Quanti km fai?' } };
+  vi.mocked(fetchGuidedDecision).mockResolvedValue(newer);
+  render(<GuidedCarFlow initialQuery="Auto per la città" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Non lo so ancora' }));
+  await screen.findByPlaceholderText('Descrivi liberamente cosa cerchi');
+  fireEvent.click(screen.getByRole('button', { name: 'Invia risposta' }));
+  fireEvent.change(await screen.findByLabelText('Budget massimo?'), { target: { value: '18000' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Conflitto di versione');
+  await screen.findByLabelText('Quanti km fai?');
+  expect(screen.queryByRole('button', { name: 'Riprova' })).not.toBeInTheDocument();
+});
+
+test('a failed turn on an unchanged question still offers the retry', async () => {
+  const { fetchGuidedDecision } = await import('@/api/drivewise');
+  vi.mocked(createGuidedDecision).mockResolvedValue(response);
+  vi.mocked(addGuidedDecisionTurn).mockRejectedValueOnce(new Error('Servizio non disponibile')).mockResolvedValueOnce({ ...response, profileVersion: 2 });
+  vi.mocked(fetchGuidedDecision).mockResolvedValue(response);
+  render(<GuidedCarFlow initialQuery="Auto per la città" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Non lo so ancora' }));
+  await screen.findByPlaceholderText('Descrivi liberamente cosa cerchi');
+  fireEvent.click(screen.getByRole('button', { name: 'Invia risposta' }));
+  fireEvent.change(await screen.findByLabelText('Budget massimo?'), { target: { value: '18000' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Riprova' }));
+  await waitFor(() => expect(addGuidedDecisionTurn).toHaveBeenLastCalledWith('decision-123', '18000', 1));
+});

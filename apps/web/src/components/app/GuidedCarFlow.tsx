@@ -4,9 +4,8 @@ import { EASE } from '@/lib/motion';
 import { MobilePanel } from './MobilePanel';
 import { useNavigate } from '@tanstack/react-router';
 import { createGuidedDecision, addGuidedDecisionTurn, fetchGuidedDecision, type GuidedDecisionResponse } from '@/api/drivewise';
-import { guidedConfidence, guidedRanking, toPreview } from '@/lib/decision-engine';
+import { guidedConfidence, guidedProfile, guidedRanking, toPreview } from '@/lib/decision-engine';
 import { saveState } from '@/lib/decision-state';
-import type { DecisionProfile } from '@/lib/decision-profile';
 import { AppHeader } from './AppHeader';
 import { DecisionBar } from './DecisionBar';
 import { DecisionMessage, TypingIndicator } from './DecisionMessage';
@@ -35,15 +34,7 @@ const labels: Record<string, string> = {
   budget_eur: 'Budget', annual_km: 'Km annui', primary_use: 'Utilizzo', preferred_fuel_type: 'Alimentazione',
 };
 
-export function guidedProfile(response: GuidedDecisionResponse): DecisionProfile {
-  const value = (key: string) => response.decisionProfile[key]?.value;
-  return { vehicleType: 'car', decisionId: response.decisionId,
-    budgetMax: typeof value('budgetEur') === 'number' ? value('budgetEur') as number : undefined,
-    category: typeof value('category') === 'string' ? value('category') as string : undefined,
-    usage: typeof value('primaryUse') === 'string' ? [value('primaryUse') as string] : [],
-    priorities: Array.isArray(value('priorities')) ? value('priorities') as string[] : [],
-  };
-}
+export { guidedProfile };
 
 export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const navigate = useNavigate();
@@ -53,7 +44,8 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const [error, setError] = useState('');
-  const [retry, setRetry] = useState('');
+  // The answer to resend and the profile version it answered: a newer version means a new question.
+  const [retry, setRetry] = useState<{ message: string; version: number | null } | null>(null);
   const question = response?.nextQuestion;
   const choices = (question?.constraints?.options ?? []).map(value => ({
     value,
@@ -61,6 +53,11 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
       ? 'Nessun vincolo obbligatorio' : labels[value] ?? value,
   }));
   const optionValue = (label: string) => choices.find(choice => choice.label === label)?.value ?? label;
+  // "none" excludes every other option; constraint modes may all apply at once, priorities stay a top 3.
+  const exclusiveLabels = choices.filter(choice => choice.value === 'none').map(choice => choice.label);
+  const maxPicks = question?.id === 'constraint_modes' ? Math.max(choices.length, 1) : 3;
+  const currentVersion = response?.profileVersion ?? null;
+  const retryable = retry && retry.version === currentVersion ? retry : null;
   const ranking = response ? guidedRanking(response) : [];
   const completion = response ? Math.round(response.profileCompletion * 100) : Math.round((category === null ? 1 : 2) / 8 * 100);
   // Confidence belongs to the Guided Decision API: none is shown before its first answer.
@@ -81,17 +78,22 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
     const request = !response && category && category !== 'Non lo so ancora'
       ? `Cerco una ${category === 'Hatchback' ? 'compatta' : category}. ${message}` : message;
     if (request.length > 2000) { setError('Scrivi al massimo 2000 caratteri.'); return; }
-    inFlight.current = true; setBusy(true); setError(''); setRetry(message);
+    inFlight.current = true; setBusy(true); setError(''); setRetry({ message, version: response?.profileVersion ?? null });
     try {
       const next = response ? await addGuidedDecisionTurn(response.decisionId, message, response.profileVersion) : await createGuidedDecision(request);
       const answer = message.split(', ').map(value => choices.find(choice => choice.value === value)?.label ?? value).join(', ');
       setMessages(prev => [...prev, { prompt: question?.label ?? 'Raccontami cosa cerchi.', answer }]);
-      setResponse(next); persist(next); setRetry('');
+      setResponse(next); persist(next); setRetry(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Non riesco ad aggiornare il profilo. Riprova.');
       // Resync a possibly stale version before an explicit retry; never send a duplicate turn automatically.
       if (response) {
-        try { const latest = await fetchGuidedDecision(response.decisionId); setResponse(latest); persist(latest); } catch { /* keep the last confirmed state */ }
+        try {
+          const latest = await fetchGuidedDecision(response.decisionId);
+          setResponse(latest); persist(latest);
+          // The answer belonged to an older question: never resend it to the new one.
+          if (latest.profileVersion !== response.profileVersion) setRetry(null);
+        } catch { /* keep the last confirmed state */ }
       }
     } finally { inFlight.current = false; setBusy(false); }
   };
@@ -114,7 +116,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
               <DecisionMessage><p>{question?.label ?? (response ? 'Il tuo profilo è pronto.' : 'Raccontami cosa cerchi.')}</p><p className="text-muted-foreground">{question?.reason ?? (!response ? "Scrivi liberamente: userò le tue parole per pesare la scelta." : null)}</p></DecisionMessage>
               <div className="pl-[3.125rem]">
                 {question?.type === 'single_select' ? <QuickChoice key={`${response?.profileVersion}-${error}`} options={choices.map(choice => choice.label)} onSelect={label => void submit(optionValue(label))} /> :
-                question?.type === 'multi_select' ? <PrioritySelector key={`${response?.profileVersion}-${error}`} options={choices.map(choice => choice.label)} onConfirm={values => void submit(values.map(optionValue).join(', '))} /> :
+                question?.type === 'multi_select' ? <PrioritySelector key={`${response?.profileVersion}-${error}`} options={choices.map(choice => choice.label)} max={maxPicks} exclusive={exclusiveLabels} ranked={question.id !== 'constraint_modes'} onConfirm={values => void submit(values.map(optionValue).join(', '))} /> :
                 question?.type === 'number' ? <form onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); void submit(String(data.get('answer'))); }} className="flex flex-wrap gap-3">
                   <label className="sr-only" htmlFor="guided-number">{question.label}</label>
                   <input key={question.id} id="guided-number" name="answer" type="number" required min={question.constraints?.minimum ?? undefined} max={question.constraints?.maximum ?? undefined} step="1" placeholder={question.constraints?.unit ?? 'Valore'} className="h-12 min-w-0 rounded-full border border-border bg-card px-5" />
@@ -122,7 +124,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
                 </form> : (!response || question) ? <DecisionBar suggestions={response ? [] : ["Cerco un'auto per la famiglia", "Vorrei spendere poco di gestione", "Sto valutando un'elettrica"]} initialValue={response ? '' : initialQuery} placeholder="Descrivi liberamente cosa cerchi" onSubmit={v => void submit(v)} /> : null}
               </div>
             </StepStage>)}
-            {error && <div role="alert" className="rounded-2xl border border-destructive/30 bg-card p-5"><p>{error}</p>{retry && <button disabled={busy} onClick={() => void submit(retry)} className="mt-3 underline">Riprova</button>}</div>}
+            {error && <div role="alert" className="rounded-2xl border border-destructive/30 bg-card p-5"><p>{error}</p>{retryable && <button disabled={busy} onClick={() => void submit(retryable.message)} className="mt-3 underline">Riprova</button>}</div>}
             {response?.previewRanking.status === 'insufficient_inventory' && <p role="status" className="text-sm text-muted-foreground">Nessuna offerta verificata corrisponde al profilo. Puoi modificare budget o utilizzo.</p>}
             {ranking.length > 0 && <button disabled={busy} onClick={() => { if (response) { persist(response); void navigate({ to: '/app/report', search: { s: response.decisionId } }); } }} className="h-12 rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground">Mostrami il Decision Report</button>}
             {response && <DecisionBar placeholder="Aggiungi o correggi un'esigenza" disabled={busy} onSubmit={v => void submit(v)} />}

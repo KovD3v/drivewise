@@ -45,13 +45,24 @@ export function clearPendingAnalysis() {
 }
 
 // ponytail: saved reports stay in this browser until a user library API exists.
+function readSaved(key: string): SavedAnalysis[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed) ? (parsed as SavedAnalysis[]) : [];
+  } catch {
+    // Corrupted or unavailable storage: start from an empty library instead of crashing the page.
+    return [];
+  }
+}
+
 export async function saveAnalysis(draft: AnalysisDraft, userId: string) {
   const key = `drivewise_mock_analyses_${userId}`;
-  const rows: SavedAnalysis[] = JSON.parse(localStorage.getItem(key) ?? '[]');
+  const rows = readSaved(key);
   rows.unshift({ ...draft, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+  // A failed write throws on purpose: SaveAnalysisPrompt shows its error state instead of "saved".
   localStorage.setItem(key, JSON.stringify(rows));
 }
 export async function listSavedAnalyses(): Promise<SavedAnalysis[]> {
   const user = readMockUser();
-  return user ? JSON.parse(localStorage.getItem(`drivewise_mock_analyses_${user.id}`) ?? '[]') : [];
+  return user ? readSaved(`drivewise_mock_analyses_${user.id}`) : [];
 }

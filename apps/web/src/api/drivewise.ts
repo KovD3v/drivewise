@@ -1,19 +1,31 @@
 import type { components } from './schema.gen'
 
-// Only a build without VITE_API_BASE_URL talks to a separate local API. Vite inlines the
-// variable, so a build with VITE_API_BASE_URL=/api drops this fallback from its code.
-const PUBLIC_API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+/**
+ * The public base when VITE_API_BASE_URL is unset. A production build serves the API on the
+ * same origin under /api; only a local dev run talks to a separate API on 127.0.0.1:8000.
+ */
+export function defaultPublicApiBaseUrl(prod: boolean): string {
+  if (prod) return '/api'
+  // Vite folds import.meta.env.DEV to false in a production build, which drops the local URL from its code.
+  return import.meta.env.DEV ? 'http://127.0.0.1:8000' : '/api'
+}
 
-export type ApiBaseInput = { ssr: boolean; internalUrl?: string | undefined; publicUrl?: string | undefined }
+export type ApiBaseInput = {
+  ssr: boolean
+  internalUrl?: string | undefined
+  publicUrl?: string | undefined
+  /** Defaults to the build mode, `import.meta.env.PROD`. */
+  prod?: boolean | undefined
+}
 
 /**
  * The browser uses the public base (for one origin, "/api"). The server cannot
  * fetch a relative base, so server rendering needs API_INTERNAL_URL, which
  * Vercel injects for the API service and a local run sets by hand.
  */
-export function resolveApiBaseUrl({ ssr, internalUrl, publicUrl }: ApiBaseInput): string {
+export function resolveApiBaseUrl({ ssr, internalUrl, publicUrl, prod = Boolean(import.meta.env.PROD) }: ApiBaseInput): string {
   if (ssr && internalUrl) return internalUrl.replace(/\/$/, '')
-  const base = (publicUrl || PUBLIC_API_BASE_URL).replace(/\/$/, '')
+  const base = (publicUrl || defaultPublicApiBaseUrl(prod)).replace(/\/$/, '')
   if (ssr && base.startsWith('/')) {
     throw new Error(`API_INTERNAL_URL is required for server rendering when VITE_API_BASE_URL is "${base}".`)
   }
@@ -65,16 +77,28 @@ export async function analyzeModel(request: ModelAnalysisRequest): Promise<Model
   return postJson('/advisor/model-analysis', normalizeModelAnalysisRequest(request))
 }
 
+/** Server rendering waits at most this long for the API, so a slow API cannot hang a page. */
+export const SSR_FETCH_TIMEOUT_MS = 8000
+
+/** An abort signal for a server-rendering fetch; the browser keeps its own timeouts. */
+export function ssrFetchSignal(ssr: boolean, timeoutMs = SSR_FETCH_TIMEOUT_MS): AbortSignal | undefined {
+  return ssr ? AbortSignal.timeout(timeoutMs) : undefined
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
-  return readJson(await fetch(`${getApiBaseUrl()}${path}`))
+  const signal = ssrFetchSignal(Boolean(import.meta.env.SSR))
+  const url = `${getApiBaseUrl()}${path}`
+  return readJson(await (signal ? fetch(url, { signal }) : fetch(url)))
 }
 
 async function postJson<T>(path: string, body: object): Promise<T> {
+  const signal = ssrFetchSignal(Boolean(import.meta.env.SSR))
   return readJson(
     await fetch(`${getApiBaseUrl()}${path}`, {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
+      ...(signal ? { signal } : {}),
     }),
   )
 }

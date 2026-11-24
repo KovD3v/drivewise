@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
-import { analyzeModel, fetchVehicle, fetchVehicles, isApiNotFoundError, resolveApiBaseUrl } from './drivewise'
+import { analyzeModel, fetchVehicle, fetchVehicles, isApiNotFoundError, resolveApiBaseUrl, ssrFetchSignal } from './drivewise'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -129,4 +129,20 @@ test('server rendering uses API_INTERNAL_URL and refuses a relative base without
   expect(resolveApiBaseUrl({ ssr: true, internalUrl: 'http://api.internal/api/', publicUrl: '/api' })).toBe('http://api.internal/api')
   expect(() => resolveApiBaseUrl({ ssr: true, publicUrl: '/api' })).toThrow('API_INTERNAL_URL')
   expect(resolveApiBaseUrl({ ssr: true, publicUrl: 'http://127.0.0.1:8047' })).toBe('http://127.0.0.1:8047')
+})
+
+test('a production build defaults browser calls to /api; only a dev run uses the local API', () => {
+  expect(resolveApiBaseUrl({ ssr: false, prod: true })).toBe('/api')
+  expect(resolveApiBaseUrl({ ssr: false, prod: false })).toBe('http://127.0.0.1:8000')
+  expect(resolveApiBaseUrl({ ssr: false, prod: true, publicUrl: 'https://api.example.test/' })).toBe('https://api.example.test')
+  // A production server never falls back to the local API: it needs API_INTERNAL_URL.
+  expect(() => resolveApiBaseUrl({ ssr: true, prod: true })).toThrow('API_INTERNAL_URL')
+  expect(resolveApiBaseUrl({ ssr: true, prod: true, internalUrl: 'http://api.internal/api' })).toBe('http://api.internal/api')
+})
+
+test('server-rendering fetches carry a timeout signal; browser fetches do not', () => {
+  expect(ssrFetchSignal(false)).toBeUndefined()
+  const signal = ssrFetchSignal(true)
+  expect(signal).toBeInstanceOf(AbortSignal)
+  expect(signal?.aborted).toBe(false)
 })

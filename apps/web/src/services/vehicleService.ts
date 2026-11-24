@@ -99,11 +99,14 @@ type SourceRef = Pick<SourceProvenance | AdvisorMetricProvenance | ListPrice, "s
 export function creditsFrom(sources: (SourceRef | null | undefined)[]): Credit[] {
   const byName = new Map<string, Credit>();
   for (const source of sources) {
-    if (!source || byName.has(source.source_name)) continue;
+    if (!source) continue;
+    const known = byName.get(source.source_name);
+    // One source can appear on several facts: an earlier record without a link or licence
+    // must not hide the one a later record carries.
     byName.set(source.source_name, {
       name: source.source_name,
-      url: source.source_url || null,
-      license: source.source_license,
+      url: known?.url || source.source_url || null,
+      license: known?.license || source.source_license || null,
     });
   }
   return [...byName.values()];

@@ -12,8 +12,9 @@ export const contextualSuggestions = [
 
 const NO_DATA = "Questo dato non è presente nel catalogo DriveWise: preferiamo non stimarlo.";
 
-export async function datasetAnswer(_question: string, v: Vehicle): Promise<string> {
-  const response = await analyzeModel({ vehicle_id: v.id, analysis_scope: ["price", "maintenance", "red_flags", "tco"] });
+/** `specId` is the version on screen, so the analysis prices that version and not the default one. */
+export async function datasetAnswer(_question: string, v: Vehicle, specId?: string): Promise<string> {
+  const response = await analyzeModel({ vehicle_id: v.id, spec_id: specId, analysis_scope: ["price", "maintenance", "red_flags", "tco"] });
   const costs = response.estimated_costs;
   return [
     costs.market_reference_price_eur !== null ? `Prezzo di riferimento: ${euro(costs.market_reference_price_eur)}.` : "",

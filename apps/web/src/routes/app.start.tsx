@@ -56,7 +56,9 @@ function AppStart() {
 
   useEffect(() => {
     track("app_start_view");
-    const text = query?.trim() || takeInitialQuery() || "";
+    // Always consume the landing search, even when ?q= wins, so it never hijacks a later visit.
+    const stored = takeInitialQuery();
+    const text = query?.trim() || stored || "";
     setInitialQuery(text);
     clearState();
     const inferred = vehicleTypeFromText(text);

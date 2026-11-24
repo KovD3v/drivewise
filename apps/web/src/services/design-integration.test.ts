@@ -4,7 +4,7 @@ import type { VehicleDetail } from '@/api/drivewise';
 
 const sampleDetail = carDetail as VehicleDetail;
 import { createGuidedDecision, addGuidedDecisionTurn } from '@/api/drivewise';
-import { fromApiVehicle, getVehicleById, getVehiclesByType } from './vehicleService';
+import { creditsFrom, fromApiVehicle, getVehicleById, getVehiclesByType } from './vehicleService';
 import { loadDecisionReport, rankVehicles, toPreview } from '@/lib/decision-engine';
 import scooterDetail from '@/test/fixtures/scooter-detail.synthetic.json';
 import { saveAnalysis, listSavedAnalyses } from '@/lib/saved-analyses';
@@ -113,4 +113,21 @@ test('a vehicle with several versions shows the facts of the version the Advisor
   // No scored version, or one the catalogue no longer lists: the default version, which the API lists first.
   expect(fromApiVehicle(detail).powertrain.fuel).toBe('petrol');
   expect(fromApiVehicle(detail, 'spec-gone').powertrain.fuel).toBe('petrol');
+});
+
+test('saved analyses survive corrupted browser storage', async () => {
+  signInMock();
+  const userKey = 'drivewise_mock_analyses_demo-local';
+  localStorage.setItem(userKey, '{not json');
+  expect(await listSavedAnalyses()).toEqual([]);
+  localStorage.setItem(userKey, '{"not":"an array"}');
+  expect(await listSavedAnalyses()).toEqual([]);
+});
+
+test('credits merge the link and licence of one source named by several facts', () => {
+  const credits = creditsFrom([
+    { source_name: 'Registro demo', source_url: null, source_license: null },
+    { source_name: 'Registro demo', source_url: 'https://example.test/registro', source_license: 'CC-BY-4.0' },
+  ] as Parameters<typeof creditsFrom>[0]);
+  expect(credits).toEqual([{ name: 'Registro demo', url: 'https://example.test/registro', license: 'CC-BY-4.0' }]);
 });

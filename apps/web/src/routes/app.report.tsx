@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, Minus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Minus } from "lucide-react";
 import { AppHeader } from "@/components/app/AppHeader";
 import { ScoreCelebration } from "@/components/app/ScoreCelebration";
 import { SaveAnalysisPrompt } from "@/components/app/SaveAnalysisPrompt";
@@ -9,14 +9,16 @@ import { DynamicSections } from "@/components/vehicle/DynamicSections";
 import { VSection } from "@/components/vehicle/primitives";
 import { PriceLine } from "@/components/vehicle/PriceLine";
 import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts";
-import { loadDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
+import { loadDecisionReport, loadGuidedDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
 import {
   dnaLabels,
   usageLabels,
   vehicleTypeLabels,
   type DecisionProfile,
 } from "@/lib/decision-profile";
-import { loadState } from "@/lib/decision-state";
+import { clearState, loadState } from "@/lib/decision-state";
+import { formatResultLabel } from "@/lib/model-analysis-labels";
+import { safeHttpsUrl } from "@/lib/safe-url";
 import { EASE } from "@/lib/motion";
 import { buildReportSections } from "@/lib/report-sections";
 import { useCountUp } from "@/lib/use-count-up";
@@ -87,33 +89,42 @@ function ReportPage() {
 
   useEffect(() => {
     let alive = true;
-    let tries = 0;
-
-    const run = () => {
-      const state = loadState();
-      // Se il wizard ha passato un sessionId, aspetta che lo stato scritto
-      // corrisponda esattamente a quella sessione (mai dati stantii).
-      if (!state || (s && state.sessionId !== s)) {
-        if (s && tries < 40) {
-          tries += 1;
-          window.setTimeout(() => {
-            if (alive) run();
-          }, 50);
-          return;
-        }
-        if (alive) setRanking([]);
-        return;
-      }
-      setProfile(state.profile);
-      // Ranking and confidence come from the Guided Decision API, never from local storage.
-      void loadDecisionReport(state.profile).then((report) => {
-        if (!alive) return;
-        setConfidence(report.confidence);
-        setRanking(report.ranking);
-      }).catch(e => { if (alive) { setError(e instanceof Error ? e.message : 'Report non disponibile.'); setRanking([]); } });
+    // A new decision id starts from a clean slate: no result or error of the previous one lingers.
+    setError("");
+    setRanking(null);
+    setConfidence(null);
+    setProfile(null);
+    const fail = (e: unknown) => {
+      if (!alive) return;
+      setError(e instanceof Error ? e.message : "Report non disponibile.");
+      setRanking([]);
     };
 
-    run();
+    if (s) {
+      // The URL names the decision: the Guided Decision API alone describes it, so a shared or
+      // reopened link works in any browser, with or without local state.
+      void loadGuidedDecisionReport(s).then((report) => {
+        if (!alive) return;
+        setProfile(report.profile);
+        setConfidence(report.confidence);
+        setRanking(report.ranking);
+      }).catch(fail);
+    } else {
+      // Without ?s= the last decision saved in this browser is the only fallback.
+      const state = loadState();
+      if (!state) {
+        setRanking([]);
+      } else {
+        setProfile(state.profile);
+        // Ranking and confidence come from the Guided Decision API, never from local storage.
+        void loadDecisionReport(state.profile).then((report) => {
+          if (!alive) return;
+          setConfidence(report.confidence);
+          setRanking(report.ranking);
+        }).catch(fail);
+      }
+    }
+
     return () => {
       alive = false;
     };
@@ -148,7 +159,15 @@ function ReportContent({
 }) {
   const reduce = useReducedMotion();
   const winner = ranking[0]!;
-  const { s: sessionId } = Route.useSearch();
+  const { s: searchSessionId } = Route.useSearch();
+  const sessionId = searchSessionId ?? profile.decisionId;
+  const offerUrl = safeHttpsUrl(winner.offer?.source_url);
+  const checks = [
+    ...(winner.warnings ?? []).map(formatResultLabel),
+    ...((winner.missingFactors ?? []).length
+      ? [`Dati mancanti nel catalogo: ${(winner.missingFactors ?? []).map(formatResultLabel).join(", ")}.`]
+      : []),
+  ];
   const shownConfidence = useCountUp(confidence, reduce ? 0 : 1400, !!reduce);
   const [celebrated, setCelebrated] = useState(false);
   const alternatives = ranking.slice(1, 5);
@@ -195,7 +214,7 @@ function ReportContent({
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">{categoryLabel(winner.vehicle.category)}</p>
             <PriceLine vehicle={winner.vehicle} className="mt-1 text-sm text-muted-foreground" />
-            {winner.offer && <p className="mt-3 text-sm text-muted-foreground">{winner.offer.title} · {winner.offer.condition === 'new' ? 'Nuova' : 'Usata'} · {winner.offer.price_eur.toLocaleString('it-IT')} €{winner.offer.source_url && <> · <a href={winner.offer.source_url} target="_blank" rel="noopener noreferrer" className="underline">Vedi offerta</a></>}</p>}
+            {winner.offer && <p className="mt-3 text-sm text-muted-foreground">{winner.offer.title} · {winner.offer.condition === 'new' ? 'Nuova' : 'Usata'} · {winner.offer.price_eur.toLocaleString('it-IT')} €{offerUrl && <> · <a href={offerUrl} target="_blank" rel="noopener noreferrer" className="underline">Vedi offerta</a></>}</p>}
             <p className="mt-3 text-sm text-muted-foreground">
               Affidabilità della scelta {shownConfidence}%
             </p>
@@ -250,6 +269,20 @@ function ReportContent({
             </div>
           </div>
 
+          {checks.length > 0 && (
+            <div className="relative mt-8 rounded-2xl border border-border/70 bg-background p-5 text-left">
+              <h2 className="text-sm font-semibold">Da verificare su questo veicolo</h2>
+              <ul className="mt-3 space-y-2">
+                {checks.map((c) => (
+                  <li key={c} className="flex gap-3 text-sm text-muted-foreground first-letter:uppercase">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {winner.vehicle.list_price && (
             <div className="relative mt-10 text-left">
               <h2 className="mb-4 text-sm font-semibold">Prezzo di listino</h2>
@@ -261,21 +294,27 @@ function ReportContent({
 
           <div className="relative mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Button
-              type="button"
-              disabled
-              className="h-auto min-h-14 w-full gap-3 whitespace-normal rounded-full px-6 py-3 text-[0.95rem] font-semibold leading-snug disabled:opacity-70"
+              asChild
+              className="h-auto min-h-14 w-full gap-3 whitespace-normal rounded-full px-6 py-3 text-[0.95rem] font-semibold leading-snug"
             >
-              <span className="min-w-0 text-center">Apri la scheda {winner.vehicle.model}</span>
-              <ArrowRight className="size-4 shrink-0" aria-hidden />
+              <Link
+                to="/app/vehicle/$id"
+                params={{ id: winner.vehicle.id }}
+                search={{ spec: winner.specId, s: sessionId }}
+              >
+                <span className="min-w-0 text-center">Apri la scheda {winner.vehicle.model}</span>
+                <ArrowRight className="size-4 shrink-0" aria-hidden />
+              </Link>
             </Button>
             <Button
-              type="button"
+              asChild
               variant="outline"
-              disabled
-              className="h-auto min-h-14 w-full gap-3 whitespace-normal rounded-full border-border/70 bg-card px-6 py-3 text-[0.95rem] font-semibold leading-snug disabled:opacity-70"
+              className="h-auto min-h-14 w-full gap-3 whitespace-normal rounded-full border-border/70 bg-card px-6 py-3 text-[0.95rem] font-semibold leading-snug"
             >
-              <ArrowLeft className="size-4 shrink-0" aria-hidden />
-              <span className="min-w-0 text-center">Rifai la Scelta Guidata</span>
+              <Link to="/app/start" onClick={clearState}>
+                <ArrowLeft className="size-4 shrink-0" aria-hidden />
+                <span className="min-w-0 text-center">Rifai la Scelta Guidata</span>
+              </Link>
             </Button>
           </div>
         </motion.article>
@@ -297,6 +336,7 @@ function ReportContent({
                   <Link
                     to="/app/vehicle/$id"
                     params={{ id: a.vehicle.id }}
+                    search={{ spec: a.specId, s: sessionId }}
                     className="flex w-full min-h-11 min-w-0 items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card px-4 py-3.5 text-sm transition-colors hover:border-primary/40"
                   >
                     <span className="min-w-0 flex-1">
