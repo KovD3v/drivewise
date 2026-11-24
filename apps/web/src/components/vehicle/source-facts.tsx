@@ -80,7 +80,7 @@ export function listPriceRows(price: ListPrice) {
 export function ListPricePanel({ price }: { price: ListPrice }) {
   return (
     <Card>
-      <KeyValue rows={listPriceRows(price)} />
+      <KeyValue rows={listPriceRows(price)} columns={1} />
       <ul className="mt-5 space-y-2 text-[0.85rem] text-muted-foreground">
         {listPriceNotes(price).map((note) => (
           <li key={note}>{note}</li>

@@ -71,6 +71,7 @@ const EMPTY_CONSUMPTION: Consumption = {
 };
 
 type SpecInput = {
+  fuel_type?: string | null;
   cargo_volume_liters?: number | null;
   seats?: number | null;
   consumption_l_100km?: number | null;
@@ -119,7 +120,8 @@ export function fromApiVehicle(v: ApiVehicleInput): Vehicle {
     category: v.body_style ?? UNKNOWN_CATEGORY,
     pricing: { new_price_estimate: v.base_price_eur, currency: "EUR" },
     list_price: spec?.list_price ?? null,
-    powertrain: { fuel: v.fuel_type },
+    // Catalog v2 keeps the fuel on the version; a legacy row keeps it on the vehicle.
+    powertrain: { fuel: v.fuel_type ?? spec?.fuel_type ?? null },
     seats: spec?.seats ?? null,
     dimensions: {
       boot_liters: spec?.cargo_volume_liters ?? null,

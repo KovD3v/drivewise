@@ -72,9 +72,9 @@ export function Bar({ value, label, suffix }: { value: number; label: string; su
   );
 }
 
-export function KeyValue({ rows }: { rows: { label: string; value: string }[] }) {
+export function KeyValue({ rows, columns = 2 }: { rows: { label: string; value: string }[]; columns?: 1 | 2 }) {
   return (
-    <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+    <dl className={cn("grid gap-x-8 gap-y-4", columns === 2 && "sm:grid-cols-2")}>
       {rows.map((r) => (
         <div key={r.label} className="flex items-baseline justify-between gap-4 border-b border-border/60 pb-3">
           <dt className="text-[0.85rem] text-muted-foreground">{r.label}</dt>

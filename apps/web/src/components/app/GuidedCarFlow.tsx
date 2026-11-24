@@ -29,6 +29,8 @@ const labels: Record<string, string> = {
   diesel: 'Diesel', electric: 'Elettrica', full_hybrid_petrol: 'Full hybrid', hybrid_petrol: 'Ibrida', mild_hybrid_petrol: 'Mild hybrid', petrol: 'Benzina', petrol_lpg: 'GPL',
   garage: 'Garage', covered_space: 'Posto auto coperto', outdoor_space: 'Posto auto scoperto', none: 'Nessun posto auto',
   price: 'Prezzo', efficiency_range: 'Autonomia', space: 'Spazio', running_cost: 'Costi di gestione',
+  // constraint_modes options: which answers are hard constraints.
+  budget: 'Budget massimo', body_style: 'Carrozzeria', fuel_type: 'Alimentazione', transmission: 'Cambio',
   budgetEur: 'Budget', annualKm: 'Km annui', primaryUse: 'Utilizzo', category: 'Categoria', condition: 'Condizione', preferredFuelType: 'Alimentazione', priorities: 'Priorità', parking: 'Parcheggio', vehicleType: 'Tipo veicolo', car: 'Auto',
   budget_eur: 'Budget', annual_km: 'Km annui', primary_use: 'Utilizzo', preferred_fuel_type: 'Alimentazione',
 };

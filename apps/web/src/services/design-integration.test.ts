@@ -99,3 +99,8 @@ test('ranking preserves complete-first backend order, ties and assessment status
   expect(ranking[2].decisionStatus).toBe('insufficient_data');
   expect(toPreview(ranking[2]).decisionStatus).toBe('insufficient_data');
 });
+
+test('a ranked version keeps the fuel the catalogue stores on the version', () => {
+  const vehicle = fromApiVehicle({ ...sampleDetail, fuel_type: null, specs: [{ ...sampleDetail.specs[0], fuel_type: 'petrol' }] });
+  expect(vehicle.powertrain.fuel).toBe('petrol');
+});

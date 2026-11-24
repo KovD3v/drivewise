@@ -126,7 +126,7 @@ function CompareColumn({ vehicle: v }: { vehicle: Vehicle }) {
         </h2>
         <PriceLine vehicle={v} className="mt-1 text-[0.9rem] text-muted-foreground" />
         <div className="mt-6">
-          <KeyValue rows={compareRows(v)} />
+          <KeyValue rows={compareRows(v)} columns={1} />
         </div>
       </Card>
       {v.list_price && <ListPricePanel price={v.list_price} />}

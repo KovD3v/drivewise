@@ -35,6 +35,8 @@ const garageVerdict: Record<Exclude<GarageFitResult, "unknown">, string> = {
 
 const decimal = (n: number) => n.toLocaleString("it-IT", { maximumFractionDigits: 1 });
 
+const withFuel = (v: Vehicle, text: string) => (v.powertrain.fuel ? `${fuelLabel(v.powertrain.fuel)} · ${text}` : text);
+
 export function buildReportSections(v: Vehicle, profile: DecisionProfile): ReportSection[] {
   const out: ReportSection[] = [];
   const num = (x: unknown): x is number => typeof x === "number";
@@ -62,7 +64,7 @@ export function buildReportSections(v: Vehicle, profile: DecisionProfile): Repor
       id: "consumption",
       label: "Consumo dichiarato",
       value: `${decimal(c.liquid_l_100km)} l/100 km`,
-      detail: `${fuelLabel(v.powertrain.fuel)} · ${basisLabel(c.liquid_basis)}`,
+      detail: withFuel(v, basisLabel(c.liquid_basis)),
       icon: "cost",
     });
   else if (num(c.energy_kwh_100km))
@@ -70,7 +72,7 @@ export function buildReportSections(v: Vehicle, profile: DecisionProfile): Repor
       id: "consumption",
       label: "Consumo dichiarato",
       value: `${decimal(c.energy_kwh_100km)} kWh/100 km`,
-      detail: `${fuelLabel(v.powertrain.fuel)} · ${basisLabel(c.energy_basis)}`,
+      detail: withFuel(v, basisLabel(c.energy_basis)),
       icon: "cost",
     });
 
