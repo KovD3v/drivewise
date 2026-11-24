@@ -445,6 +445,25 @@ def test_a_later_bundle_fills_an_unknown_body_style_with_its_evidence(
         "tavo-petrol",
         "tavo-electric",
     }
+    # The body style is credited to the snapshot that states it, the fuel to the
+    # variant's own identity evidence.
+    credited = {
+        (metric, row["source_key"])
+        for row in conn.execute(
+            """SELECT p.metadata->'supported_metrics' AS metrics, src.source_key
+               FROM catalog_read_provenance p
+               JOIN sources src ON src.id = p.source_id
+               JOIN vehicle_specs s ON s.id = p.spec_id
+               WHERE s.variant_key = 'tavo-petrol'
+                 AND p.metadata ? 'supported_metrics'
+                 AND NOT p.metadata ? 'decision_id'"""
+        ).fetchall()
+        for metric in row["metrics"]
+    }
+    assert credited == {
+        ("body_style", "coachwork-notes"),
+        ("fuel_type", "lumen-registry"),
+    }
 
 
 @pytest.mark.parametrize(
