@@ -12,6 +12,7 @@ import { useEffect } from 'react'
 import { PageTransition } from '@/components/transition/PageTransition'
 import { CONTACT_SOURCE_KEY } from '@/lib/contact-intelligence'
 import { AppHeader } from '@/components/app/AppHeader'
+import { DemoNotice } from '@/components/app/DemoNotice'
 
 import appStyles from '../styles.css?url'
 
@@ -91,6 +92,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
+        <DemoNotice />
         {children}
         <Scripts />
       </body>
