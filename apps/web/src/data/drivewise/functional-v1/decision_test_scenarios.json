@@ -1,0 +1,149 @@
+[
+  {
+    "id": "CAR_GARAGE_KNOWN",
+    "vehicle_type": "car",
+    "profile": {
+      "garage_status": "known"
+    },
+    "expected": {
+      "garage_section": true
+    }
+  },
+  {
+    "id": "CAR_GARAGE_UNKNOWN",
+    "vehicle_type": "car",
+    "profile": {
+      "garage_status": "unknown_dimensions"
+    },
+    "expected": {
+      "garage_section": false
+    }
+  },
+  {
+    "id": "CAR_NO_GARAGE",
+    "vehicle_type": "car",
+    "profile": {
+      "garage_status": "none"
+    },
+    "expected": {
+      "garage_section": false
+    }
+  },
+  {
+    "id": "CAR_THEFT_AWARE",
+    "vehicle_type": "car",
+    "profile": {
+      "priorities": [
+        "theft_risk",
+        "reliability",
+        "running_cost"
+      ],
+      "region": "Lazio"
+    },
+    "expected": {
+      "report_sections": [
+        "theft_risk"
+      ]
+    }
+  },
+  {
+    "id": "MOTO_BEGINNER_SHORT",
+    "vehicle_type": "motorcycle",
+    "profile": {
+      "experience": "beginner",
+      "rider_height_cm": 165
+    },
+    "expected": {
+      "report_sections": [
+        "seat_height",
+        "wet_weight",
+        "experience_fit"
+      ]
+    }
+  },
+  {
+    "id": "MOTO_TOURING",
+    "vehicle_type": "motorcycle",
+    "profile": {
+      "usage": [
+        "touring"
+      ],
+      "passenger_frequent": true
+    },
+    "expected": {
+      "report_sections": [
+        "passenger",
+        "wind_protection"
+      ]
+    }
+  },
+  {
+    "id": "SCOOTER_STORAGE",
+    "vehicle_type": "scooter",
+    "profile": {
+      "helmet_storage_required": true
+    },
+    "expected": {
+      "report_sections": [
+        "underseat",
+        "agility"
+      ]
+    }
+  },
+  {
+    "id": "SCOOTER_RINGROAD",
+    "vehicle_type": "scooter",
+    "profile": {
+      "usage": [
+        "ring_road"
+      ]
+    },
+    "expected": {
+      "report_sections": [
+        "ring_road_fit"
+      ]
+    }
+  },
+  {
+    "id": "SCOOTER_THEFT_AWARE",
+    "vehicle_type": "scooter",
+    "profile": {
+      "priorities": [
+        "theft_risk",
+        "running_cost",
+        "agility"
+      ],
+      "region": "Lazio"
+    },
+    "expected": {
+      "report_sections": [
+        "theft_risk"
+      ]
+    }
+  },
+  {
+    "id": "RESET_AUTO",
+    "vehicle_type": "car",
+    "profile": {},
+    "expected": {
+      "new_session_required": true,
+      "profile_completion": 0
+    }
+  },
+  {
+    "id": "RESET_MOTO",
+    "vehicle_type": "motorcycle",
+    "profile": {},
+    "expected": {
+      "new_session_required": true
+    }
+  },
+  {
+    "id": "RESET_SCOOTER",
+    "vehicle_type": "scooter",
+    "profile": {},
+    "expected": {
+      "new_session_required": true
+    }
+  }
+]

@@ -1,0 +1,52 @@
+import {
+  Car,
+  History,
+  Bell,
+  GitCompare,
+  Wallet,
+  Wrench,
+  Activity,
+  FolderClosed,
+  Sparkles,
+  Users,
+  Euro,
+  ShieldCheck,
+  MessagesSquare,
+  TrendingUp,
+  ArrowUpRight,
+  Radar,
+  BarChart3,
+  Medal,
+  CheckCircle2,
+  Heart,
+  Gauge,
+  type LucideIcon,
+} from "lucide-react";
+
+const MAP: Record<string, LucideIcon> = {
+  car: Car,
+  history: History,
+  bell: Bell,
+  compare: GitCompare,
+  wallet: Wallet,
+  wrench: Wrench,
+  pulse: Activity,
+  folder: FolderClosed,
+  spark: Sparkles,
+  users: Users,
+  euro: Euro,
+  shield: ShieldCheck,
+  chat: MessagesSquare,
+  trend: TrendingUp,
+  arrowup: ArrowUpRight,
+  smart: Radar,
+  chart: BarChart3,
+  medal: Medal,
+  check: CheckCircle2,
+  heart: Heart,
+  ring: Gauge,
+};
+
+export function featureIcon(name: string): LucideIcon {
+  return MAP[name] ?? Sparkles;
+}

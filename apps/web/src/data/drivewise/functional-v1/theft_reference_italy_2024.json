@@ -1,0 +1,45 @@
+{
+  "scope": "Italy",
+  "data_year": 2024,
+  "vehicle_thefts_total": 136201,
+  "two_wheel_thefts_total": 31713,
+  "two_wheel_recovery_rate_pct": 43,
+  "top_regions_all_vehicles": {
+    "Campania": 31428,
+    "Lazio": 24153,
+    "Sicilia": 19622,
+    "Puglia": 16013,
+    "Lombardia": 14694
+  },
+  "top_regions_two_wheels": {
+    "Lazio": 6419,
+    "Campania": 6008,
+    "Sicilia": 4820,
+    "Lombardia": 4397,
+    "Puglia": 1407
+  },
+  "model_observed_counts": {
+    "Fiat Panda": 13311,
+    "Fiat 500": 5254,
+    "Lancia Ypsilon": 5048,
+    "Citroen C3": 1917,
+    "Volkswagen Golf": 1608,
+    "Jeep Renegade": 2192,
+    "Fiat 500X": 2168,
+    "Peugeot 3008": 737,
+    "Honda SH": 8050,
+    "Piaggio Liberty": 2757,
+    "Aprilia Scarabeo": 1913,
+    "Kymco Agility": 1729,
+    "Piaggio Vespa": 1559,
+    "Yamaha TMAX": 1415
+  },
+  "model_recovery_rates_pct": {
+    "Fiat Panda": 54,
+    "Fiat 500": 53,
+    "Lancia Ypsilon": 55,
+    "Yamaha TMAX": 32
+  },
+  "warning": "I volumi assoluti non equivalgono alla probabilità di furto.",
+  "source": "ANIASA / LoJack, Dossier Furti Veicoli 2025, dati 2024"
+}
