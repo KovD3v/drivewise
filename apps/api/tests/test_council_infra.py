@@ -225,17 +225,30 @@ def test_pool_retries_once_when_a_pooled_connection_is_dead(monkeypatch):
     assert pool._created == 1
 
 
-def test_pool_gives_up_after_two_dead_connections(monkeypatch):
+def test_pool_skips_every_dead_idle_connection(monkeypatch):
+    pool, created, _ = make_pool(monkeypatch, max_size=2)
+    with pool.connection(), pool.connection():
+        pass
+    for conn in created:
+        conn.fail_execute = True  # a suspended compute dropped them all
+
+    with pool.connection() as conn:
+        assert conn is created[2]
+    assert created[0].closed and created[1].closed
+    assert pool._created == 1
+
+
+def test_pool_gives_up_when_new_connections_are_dead_too(monkeypatch):
     def dead():
         conn = FakeConnection()
         conn.fail_execute = True
         return conn
 
-    pool, created, _ = make_pool(monkeypatch, factory=dead)
+    pool, created, _ = make_pool(monkeypatch, max_size=2, factory=dead)
     with pytest.raises(pool_module.psycopg.OperationalError):
         with pool.connection():
             pass
-    assert len(created) == 2
+    assert len(created) == 3  # bounded: max_size + 1 attempts
     assert pool._created == 0
 
 

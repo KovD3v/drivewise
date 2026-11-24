@@ -109,15 +109,19 @@ class DatabaseConnectionPool:
 
         The preamble is the first round trip, so it also finds a pooled
         connection the server dropped while idle. No request work has run
-        yet, so one retry on a fresh connection is safe.
+        yet, so retrying is safe. When a suspended compute drops every idle
+        connection at once, each retry discards one, so max_size + 1 attempts
+        always reach a newly created connection. A failed connect is not
+        retried: it raises from _acquire.
         """
-        for attempt in range(2):
+        attempts = self.max_size + 1
+        for attempt in range(attempts):
             conn = self._acquire()
             try:
                 conn.execute(TRANSACTION_TIMEOUTS_SQL)
             except psycopg.OperationalError:
                 self._discard(conn)
-                if attempt == 1:
+                if attempt == attempts - 1:
                     raise
             except BaseException:
                 self._discard(conn)
