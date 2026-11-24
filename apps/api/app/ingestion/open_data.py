@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
 from app.ingestion.catalog_v2 import METRIC_UNITS, CatalogV2
@@ -24,6 +24,9 @@ RDW_URL = "https://opendata.rdw.nl/resource"
 RDW_VEHICLES = "m9d7-ebf2"
 RDW_APPROVAL_ENERGY = "gr7t-qfnb"
 RDW_FUEL = "8ys7-d773"
+MOTOSPECDB_URL = "https://motospecdb.com/api/v1/bikes.json"
+# Two-wheelers are looked up among the Dutch registrations from this year on.
+TWO_WHEEL_SINCE_YEAR = 2024
 TOP_FAMILIES = 100
 NAME_BUCKETS = 450
 POWERTRAIN_BUCKETS = 30
@@ -54,6 +57,11 @@ SINGLE_VALUED = {
     "seats",
 }
 CAR_DIMENSIONS = ("lengte", "breedte", "hoogte_voertuig", "aantal_zitplaatsen")
+# RDW records the EU bodywork code ("inrichting"), a legal class, not the body style a
+# buyer means. On the 2024 Italian top 100 it calls the Golf hatchback "stationwagen",
+# the Panda and the Model Y "MPV", and the Corolla Cross and the Vitara "hatchback".
+# Only "sedan" names one of the catalogue's body styles; the other codes stay unknown.
+RDW_BODY_STYLES = {"sedan": "sedan"}
 
 SOURCES = [
     {
@@ -77,6 +85,20 @@ SOURCES = [
         "url": "https://opendata.rdw.nl/",
         "license": "Public domain, as declared in the RDW dataset metadata (CC0).",
         "notes": "Dutch registry; values are matched by EU type-approval version.",
+    },
+    {
+        "source_key": "motospecdb",
+        "name": "MotoSpecDB open specification dataset",
+        "source_type": "public_dataset",
+        "market": "GLOBAL",
+        "ranking_permission": "manual_validation_only",
+        "url": "https://motospecdb.com/en/open-data/",
+        "license": "Creative Commons Attribution 4.0 (CC BY 4.0), commercial reuse "
+        "allowed. Attribution: MotoSpecDB (https://motospecdb.com), with a link to "
+        "the model page.",
+        "notes": "Published by Campdal Studio. Each entry cites an owner's manual; the "
+        "values are not verified beyond that citation. Only measured fields are "
+        "imported (seat height, wet weight, fuel tank); estimated fields are ignored.",
     },
 ]
 
@@ -103,9 +125,15 @@ DATASET_GAPS = [
     ),
     (
         "car",
-        "body_style, generation, model_year",
+        "generation, model_year",
         "not_in_source",
         "Left unknown, not guessed.",
+    ),
+    (
+        "car",
+        "body_style",
+        "rdw_body_code_not_catalogue",
+        "RDW gives the EU bodywork code; only sedan matches a catalogue body style.",
     ),
     (
         "all",
@@ -127,15 +155,10 @@ DATASET_GAPS = [
     ),
     (
         "two_wheeler",
-        "seat_height_mm, fuel_tank_capacity_liters",
-        "no_verified_source",
-        "One open dataset has them but its origin is unverified.",
-    ),
-    (
-        "two_wheeler",
-        "wet_weight_kg",
-        "not_in_source",
-        "RDW gives mass in running order; it is not verified to equal wet weight.",
+        "seat_height_mm, fuel_tank_capacity_liters, mass_kg (wet)",
+        "unverified_origin",
+        "From MotoSpecDB only where one entry fits one model; it cites owner's "
+        "manuals and is not otherwise verified.",
     ),
     (
         "two_wheeler",
@@ -149,12 +172,12 @@ DATASET_GAPS = [
         "hand_made_list",
         "The model list is hand-made; RDW proves the EU approval, not Italian sale.",
     ),
-    ("all", "source_review", "unsigned", "Both sources stay manual_validation_only."),
+    ("all", "source_review", "unsigned", "Every source stays manual_validation_only."),
     (
         "all",
         "attribution",
         "no_ui_location",
-        "The EEA terms need a visible credit to the EEA in the product.",
+        "The EEA and MotoSpecDB terms need a visible credit in the product.",
     ),
 ]
 
@@ -231,14 +254,35 @@ EEA_STATS = {
 }
 
 
+def _approval_prefixes(approvals: list[str]) -> list[dict]:
+    return [{"prefix": {"TAN": f"{approval}*"}} for approval in sorted(approvals)]
+
+
 def family_request(family: dict) -> Request:
     by_make: dict[str, list[str]] = {}
+    split = family.get("approvals", {})
     for make, name in family["names"]:
-        by_make.setdefault(make, []).append(name)
+        if (make, name) not in split:
+            by_make.setdefault(make, []).append(name)
     should = [
         {"bool": {"filter": [{"term": {"Mk": make}}, {"terms": {"Cn": sorted(names)}}]}}
         for make, names in sorted(by_make.items())
     ]
+    # A name shared by two models is split by type approval (see resolve_families).
+    for (make, name), (kind, approvals) in sorted(split.items()):
+        clause = {"filter": [{"term": {"Mk": make}}, {"term": {"Cn": name}}]}
+        if kind == "only":
+            clause["filter"].append(
+                {
+                    "bool": {
+                        "should": _approval_prefixes(approvals),
+                        "minimum_should_match": 1,
+                    }
+                }
+            )
+        else:
+            clause["must_not"] = _approval_prefixes(approvals)
+        should.append({"bool": clause})
     source = {
         "size": 0,
         "query": {
@@ -307,6 +351,23 @@ def rdw_car_request(tan: str, variant: str, version: str) -> Request:
     )
 
 
+def rdw_body_request(tan: str, variant: str, version: str) -> Request:
+    """The registered body style of one version: RDW records the EU bodywork code."""
+    return Request(
+        f"rdw/car-body-{_short('|'.join((tan, variant, version)))}.json",
+        _rdw_url(
+            RDW_VEHICLES,
+            {
+                "$select": "merk,inrichting,count(*) as n",
+                "$where": _version_where(tan, variant, version),
+                "$group": "merk,inrichting",
+                "$order": "n desc,inrichting",
+                "$limit": 50,
+            },
+        ),
+    )
+
+
 def hybrid_plates_request(tan: str, variant: str, version: str) -> Request:
     """A few registered vehicles of one version: fuel data is published per vehicle."""
     return Request(
@@ -350,7 +411,7 @@ def two_wheel_versions_request(entry: dict) -> Request:
         f"AND merk={_soql(entry['rdw_merk'])} "
         f"AND handelsbenaming={_soql(entry['rdw_handelsbenaming'])} "
         f"AND cilinderinhoud={int(entry['displacement_cc'])} "
-        "AND datum_eerste_toelating>'20240101' "
+        f"AND datum_eerste_toelating>'{TWO_WHEEL_SINCE_YEAR}0101' "
         "AND typegoedkeuringsnummer IS NOT NULL AND variant IS NOT NULL "
         "AND uitvoering IS NOT NULL"
     )
@@ -420,6 +481,49 @@ def two_wheel_power_request(
     )
 
 
+def motospecdb_request() -> Request:
+    """The whole MotoSpecDB open dataset, one JSON file, fetched once per run."""
+    return Request("motospecdb/bikes.json", MOTOSPECDB_URL)
+
+
+# Measured MotoSpecDB fields only (ADR-016): est_* and seat_arch_factor are estimates.
+MOTOSPECDB_FACTS = (
+    ("seat_height_mm", "seat_height_mm", "mm", None),
+    ("mass_kg", "wet_weight_kg", "kg", {"method": "wet"}),
+    ("fuel_tank_capacity_liters", "fuel_tank_l", "l", None),
+)
+_YEARS = re.compile(r"^\s*(\d{4})\s*[\u2013-]\s*(\d{4}|Present)\s*$")
+
+
+def motospecdb_entry(
+    entry: dict, bikes: list[dict], until_year: int
+) -> tuple[dict | None, str | None]:
+    """The MotoSpecDB entry a person matched to this model, if it passes the rules.
+
+    The entry must describe one variant of one generation: a name joining variants
+    ("A / B") or several chassis codes is refused. Make and model come from the
+    hand-reviewed link; the chassis code must equal the Dutch commercial name, or
+    the years must cover every year of the Dutch registrations read."""
+    wanted = entry.get("motospecdb")
+    found = next((b for b in bikes if wanted and b.get("slug") == wanted), None)
+    if found is None:
+        return None, "motospecdb_no_entry"
+    if found.get("brand", "").casefold() != entry["make"].casefold():
+        return None, "motospecdb_brand_differs"
+    codes = found.get("chassis_codes") or []
+    if "/" in found.get("model", "") or len(codes) > 1:
+        return None, "motospecdb_combined_entry"
+    years = _YEARS.match(found.get("years_covered") or "")
+    covered = bool(years) and (
+        int(years[1]) <= TWO_WHEEL_SINCE_YEAR
+        and (years[2] == "Present" or int(years[2]) >= until_year)
+    )
+    same_code = slug(entry["rdw_handelsbenaming"]) in {slug(c) for c in codes}
+    if not covered and not same_code:
+        return None, "motospecdb_years_differ"
+    return found, None
+
+
 class Run:
     """A run directory: raw responses under artifacts/, described by manifest.json.
 
@@ -475,12 +579,27 @@ def resolve_families(
 ) -> tuple[list[dict], list[dict]]:
     """Map EEA (make, commercial name) pairs to hand-reviewed families.
 
+    A rule with `type_approvals` takes only the registrations under those approval
+    numbers: EEA and RDW both call the Corolla Cross "TOYOTA COROLLA". The family
+    holding the same name without that list then takes the other approvals. The
+    names list does not count approvals, so each part of a split name is ranked at
+    the name's total; powertrain_groups uses the exact total of its own response.
+
     Returns the top families by registrations and every unmapped name."""
-    exact, prefixes = {}, []
+    exact: dict[tuple, dict] = {}
+    restricted: dict[tuple, list[tuple[dict, list[str]]]] = {}
+    prefixes = []
     for family in name_map["families"]:
         for rule in family["eea"]:
             for name in rule.get("names", []):
-                exact[(rule["mk"], name)] = family
+                if rule.get("type_approvals"):
+                    restricted.setdefault((rule["mk"], name), []).append(
+                        (family, rule["type_approvals"])
+                    )
+                else:
+                    exact[(rule["mk"], name)] = family
+            if rule.get("prefixes") and rule.get("type_approvals"):
+                raise OpenDataError("type_approvals apply to exact names only.")
             for prefix in rule.get("prefixes", []):
                 prefixes.append((rule["mk"], prefix, family))
     totals: dict[str, dict] = {}
@@ -495,24 +614,36 @@ def resolve_families(
                 if mk == make and name.startswith(prefix)
             ]
             family = max(matches, key=lambda m: m[0])[1] if matches else None
-        if family is None:
+        parts = [
+            (target, ("only", approvals))
+            for target, approvals in restricted.get((make, name), [])
+        ]
+        if family is not None and parts:
+            taken = sorted({a for _, (_, approvals) in parts for a in approvals})
+            parts.append((family, ("except", taken)))
+        elif family is not None:
+            parts = [(family, None)]
+        if not parts:
             unmapped.append(
                 {"make": make, "name": name, "registrations": bucket["doc_count"]}
             )
             continue
-        key = slug(f"{family['make']}-{family['model']}")
-        total = totals.setdefault(
-            key,
-            {
-                "key": key,
-                "make": family["make"],
-                "model": family["model"],
-                "registrations": 0,
-                "names": [],
-            },
-        )
-        total["registrations"] += bucket["doc_count"]
-        total["names"].append((make, name))
+        for target, approvals in parts:
+            key = slug(f"{target['make']}-{target['model']}")
+            total = totals.setdefault(
+                key,
+                {
+                    "key": key,
+                    "make": target["make"],
+                    "model": target["model"],
+                    "registrations": 0,
+                    "names": [],
+                },
+            )
+            total["registrations"] += bucket["doc_count"]
+            total["names"].append((make, name))
+            if approvals:
+                total.setdefault("approvals", {})[(make, name)] = approvals
     ranked = sorted(totals.values(), key=lambda f: (-f["registrations"], f["key"]))
     return ranked[:TOP_FAMILIES], unmapped
 
@@ -535,6 +666,9 @@ def powertrain_groups(family: dict, response: dict) -> tuple[list[dict], list[di
     groups = response["aggregations"]["g"]
     if groups["sum_other_doc_count"] or groups["doc_count_error_upper_bound"]:
         raise OpenDataError(f"EEA lists too many powertrains for {family['key']}.")
+    if family.get("approvals"):
+        # A split name: its ranking total covers both models, this response one.
+        family["registrations"] = sum(group["doc_count"] for group in groups["buckets"])
     skipped, kept = [], []
     for group in groups["buckets"]:
         fuel, mode = group["key"]
@@ -687,10 +821,16 @@ def plan(run: Run, name_map: dict, two_wheelers: dict) -> Iterator[Request]:
             for group in groups:
                 bucket, rdw_request, missing = choose_version(run, family, group)
                 yield from missing
+                if rdw_request is not None:
+                    body = rdw_body_request(*bucket["key"][2:])
+                    if not run.has(body):
+                        yield body
                 if not missing and group["mode"] == "H":
                     yield from plan_hybrid(run, bucket, rdw_request)[1]
     for entry in two_wheelers["models"]:
         yield from plan_two_wheeler(run, entry)[1]
+    if not run.has(motospecdb_request()):
+        yield motospecdb_request()
 
 
 def fetch(
@@ -769,6 +909,8 @@ class _Bundle:
         context: dict | None = None,
         excerpt: dict,
         locator: str,
+        reason: str = "One official open-registry value for this exact "
+        "type-approval version, accepted by rule.",
     ) -> None:
         """Record one registry value and accept it by rule.
 
@@ -811,8 +953,7 @@ class _Bundle:
                 "status": "verified",
                 "selected_observation_id": observation_id,
                 "evidence_ids": [observation_id],
-                "reason": "One official open-registry value for this exact "
-                "type-approval version, accepted by rule.",
+                "reason": reason,
                 "actor_kind": "rule",
                 "actor_id": "open-data-builder",
                 "policy_version": VERSION,
@@ -865,13 +1006,17 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
     Catalog v2 freezes a published vehicle or variant together with its evidence, and
     wants the whole history of a fact in one chain. So every earlier record is kept as
     it is, new vehicles and variants are added, and a fresh value becomes a decision
-    that supersedes the earlier one only where the value changed."""
+    that supersedes the earlier one only where the value changed. The one identity
+    change catalog v2 accepts is a body style filled where it was unknown: the
+    earlier evidence stays first and the snapshots that state the body follow it."""
     fresh = fresh or {part: [] for part in BUNDLE_PARTS}
     merged = {"schema_version": 2}
     merged.update({part: list(previous[part]) for part in BUNDLE_PARTS})
+    all_snapshots = {s["id"]: s for s in [*previous["snapshots"], *fresh["snapshots"]]}
     report = {
         "new_vehicles": [],
         "new_variants": [],
+        "body_style_filled": [],
         "identity_differs": [],
         "revised": [],
         "unchanged": 0,
@@ -884,6 +1029,11 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
             if earlier is None:
                 merged[part].append(record)
                 report[f"new_{part}"].append(record[key])
+            elif _fills_body_style(earlier, record) and (
+                filled := _with_body_style(earlier, record, all_snapshots)
+            ):
+                merged[part][merged[part].index(earlier)] = filled
+                report["body_style_filled"].append(record[key])
             elif {**earlier, "evidence_snapshot_ids": None} != {
                 **record,
                 "evidence_snapshot_ids": None,
@@ -924,6 +1074,42 @@ def continue_bundle(previous: dict, fresh: dict | None) -> tuple[dict, dict]:
     sources = {s["source_key"]: s for s in [*fresh["sources"], *previous["sources"]]}
     merged["sources"] = [sources[key] for key in sorted(sources)]
     return CatalogV2.model_validate(merged).model_dump(mode="json"), report
+
+
+def _fills_body_style(earlier: dict, record: dict) -> bool:
+    """True when the fresh record differs from the earlier one only by a body style
+    the earlier one left unknown."""
+    ignored = {"evidence_snapshot_ids": None, "body_style": None}
+    return (
+        "body_style" in earlier
+        and earlier["body_style"] is None
+        and record.get("body_style") is not None
+        and {**earlier, **ignored} == {**record, **ignored}
+    )
+
+
+def _with_body_style(earlier: dict, record: dict, snapshots: dict) -> dict | None:
+    """The earlier record with the body style, its evidence kept as the prefix.
+
+    Snapshot IDs carry the run folder, so the evidence of the later run is new by
+    ID even for an identical response. Only responses the earlier record does not
+    already rest on (by URL and hash) are appended: the ones that state the body."""
+    known = {
+        (snapshots[i]["url"], snapshots[i]["content_sha256"])
+        for i in earlier["evidence_snapshot_ids"]
+    }
+    added = [
+        i
+        for i in record["evidence_snapshot_ids"]
+        if (snapshots[i]["url"], snapshots[i]["content_sha256"]) not in known
+    ]
+    if not added:
+        return None  # catalog v2 wants the snapshot that states the body appended
+    return {
+        **earlier,
+        "body_style": record["body_style"],
+        "evidence_snapshot_ids": [*earlier["evidence_snapshot_ids"], *added],
+    }
 
 
 def _measured(mode: str) -> dict:
@@ -994,9 +1180,16 @@ def build_cars(run: Run, name_map: dict) -> tuple[dict | None, dict]:
                 raise OpenDataError("RDW responses are missing; fetch first.")
             entry["variants"].append(
                 _car_variant(
-                    bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot
+                    bundle,
+                    vehicle_key,
+                    family["make"],
+                    group,
+                    bucket,
+                    rdw_request,
+                    eea_snapshot,
                 )
             )
+        _vehicle_body(bundle.vehicles[-1], entry)
         approvals = {v["type_approval"][0].rsplit("*", 1)[0] for v in entry["variants"]}
         if len(approvals) > 1:
             # One commercial name can cover two generations sold in the same year.
@@ -1006,7 +1199,52 @@ def build_cars(run: Run, name_map: dict) -> tuple[dict | None, dict]:
     return bundle.result(), report
 
 
-def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) -> dict:
+def registered_body(family_make: str, rows: list[dict]) -> tuple[str | None, dict]:
+    """The one EU bodywork code of a version's registrations, or None.
+
+    Codes held by under 2% of the registrations are entry errors, as for values."""
+    counts: dict[str, int] = {}
+    for row in rows:
+        if row.get("inrichting") and _same_make(family_make, [row]):
+            counts[row["inrichting"]] = counts.get(row["inrichting"], 0) + int(row["n"])
+    total = sum(counts.values())
+    kept = sorted(code for code, n in counts.items() if n >= total * RARE_SHARE)
+    return (kept[0] if len(kept) == 1 else None), dict(sorted(counts.items()))
+
+
+def _vehicle_body(vehicle: dict, entry: dict) -> None:
+    """Fill the body style when every variant's registrations name the same one.
+
+    Body style belongs to the vehicle, so one variant without an exact registry
+    match, or two variants with different bodies (a hatchback and its estate under
+    one name), leave it unknown: the vehicle is not split by guess."""
+    variants = entry["variants"]
+    codes = {v["rdw_body_code"] for v in variants}
+    if any(len(v["rdw_body_codes"]) and v["rdw_body_code"] is None for v in variants):
+        reason = "rdw_body_styles_differ"
+    elif any(v["rdw_match"] == "none" for v in variants):
+        reason = "rdw_no_exact_version"
+    elif None in codes:
+        reason = "rdw_field_empty"
+    elif len(codes) > 1:
+        reason = "rdw_body_styles_differ"
+    elif RDW_BODY_STYLES.get(next(iter(codes))) is None:
+        reason = "rdw_body_code_not_catalogue"
+    else:
+        vehicle["body_style"] = RDW_BODY_STYLES[next(iter(codes))]
+        # Appended last: the read provenance credits the body style to that snapshot.
+        for variant in variants:
+            if variant["rdw_body_snapshot"] not in vehicle["evidence_snapshot_ids"]:
+                vehicle["evidence_snapshot_ids"].append(variant["rdw_body_snapshot"])
+        entry["body_style"] = vehicle["body_style"]
+        return
+    entry["body_style"] = None
+    entry["gaps"].append({"metric": "body_style", "reason": reason})
+
+
+def _car_variant(
+    bundle, vehicle_key, make, group, bucket, rdw_request, eea_snapshot
+) -> dict:
     fuel, mode, tan, variant, version = bucket["key"]
     variant_key = f"{vehicle_key}.{slug(fuel)}-{mode.lower()}.{_short('|'.join((tan, variant, version)))}"
     gaps = []
@@ -1088,7 +1326,7 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
             gaps.append(
                 {"metric": metric, "reason": "phev_electric_definition_unknown"}
             )
-    rdw_match = "none"
+    rdw_match, body_code, body_codes, body_snapshot = "none", None, {}, None
     if rdw_request is None:
         for metric in ("length_mm", "body_width_mm", "height_mm", "seats"):
             gaps.append({"metric": metric, "reason": "rdw_no_exact_version"})
@@ -1122,6 +1360,11 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
                 },
                 locator=f"rows[*].{field}",
             )
+        body_request = rdw_body_request(tan, variant, version)
+        if not bundle.run.has(body_request):
+            raise OpenDataError("RDW body-style responses are missing; fetch first.")
+        body_code, body_codes = registered_body(make, bundle.run.read(body_request))
+        body_snapshot = bundle.snapshot(body_request, "rdw-open-data")
     powertrain, motor_kw = POWERTRAINS[mode], []
     if mode == "H":
         requests, missing = plan_hybrid(bundle.run, bucket, rdw_request)
@@ -1161,6 +1404,9 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
         "registrations_of_version": bucket["doc_count"],
         "registrations_of_powertrain": group["registrations"],
         "rdw_match": rdw_match,
+        "rdw_body_code": body_code,
+        "rdw_body_codes": body_codes,
+        "rdw_body_snapshot": body_snapshot,
         "gaps": gaps,
     }
 
@@ -1168,6 +1414,7 @@ def _car_variant(bundle, vehicle_key, group, bucket, rdw_request, eea_snapshot) 
 def build_two_wheelers(run: Run, two_wheelers: dict) -> tuple[dict | None, dict]:
     bundle = _Bundle(run)
     report = {"models": []}
+    bikes = run.read(motospecdb_request())["bikes"]
     for entry in two_wheelers["models"]:
         planned, missing = plan_two_wheeler(run, entry)
         if missing:
@@ -1270,6 +1517,7 @@ def build_two_wheelers(run: Run, two_wheelers: dict) -> tuple[dict | None, dict]
                 },
                 locator="rows[latest revision].maximumnettovermogen",
             )
+        _motospecdb_facts(bundle, item, entry, bikes, variant_key, requests)
         bundle.vehicles.append(
             {
                 "canonical_key": vehicle_key,
@@ -1306,6 +1554,49 @@ def build_two_wheelers(run: Run, two_wheelers: dict) -> tuple[dict | None, dict]
     return bundle.result(), report
 
 
+def _motospecdb_facts(bundle, item, entry, bikes, variant_key, requests) -> None:
+    """Seat height, wet weight and fuel tank from the one MotoSpecDB entry that fits."""
+    until = int(
+        bundle.run.manifest[requests["versions"].artifact_path]["retrieved_at"][:4]
+    )
+    found, refused = motospecdb_entry(entry, bikes, until)
+    item["motospecdb"] = entry.get("motospecdb")
+    if found is None:
+        for metric, *_ in MOTOSPECDB_FACTS:
+            item["gaps"].append({"metric": metric, "reason": refused})
+        return
+    snapshot = bundle.snapshot(motospecdb_request(), "motospecdb")
+    for metric, field, unit, context in MOTOSPECDB_FACTS:
+        value = (found.get("ergonomics") or {}).get(field)
+        if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
+            item["gaps"].append({"metric": metric, "reason": "motospecdb_field_empty"})
+            continue
+        bundle.observe(
+            variant_key=variant_key,
+            metric=metric,
+            snapshot_id=snapshot,
+            low=value,
+            high=value,
+            raw_unit=unit,
+            context=context,
+            excerpt={
+                "slug": found["slug"],
+                "model": found.get("model"),
+                "years_covered": found.get("years_covered"),
+                "chassis_codes": found.get("chassis_codes"),
+                field: value,
+                "manual_source_citation": (
+                    found.get("manual_source_citation") or {}
+                ).get("en"),
+                "model_page": (found.get("urls") or {}).get("en"),
+            },
+            locator=f"bikes[slug={found['slug']}].ergonomics.{field}",
+            reason="One MotoSpecDB value for this model and years, matched by a "
+            "reviewed link and accepted by rule; the publisher cites the owner's "
+            "manual.",
+        )
+
+
 GAP_REASONS = {
     "no_open_source": "No free source with a reuse licence publishes this field.",
     "no_verified_source": "A free dataset has it, but its origin is not verified.",
@@ -1323,6 +1614,10 @@ GAP_REASONS = {
     "consumption and range are weighted or pure-electric values.",
     "hybrid_type_unknown": "No registry value tells whether this hybrid is mild or full.",
     "registry_values_disagree": "Registrations of this version disagree by over 5%.",
+    "rdw_body_code_not_catalogue": "RDW's EU bodywork code does not tell the "
+    "catalogue's body styles apart (only sedan does).",
+    "rdw_body_styles_differ": "The registrations name more than one body, within a "
+    "version or across the variants of the model; not split by guess.",
     "too_many_values": "Too many different values to tell real ones from errors.",
     "several_type_approvals": "Variants come from several type approvals: the name may "
     "cover two generations or bodies. Review before treating it as one car.",
@@ -1335,10 +1630,56 @@ GAP_REASONS = {
     "below_share_threshold": "Under 5% of the model's registrations.",
     "beyond_powertrain_limit": "Beyond the four most-registered powertrains.",
     "no_supported_powertrain": "No powertrain of this model could be imported.",
+    "motospecdb_no_entry": "MotoSpecDB has no entry for this model.",
+    "motospecdb_brand_differs": "The linked MotoSpecDB entry names another make.",
+    "motospecdb_combined_entry": "The MotoSpecDB entry joins several variants or "
+    "generations, so its values may belong to another one.",
+    "motospecdb_years_differ": "The MotoSpecDB entry's years do not cover the "
+    "registrations read, and no chassis code matches.",
+    "motospecdb_field_empty": "The MotoSpecDB entry has no value for this field.",
+    "unverified_origin": "The source cites owner's manuals; its values are not "
+    "otherwise verified.",
 }
 
 
-def gap_register(run: Run, cars: dict, two_wheelers: dict) -> dict:
+def retrieval(run: Run) -> list[dict]:
+    """Per host and day, how many stored responses were retrieved.
+
+    A run folder may start as a copy of an earlier one, so its responses can carry
+    the earlier retrieval time; the manifest keeps each one's own."""
+    counts: dict[tuple[str, str], int] = {}
+    for entry in run.manifest.values():
+        key = (urlsplit(entry["url"]).hostname or "", entry["retrieved_at"][:10])
+        counts[key] = counts.get(key, 0) + 1
+    return [
+        {"host": host, "date": day, "responses": n}
+        for (host, day), n in sorted(counts.items())
+    ]
+
+
+def coverage(bundle: dict | None) -> dict:
+    """How many variants have a current value per metric, and vehicles a body style."""
+    if not bundle:
+        return {}
+    heads = {d["id"]: d for d in bundle["decisions"]}
+    for decision in bundle["decisions"]:
+        heads.pop(decision.get("supersedes_id"), None)
+    per_metric: dict[str, set] = {}
+    for decision in heads.values():
+        if decision["status"] == "verified":
+            metric = decision["metric"]
+            if metric == "mass_kg":  # a wet mass is another fact than the registry's
+                metric += f" ({decision['context'].get('method')})"
+            per_metric.setdefault(metric, set()).add(decision["variant_key"])
+    result = {"variants": len(bundle["variants"]), "vehicles": len(bundle["vehicles"])}
+    result["body_style"] = sum(1 for v in bundle["vehicles"] if v["body_style"])
+    result.update({m: len(keys) for m, keys in sorted(per_metric.items())})
+    return result
+
+
+def gap_register(
+    run: Run, cars: dict, two_wheelers: dict, covered: dict | None = None
+) -> dict:
     """Everything the import could not fill, per model and field, with a reason."""
     rows = []
     for family in cars["families"]:
@@ -1374,6 +1715,8 @@ def gap_register(run: Run, cars: dict, two_wheelers: dict) -> dict:
             "car_variants": sum(len(f["variants"]) for f in cars["families"]),
             "two_wheelers": len(two_wheelers["models"]),
         },
+        "retrieval": retrieval(run),
+        "coverage": covered or {},
         "dataset_gaps": [
             {"applies_to": a, "field": f, "reason": r, "detail": d}
             for a, f, r, d in DATASET_GAPS
@@ -1412,6 +1755,36 @@ def gap_register_markdown(register: dict) -> str:
         f"{scope['car_families']} car models with {scope['car_variants']} variants, "
         f"{scope['two_wheelers']} two-wheelers.",
         f"- Builder version: `{register['version']}`",
+        "",
+        "## Responses by host and retrieval day",
+        "",
+        "A run folder can start as a copy of an earlier one: these dates are each",
+        "response's own, from the manifest.",
+        "",
+        "| Host | Retrieved | Responses |",
+        "| --- | --- | --- |",
+    ]
+    lines += [
+        f"| {r['host']} | {r['date']} | {r['responses']} |"
+        for r in register.get("retrieval", [])
+    ]
+    for kind, covered in register.get("coverage", {}).items():
+        lines += [
+            "",
+            f"## Values present: {kind}",
+            "",
+            f"{covered.get('variants', 0)} variants of {covered.get('vehicles', 0)} "
+            f"vehicles; vehicles with a body style: {covered.get('body_style', 0)}.",
+            "",
+            "| Metric | Variants with a value |",
+            "| --- | --- |",
+        ]
+        lines += [
+            f"| {metric} | {n} |"
+            for metric, n in covered.items()
+            if metric not in {"variants", "vehicles", "body_style"}
+        ]
+    lines += [
         "",
         "## Missing for every model",
         "",

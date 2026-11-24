@@ -45,7 +45,8 @@ person, and the source stays `manual_validation_only` until then.
       hybrid version. Their Dutch licence plates are in the stored responses and
       in the request URLs, which the catalog stores as evidence. RDW publishes
       plates as open data; no owner data is read.
-- [x] Automated-access notes, including rate limits: about 520 requests per run,
+- [x] Automated-access notes, including rate limits: about 700 requests per run
+      (179 body-style requests added on 2026-11-24),
       one per second, no account or app token. The first run on 2026-11-23 went
       faster, at about 0.6 seconds per request; the pause is now one second.
 
@@ -53,9 +54,10 @@ person, and the source stays `manual_validation_only` until then.
 
 - [x] Metrics the source may support: `length_mm`, `body_width_mm`, `height_mm`,
       `seats` for cars; the same plus `mass_kg`, `engine_displacement_cc` and
-      `engine_power_kw` for two-wheelers. It also decides one identity field: mild
-      or full hybrid, from the electric motor's net power, by the rule in
-      [open-data-import.md](../open-data-import.md).
+      `engine_power_kw` for two-wheelers. It also decides two identity fields:
+      mild or full hybrid, from the electric motor's net power, and the car body
+      style, from the EU bodywork code `inrichting` (only `sedan` maps; added
+      2026-11-24), by the rules in [open-data-import.md](../open-data-import.md).
 - [x] Metrics the source must not support: prices (the Dutch catalogue price is
       not an Italian price), CO2 and consumption of cars (EEA is the Italian
       source), anything matched by approval number alone.

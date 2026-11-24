@@ -1,7 +1,7 @@
 # Open-data import: cars from EEA, dimensions and two-wheelers from RDW
 
-This is the zero-cost way to fill the catalog. It reads two public registries,
-keeps every raw response as evidence, and builds [catalog v2](catalog-v2.md)
+This is the zero-cost way to fill the catalog. It reads two public registries
+and one open motorcycle dataset, keeps every raw response as evidence, and builds [catalog v2](catalog-v2.md)
 bundles. It needs no account, no API key and no paid service.
 
 What it cannot fill is tracked in the generated register
@@ -25,27 +25,29 @@ under three constraints set by the project owners:
 | Manufacturer price lists and brochures | Not used | No reuse permission found; Fiat's `robots.txt` disallows PDFs; Stellantis press terms say "not for commercial use". Using them is a legal decision for the owners. |
 | Italian price databases (for example Motornet) | Not used | Paid; needs a quote and a budget. |
 | Car2DB | Not used | Paid (95 USD seen). |
-| MotoSpecDB | Not used | Free, but the origin of its values is unverified. |
+| MotoSpecDB | **Used** for two-wheelers (since 2026-11-24) | Free, CC BY 4.0: commercial reuse allowed with attribution. Its values cite owner's manuals and are not otherwise verified, so only measured fields of an entry that fits one model are imported. |
 | FEDRO (Switzerland) | Not used yet | Free with citation; a candidate for a second opinion on type-approval data. |
 
 No open source was found for Italian list prices, boot volume, width with
-mirrors, seat height, fuel tank size or under-seat storage.
+mirrors or under-seat storage. Seat height and fuel tank size come only from
+MotoSpecDB, for the few two-wheelers it describes without ambiguity.
 
-## The two sources
+## The sources
 
-| | EEA | RDW |
-| --- | --- | --- |
-| `source_key` | `eea-co2-cars` | `rdw-open-data` |
-| What it is | One record per new car registered in the EU, reported by each country | The Dutch vehicle register and its type-approval tables |
-| Licence | Free reuse, commercial included, with attribution to the EEA ([legal notice](https://www.eea.europa.eu/en/legal-notice)) | Public domain, declared in each dataset's metadata |
-| Endpoint | `https://co2cars.apps.eea.europa.eu/tools/api` (Elasticsearch query in the URL) | `https://opendata.rdw.nl/resource/<dataset>.json` (Socrata) |
-| Datasets | Italy, registration year 2024, final status | `m9d7-ebf2` registered vehicles; `gr7t-qfnb` type-approval engine data; `8ys7-d773` fuel and motor data per registered vehicle |
-| Used for | Which cars sell in Italy, mass, engine power, displacement, CO2, consumption, electric range | Car length, width, height and seats; mild or full hybrid; everything for two-wheelers |
-| Access rule | No robots file | `robots.txt` asks for one request per second |
+| | EEA | RDW | MotoSpecDB |
+| --- | --- | --- | --- |
+| `source_key` | `eea-co2-cars` | `rdw-open-data` | `motospecdb` |
+| What it is | One record per new car registered in the EU, reported by each country | The Dutch vehicle register and its type-approval tables | A worldwide dataset of 1,000 motorcycles and scooters by Campdal Studio, said to be cross-checked against owner's manuals |
+| Licence | Free reuse, commercial included, with attribution to the EEA ([legal notice](https://www.eea.europa.eu/en/legal-notice)) | Public domain, declared in each dataset's metadata | [CC BY 4.0](https://motospecdb.com/en/open-data/): credit "MotoSpecDB (https://motospecdb.com)" with a link to the model page |
+| Endpoint | `https://co2cars.apps.eea.europa.eu/tools/api` (Elasticsearch query in the URL) | `https://opendata.rdw.nl/resource/<dataset>.json` (Socrata) | `https://motospecdb.com/api/v1/bikes.json`, one file |
+| Datasets | Italy, registration year 2024, final status | `m9d7-ebf2` registered vehicles; `gr7t-qfnb` type-approval engine data; `8ys7-d773` fuel and motor data per registered vehicle | The `bikes` array |
+| Used for | Which cars sell in Italy, mass, engine power, displacement, CO2, consumption, electric range | Car length, width, height, seats and body style (sedan only); mild or full hybrid; everything for two-wheelers | Seat height, wet weight and fuel tank of two-wheelers |
+| Access rule | No robots file | `robots.txt` asks for one request per second | `robots.txt` allows the API; one request per run |
 
-Both sources stay `manual_validation_only` until a person signs their review:
-[`source-reviews/eea-co2-cars.md`](source-reviews/eea-co2-cars.md) and
-[`source-reviews/rdw-open-data.md`](source-reviews/rdw-open-data.md). Until then
+All three sources stay `manual_validation_only` until a person signs their review:
+[`source-reviews/eea-co2-cars.md`](source-reviews/eea-co2-cars.md),
+[`source-reviews/rdw-open-data.md`](source-reviews/rdw-open-data.md) and
+[`source-reviews/motospecdb.md`](source-reviews/motospecdb.md). Until then
 their facts are stored and visible, but `eligible` is false and the Advisor
 ignores them.
 
@@ -63,7 +65,7 @@ so never rename a run folder after its bundle is published.
 ROOT=data/private/catalog
 RUN=$ROOT/open-data-2026-11-23
 
-# 1. Download. About 620 requests, 11 minutes. Safe to repeat: it resumes.
+# 1. Download. About 800 requests, 14 minutes. Safe to repeat: it resumes.
 uv run --frozen --project apps/api python apps/api/scripts/build_open_data_catalog.py \
   fetch --run-dir "$RUN"
 
@@ -106,6 +108,13 @@ continues the earlier bundle.
    [`data/open-data/car-names.it.json`](../data/open-data/car-names.it.json) maps
    each `(make, name)` to one model. An exact name wins over a prefix. A name
    without a rule is never imported; it is listed in the register.
+   Some names cover two models: Italy registers the Corolla, the Corolla Touring
+   Sports and the Corolla Cross all as `TOYOTA COROLLA`, and RDW does the same.
+   A rule may then list `type_approvals` (approval numbers without the revision,
+   for example `E6*2018/858*00186`, the Corolla Cross). That model takes only
+   those approvals; the rule without the list keeps the rest. The names list
+   does not count approvals, so each part enters the top 100 at the name's
+   total, and its powertrain shares use the exact total of its own response.
 2. **Top 100.** Models are ranked by 2024 Italian registrations after the mapping.
    The first 100 are imported (1,345,260 registrations, 86% of the year).
 3. **Powertrains.** Inside a model, EEA counts the registrations per fuel and fuel
@@ -209,8 +218,31 @@ the two kinds (a mild Mercedes GLC has 10.0 kW, a full Hyundai Kona 10.1 kW).
   gives one number without naming the fuel, so neither is published.
 - **Plug-in electric consumption and range.** EEA does not say whether they are
   weighted or pure-electric values.
-- **Trim, transmission, drivetrain, body style, generation, model year.** Neither
-  source names them.
+- **Trim, transmission, drivetrain, generation, model year.** Neither source
+  names them.
+- **Body style, except sedan.** See below.
+
+### Body style
+
+RDW records the body of every registered car as an EU bodywork code
+(`inrichting` in `m9d7-ebf2`). The builder reads it for the exact version, with
+the same 2% rule as for values, and only from rows of the same make. A vehicle
+gets a body style when every variant has an exact RDW version, each version has
+one code, and all variants agree. Otherwise it stays unknown, with a reason in
+the register; a vehicle is never split by guess.
+
+The code is a legal class, not the body a buyer means, so only `sedan` maps
+(to `sedan`). On the 2024 top 100 the registry writes `stationwagen` for the
+Volkswagen Golf, Mercedes-Benz A-Class and Volkswagen T-Roc, `MPV` for the Fiat
+Panda, Kia Picanto and Tesla Model Y, and `hatchback` for the Toyota Corolla
+Cross, Suzuki Vitara and Dacia Duster. Mapping those codes would label crossovers
+as hatchbacks and city cars as MPVs, and a filled body style is frozen. No new
+catalogue value was invented for them.
+
+The separate bodywork dataset `vezc-m2t6` (`carrosserietype` with a European
+description) was considered and not used: it is keyed by licence plate, while
+the import links RDW to EEA by approval number, variant and version, which
+`m9d7-ebf2` filters directly.
 
 ## Two-wheelers
 
@@ -228,6 +260,20 @@ them. Fuel is read from the approval's energy code, never assumed.
 
 RDW proves that the version is approved in the EU. It does not prove that the same
 version is the one sold in Italy.
+
+Seat height, wet weight (`mass_kg` with `method: wet`) and fuel tank come from
+MotoSpecDB. A person links each two-wheeler to one entry with the `motospecdb`
+field of the two-wheeler table. The builder still refuses the entry when its
+make differs, when it joins variants or generations (a model named "A / B" or
+more than one chassis code), or when its years do not cover the Dutch
+registrations read (from 2024 to the download year) and no chassis code equals
+the Dutch commercial name. Only those three measured fields enter; the
+publisher's estimates (`est_*`, `seat_arch_factor`) never do (ADR-016). Each
+value keeps the entry's citation and model page in its evidence excerpt.
+
+The registry's mass in running order stays next to the wet weight. The detail
+response shows `wet_weight_kg` only when a variant has one mass context, so for
+these scooters the wet weight is readable only in `GET /vehicles/{id}/facts`.
 
 ## Before publishing to production
 
@@ -333,6 +379,64 @@ the 100 models; the imported versions themselves are 26.7% of them.
 
 Local proof on a disposable PostgreSQL 18: `--check`, `--stage` and `--publish`
 succeeded for both bundles, and a second `--publish` returned `unchanged`.
+
+## Second run: 2026-11-24
+
+The EEA API did not answer on 2026-11-24 (one try, timed out). The run folder
+`open-data-2026-11-24` therefore started as a copy of the first run's
+`artifacts/` and `manifest.json`, and the builder fetched only what was missing:
+179 RDW responses (the body-style queries) and the MotoSpecDB file. All 101 EEA
+responses and 517 RDW responses are the ones retrieved on 2026-11-23; the gap
+register dates every response by host and day.
+
+The bundles were built with `--previous open-data-2026-11-23`:
+
+| | Before | After |
+| --- | --- | --- |
+| Car vehicles with a body style | 0 of 100 | 1 (Tesla Model 3, sedan) |
+| Car values | 1,760 | 1,760, none revised |
+| Two-wheelers with seat height, wet weight and fuel tank | 0 of 20 | 3 (Honda SH 125i, SH 150i, SH 350i) |
+| Two-wheeler values | 140 | 149 |
+
+Of the 100 car vehicles, 65 have one EU code that is not a catalogue body style,
+30 lack an exact RDW version for some variant, and 4 have variants with
+different codes. Of the 20 two-wheelers, 11 MotoSpecDB entries were refused
+because they join variants or generations, and 6 models have no entry.
+
+Local proof on a disposable PostgreSQL 16: the first run's bundles and then the
+second run's bundles published, and a repeat returned `unchanged`. The Model 3
+body style is credited to the RDW body-style response.
+
+### The Corolla that is a Corolla Cross
+
+The first run's `Toyota Corolla` is a Corolla Cross: its best-selling version
+(approval `E6*2018/858*00186`, ZVG13, 4,460 mm) belongs to the Corolla Cross,
+because Italy and RDW both register it as `TOYOTA COROLLA`. The name table now
+splits the name by approval (see "How cars are chosen"). The split needs two new
+EEA family responses (`eea/family-toyota-corolla.json` and
+`eea/family-toyota-corolla-cross.json`), so it waits for the EEA API, and the
+second run was built with the earlier table. When it is applied:
+
+- the Corolla Cross becomes a new vehicle, and the published `it-toyota-corolla`
+  keeps its Corolla Cross identity and values: `--previous` keeps a published
+  identity and lists the difference under `identity_differs`, so retiring or
+  correcting it needs a reviewed decision;
+- each model enters the ranking at the name's 8,591 registrations, so EVO 5
+  (the 100th model today) leaves the top 100 and DS 7 becomes the 100th;
+- fetch into a new run folder: a run that holds the unsplit Corolla response
+  refuses to build (`Missing or outdated artifact eea/family-toyota-corolla.json;
+  fetch first.`) until both new responses are stored.
+
+The other Italian Corolla versions (ZWE219, 4,650 mm, `stationwagen` in RDW) are
+the Corolla Touring Sports. They are registered in Italy in 2024 but not in the
+bundle, because the import keeps one version per powertrain. The 4,790 mm Tesla
+Model Y is first registered in RDW on 2025-01-31, so it is not in the 2024 EEA
+year; the bundle's Model Y is the earlier 4,750 mm version.
+
+No other model in the top 100 merges two different models under one name. Some
+names join body variants (Ford Focus, Peugeot 308, Mini 3 and 5 doors) or two
+generations (for example Peugeot 3008, Hyundai Kona, BMW X3); the register flags
+those that have several type approvals.
 
 ## Updating
 

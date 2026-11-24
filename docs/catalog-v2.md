@@ -178,6 +178,9 @@ views.
 [`0013_plug_in_hybrid_fuel_type.sql`](../apps/api/migrations/0013_plug_in_hybrid_fuel_type.sql)
 renames the `fuel_type` of published v2 plug-in hybrids from `phev` to the
 Advisor's names (see "Identity migration and ownership").
+[`0014_body_style_provenance.sql`](../apps/api/migrations/0014_body_style_provenance.sql)
+replaces `catalog_read_provenance` so a filled body style is credited to the
+snapshot that states it (see "Identity migration and ownership").
 
 | New table | Responsibility |
 | --- | --- |
@@ -308,6 +311,12 @@ also requires the appended source to be permitted, so the fill can only make
 eligibility stricter. A known body style is never overwritten, and every other
 identity field stays frozen. Body style is part of the identity key, so a fill
 that collides with an existing identity is rejected by the unique index.
+
+The read provenance credits the body style to the vehicle's **last** identity
+snapshot and the fuel type to the variant's first. A bundle that fills a body
+style must therefore append the snapshot that states it last. Before `0014` both
+were credited to the variant's first snapshot, so a filled body style still named
+the vehicle's original source.
 
 Publication derives `fuel_type` from powertrain and fuel. A petrol plug-in
 hybrid is `plug_in_hybrid_petrol`, the name the Advisor scores. A diesel plug-in

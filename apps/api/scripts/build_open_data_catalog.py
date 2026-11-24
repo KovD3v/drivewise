@@ -77,7 +77,6 @@ def main(argv=None) -> int:
             return 0
         cars, car_report = open_data.build_cars(run, name_map)
         bikes, bike_report = open_data.build_two_wheelers(run, two_wheelers)
-        register = open_data.gap_register(run, car_report, bike_report)
         report = {"cars": car_report, "two_wheelers": bike_report}
         if args.previous:
             if args.previous.resolve().parent != run.artifact_root:
@@ -105,6 +104,12 @@ def main(argv=None) -> int:
                     f"{len(update['new_variants'])} new variants, "
                     f"{len(update['identity_differs'])} identities differ"
                 )
+        # Coverage describes the bundles written, so after --previous the merged ones.
+        covered = {
+            "cars": open_data.coverage(cars),
+            "two_wheelers": open_data.coverage(bikes),
+        }
+        register = open_data.gap_register(run, car_report, bike_report, covered)
         outputs = {CARS: cars, TWO_WHEELERS: bikes, "report.json": report}
         for name, data in outputs.items():
             if data is not None:

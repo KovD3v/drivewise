@@ -66,6 +66,7 @@ def test_migration_files_are_ordered():
         "0011_list_price_metric.sql",
         "0012_list_price_read_view.sql",
         "0013_plug_in_hybrid_fuel_type.sql",
+        "0014_body_style_provenance.sql",
     ]
 
 
