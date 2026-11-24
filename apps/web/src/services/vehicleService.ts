@@ -10,6 +10,7 @@ import {
   type AdvisorMetricProvenance,
   type ListPrice,
   type SourceProvenance,
+  type VehicleDetail,
   type VehicleSummary,
 } from "@/api/drivewise";
 import type { Credit, ScalarBasis } from "@/components/vehicle/source-facts";
@@ -71,6 +72,7 @@ const EMPTY_CONSUMPTION: Consumption = {
 };
 
 type SpecInput = {
+  id?: string;
   fuel_type?: string | null;
   cargo_volume_liters?: number | null;
   seats?: number | null;
@@ -107,8 +109,9 @@ export function creditsFrom(sources: (SourceRef | null | undefined)[]): Credit[]
   return [...byName.values()];
 }
 
-export function fromApiVehicle(v: ApiVehicleInput): Vehicle {
-  const spec = v.specs?.[0];
+/** Maps the version `specId` names, or the first one: the API lists the default version first. */
+export function fromApiVehicle(v: ApiVehicleInput, specId?: string): Vehicle {
+  const spec = (specId && v.specs?.find((candidate) => candidate.id === specId)) || v.specs?.[0];
   const twoWheel = spec?.two_wheel;
   const hasTwoWheelFact = twoWheel && Object.values(twoWheel).some((value) => value !== null);
   return {
@@ -148,18 +151,24 @@ export async function getVehiclesByType(type: VehicleTypeKey): Promise<Vehicle[]
   for (let offset = 0; ; offset += PAGE) {
     const page = await fetchVehicles({ vehicle_type: type, limit: PAGE, offset });
     // The API counts untyped legacy rows as cars; keep only what was asked for.
-    result.push(...page.map(fromApiVehicle).filter((v) => v.vehicle_type === type));
+    result.push(...page.map((item) => fromApiVehicle(item)).filter((v) => v.vehicle_type === type));
     if (page.length < PAGE) return result;
   }
 }
 
-export async function getVehicleById(id: string): Promise<Vehicle | null> {
+/** The API detail with every version, for a screen that shows the version the Advisor scored. */
+export async function getVehicleDetail(id: string): Promise<VehicleDetail | null> {
   try {
-    return fromApiVehicle(await fetchVehicle(id));
+    return await fetchVehicle(id);
   } catch (error) {
     if (isApiNotFoundError(error)) return null;
     throw error;
   }
+}
+
+export async function getVehicleById(id: string): Promise<Vehicle | null> {
+  const detail = await getVehicleDetail(id);
+  return detail ? fromApiVehicle(detail) : null;
 }
 
 export async function getVehiclesByIds(ids: string[]): Promise<Vehicle[]> {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, Minus } from "lucide-react";
@@ -15,16 +15,16 @@ import type { DecisionProfile } from "@/lib/decision-profile";
 import { loadState } from "@/lib/decision-state";
 import { buildReportSections } from "@/lib/report-sections";
 import { fuelLabel, mm2cm, typeLabel, vehicleName } from "@/lib/vehicle-format";
-import { getVehicleById, type Vehicle } from "@/services/vehicleService";
+import { fromApiVehicle, getVehicleDetail, type Vehicle } from "@/services/vehicleService";
 import { categoryLabel } from "@/lib/category-labels";
 import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts";
 import { PriceLine } from "@/components/vehicle/PriceLine";
 
 export const Route = createFileRoute("/app/vehicle/$id")({
   loader: async ({ params }) => {
-    const vehicle = await getVehicleById(params.id);
-    if (!vehicle) throw notFound();
-    return { vehicle };
+    const detail = await getVehicleDetail(params.id);
+    if (!detail) throw notFound();
+    return { vehicle: fromApiVehicle(detail), detail };
   },
   head: ({ loaderData }) => {
     if (!loaderData)
@@ -104,23 +104,25 @@ function garageInputFrom(profile: DecisionProfile | null): GarageInput | undefin
 }
 
 function VehiclePage() {
-  const { vehicle: v } = Route.useLoaderData();
+  const { vehicle: loaded, detail } = Route.useLoaderData();
   const reduce = useReducedMotion();
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
 
   useEffect(() => {
     const state = loadState();
-    if (state?.profile.vehicleType === v.vehicle_type) setProfile(state.profile);
-  }, [v.vehicle_type]);
+    if (state?.profile.vehicleType === loaded.vehicle_type) setProfile(state.profile);
+  }, [loaded.vehicle_type]);
 
-  const activeProfile: DecisionProfile = profile ?? { vehicleType: v.vehicle_type };
+  const activeProfile: DecisionProfile = profile ?? { vehicleType: loaded.vehicle_type };
   const [ranked, setRanked] = useState<ScoredVehicle[]>([]);
   useEffect(() => {
     let alive = true;
     if (profile) void rankVehicles(profile).then(items => { if (alive) setRanked(items); }).catch(() => { if (alive) setRanked([]); });
     return () => { alive = false; };
   }, [profile]);
-  const scored = ranked.find(item => item.vehicle.id === v.id);
+  const scored = ranked.find(item => item.vehicle.id === loaded.id);
+  // The score belongs to one version: show that version's facts next to it, not the default one's.
+  const v = useMemo(() => (scored ? fromApiVehicle(detail, scored.specId) : loaded), [scored, detail, loaded]);
 
   const score = useCountUp(scored?.score ?? 0, reduce ? 0 : 1300, !!reduce);
   const sections = buildReportSections(v, activeProfile);

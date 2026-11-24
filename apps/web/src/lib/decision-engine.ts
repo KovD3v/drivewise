@@ -3,7 +3,8 @@ import type { DecisionProfile } from './decision-profile';
 import { creditsFrom, fromApiVehicle, type Vehicle, type VehicleTypeKey } from '@/services/vehicleService';
 
 // Advisor v3 ranks cars only (ADR-012). Motorcycles and scooters are a catalogue without a score.
-export type ScoredVehicle = { vehicle: Vehicle; score: number; decisionStatus?: 'complete' | 'insufficient_data'; why: string[]; tradeoffs: string[]; offer?: AdvisorOffer | null };
+/** `specId` is the version the Advisor scored; a vehicle can have several. */
+export type ScoredVehicle = { vehicle: Vehicle; specId: string; score: number; decisionStatus?: 'complete' | 'insufficient_data'; why: string[]; tradeoffs: string[]; offer?: AdvisorOffer | null };
 
 export function guidedRanking(response: GuidedDecisionResponse): ScoredVehicle[] {
   const seen = new Set<string>();
@@ -14,6 +15,7 @@ export function guidedRanking(response: GuidedDecisionResponse): ScoredVehicle[]
       return {
         // The item's metric provenance names every source the score used.
         vehicle: { ...vehicle, credits: creditsFrom([...(item.provenance ?? []), item.list_price, ...(item.selected_spec.provenance ?? [])]) },
+        specId: item.selected_spec.id,
         score: item.score,
         decisionStatus: item.decision_status ?? 'insufficient_data',
         offer: item.offer, why: item.positive_factors.map(f => f.message),

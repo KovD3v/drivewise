@@ -104,3 +104,13 @@ test('a ranked version keeps the fuel the catalogue stores on the version', () =
   const vehicle = fromApiVehicle({ ...sampleDetail, fuel_type: null, specs: [{ ...sampleDetail.specs[0], fuel_type: 'petrol' }] });
   expect(vehicle.powertrain.fuel).toBe('petrol');
 });
+
+test('a vehicle with several versions shows the facts of the version the Advisor scored', () => {
+  const base = sampleDetail.specs[0];
+  const scoredSpec = { ...base, id: 'spec-scored', fuel_type: 'diesel', seats: 7, cargo_volume_liters: 610 };
+  const detail = { ...sampleDetail, fuel_type: null, specs: [{ ...base, fuel_type: 'petrol' }, scoredSpec] };
+  expect(fromApiVehicle(detail, 'spec-scored')).toMatchObject({ powertrain: { fuel: 'diesel' }, seats: 7, dimensions: { boot_liters: 610 } });
+  // No scored version, or one the catalogue no longer lists: the default version, which the API lists first.
+  expect(fromApiVehicle(detail).powertrain.fuel).toBe('petrol');
+  expect(fromApiVehicle(detail, 'spec-gone').powertrain.fuel).toBe('petrol');
+});
