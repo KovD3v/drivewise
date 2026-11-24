@@ -73,8 +73,14 @@ Supported query filters:
 - `body_style`, exact
 - `market`, exact
 - `max_price_eur`
+- `vehicle_type`, one of `car`, `motorcycle`, `scooter`; any other value returns
+  `422`. `car` also matches legacy (catalog v1) rows, whose `vehicle_type` is
+  `null` because that contract is car-only.
 - `limit`, default `50`, maximum `100`
 - `offset`, default `0`
+
+Every summary includes `vehicle_type` (`car`, `motorcycle`, `scooter` or
+`null` for legacy rows).
 
 Example:
 
@@ -208,6 +214,16 @@ adds the following groups:
 - `official_efficiency`: `homologation_cycle`, `consumption_l_100km`,
   `energy_consumption_kwh_100km`, `co2_g_km`, `euro_emission_standard`
 - `maintenance_schedule`, `safety`, `technology_comfort`, and `media`
+- `two_wheel`: `seat_height_mm`, `wet_weight_kg`, `fuel_tank_capacity_liters`,
+  `underseat_storage_liters`. Filled only for `motorcycle` and `scooter`
+  vehicles, from eligible catalog v2 facts with one exact value per spec
+  (`wet_weight_kg` is `mass_kg` with `method: wet`); otherwise each is `null`.
+  Ranges and competing contexts stay in `GET /vehicles/{vehicle_id}/facts`.
+  The block carries no scores.
+
+For catalog v2 specs, `powertrain.displacement_cc` comes from an eligible,
+exact, whole-number `engine_displacement_cc` fact; other v2 profile fields
+stay `null` until a reviewed projection exists.
 
 `maintenance_schedule` items contain `id`, `operation_code`, `title`,
 `interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings
@@ -621,6 +637,10 @@ Creates a deterministic Advisor v3 run from reviewed, imported Italian catalog
 offers. It does not call an LLM, search documents, generate embeddings, or
 ingest external data.
 
+Recommendations, Model Analysis and Guided Decisions rank cars only. Offers
+for a `motorcycle` or `scooter` are never candidates and are counted under
+`excluded_counts_by_reason.unsupported_vehicle_type`.
+
 The endpoint persists the normalized request, scoring version, energy
 assumptions, exclusion counts, and completion status on the run. Each selected
 item persists its exact listing/spec pair, new/used group, group rank, score,
@@ -784,6 +804,8 @@ listing ID.
 ### POST /advisor/model-analysis
 
 Analyzes a model already chosen by the user. The endpoint accepts either a free-text `query` resolved through `POST /vehicles/resolve` semantics or a canonical `vehicle_id`. It is deterministic, read-only, and does not create recommendation runs.
+
+The query resolves among cars only. A two-wheel `vehicle_id` returns `needs_input` with `resolved_vehicle_not_found`; a query that matches only two-wheelers returns `vehicle_resolution_no_match`.
 
 Request body:
 

@@ -4,7 +4,12 @@ from uuid import UUID
 
 from pydantic import Field, field_validator
 
-from app.ingestion.catalog_v2 import ExternalReference, MeasurementContext, Metric
+from app.ingestion.catalog_v2 import (
+    ExternalReference,
+    MeasurementContext,
+    Metric,
+    VehicleType,
+)
 from app.schemas.base import ApiModel
 
 
@@ -25,7 +30,8 @@ class VehicleSummary(ApiModel):
     id: UUID
     canonical_key: str | None = None
     model_family_key: str | None = None
-    vehicle_type: str | None = None
+    # Null only for legacy (catalog v1) rows, whose contract is car-only.
+    vehicle_type: VehicleType | None = None
     generation_key: str | None = None
     phase_key: str | None = None
     catalog_version: int = 1
@@ -152,6 +158,15 @@ class VehicleMediaAsset(ApiModel):
     provenance: ProfileProvenance
 
 
+class VehicleTwoWheelSpecs(ApiModel):
+    """Reviewed point values from catalog v2 facts; null when unknown or ambiguous."""
+
+    seat_height_mm: float | None = None
+    wet_weight_kg: float | None = None
+    fuel_tank_capacity_liters: float | None = None
+    underseat_storage_liters: float | None = None
+
+
 class VehicleSpec(ApiModel):
     catalog_version: int = 1
     powertrain_type: str | None = None
@@ -197,6 +212,7 @@ class VehicleSpecDetail(VehicleSpec):
     safety: VehicleSafety = Field(default_factory=VehicleSafety)
     technology_comfort: list[VehicleFeature] = Field(default_factory=list)
     media: list[VehicleMediaAsset] = Field(default_factory=list)
+    two_wheel: VehicleTwoWheelSpecs = Field(default_factory=VehicleTwoWheelSpecs)
 
 
 class VehicleDetail(VehicleSummary):

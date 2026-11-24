@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
+from app.repositories.filters import CAR_ONLY_SQL
 from app.schemas.advisor import AdvisorRecommendationGroup, AdvisorRecommendationItem
 from app.services.advisor.scoring import FRESHNESS_DAYS, SCORING_VERSION
 
@@ -219,6 +220,7 @@ class AdvisorRepository:
               ON import_run.id = l.import_run_id
              AND import_run.status = 'completed'
             WHERE upper(v.market) = 'IT'
+              AND """ + CAR_ONLY_SQL + """
               AND upper(listing_source.market) = 'IT'
               AND listing_source.ranking_permission = 'permitted'
               AND l.is_active IS TRUE
@@ -372,6 +374,8 @@ class AdvisorRepository:
             """
             WITH classified AS (
               SELECT CASE
+                WHEN NOT """ + CAR_ONLY_SQL + """
+                  THEN 'unsupported_vehicle_type'
                 WHEN upper(v.market) <> 'IT'
                   OR upper(listing_source.market) <> 'IT'
                   THEN 'non_it_market'
@@ -601,6 +605,7 @@ class AdvisorRepository:
              AND l.spec_id = s.id
              AND l.last_seen_at >= %s
              AND (l.valid_until IS NULL OR l.valid_until >= %s)
+            WHERE """ + CAR_ONLY_SQL + """
             ORDER BY
               v.make,
               v.model,

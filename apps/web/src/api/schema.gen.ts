@@ -687,7 +687,7 @@ export interface components {
             /** Phase Key */
             phase_key: string | null;
             /** Vehicle Type */
-            vehicle_type: string | null;
+            vehicle_type: ("car" | "motorcycle" | "scooter") | null;
         };
         /** CatalogFact */
         CatalogFact: {
@@ -720,7 +720,7 @@ export interface components {
              * Metric
              * @enum {string}
              */
-            metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw";
+            metric: "engine_power_kw" | "system_power_kw" | "continuous_power_kw" | "engine_displacement_cc" | "cylinders" | "battery_gross_kwh" | "battery_usable_kwh" | "liquid_consumption_l_100km" | "electric_consumption_kwh_100km" | "electric_range_km" | "co2_g_km" | "length_mm" | "body_width_mm" | "width_with_mirrors_mm" | "height_mm" | "seats" | "cargo_volume_liters" | "mass_kg" | "ac_charge_power_kw" | "dc_peak_charge_power_kw" | "seat_height_mm" | "fuel_tank_capacity_liters" | "underseat_storage_liters";
             /** Policy Version */
             policy_version: string;
             /** Reason */
@@ -1486,7 +1486,7 @@ export interface components {
             /** Specs */
             specs: components["schemas"]["VehicleSpecDetail"][];
             /** Vehicle Type */
-            vehicle_type: string | null;
+            vehicle_type: ("car" | "motorcycle" | "scooter") | null;
         };
         /** VehicleDimensions */
         VehicleDimensions: {
@@ -1888,6 +1888,7 @@ export interface components {
             transmission_details: components["schemas"]["VehicleTransmission"];
             /** Trim */
             trim: string | null;
+            two_wheel: components["schemas"]["VehicleTwoWheelSpecs"];
             /** Valid From */
             valid_from: string | null;
             /** Valid To */
@@ -1932,7 +1933,7 @@ export interface components {
             /** Phase Key */
             phase_key: string | null;
             /** Vehicle Type */
-            vehicle_type: string | null;
+            vehicle_type: ("car" | "motorcycle" | "scooter") | null;
         };
         /** VehicleTransmission */
         VehicleTransmission: {
@@ -1946,6 +1947,20 @@ export interface components {
             transmission: string | null;
             /** Transmission Type */
             transmission_type: string | null;
+        };
+        /**
+         * VehicleTwoWheelSpecs
+         * @description Reviewed point values from catalog v2 facts; null when unknown or ambiguous.
+         */
+        VehicleTwoWheelSpecs: {
+            /** Fuel Tank Capacity Liters */
+            fuel_tank_capacity_liters: number | null;
+            /** Seat Height Mm */
+            seat_height_mm: number | null;
+            /** Underseat Storage Liters */
+            underseat_storage_liters: number | null;
+            /** Wet Weight Kg */
+            wet_weight_kg: number | null;
         };
     };
     responses: never;
@@ -2347,6 +2362,7 @@ export interface operations {
                 body_style?: string | null;
                 market?: string | null;
                 max_price_eur?: number | null;
+                vehicle_type?: ("car" | "motorcycle" | "scooter") | null;
                 limit?: number;
                 offset?: number;
             };

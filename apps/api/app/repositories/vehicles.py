@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from app.repositories.filters import VehicleFilters
+from app.repositories.filters import EFFECTIVE_VEHICLE_TYPE_SQL, VehicleFilters
 
 
 PROFILE_PROVENANCE_FIELDS = (
@@ -23,6 +23,16 @@ def _group_by_spec_id(rows: list[dict[str, Any]]) -> dict[UUID, list[dict[str, A
     for row in rows:
         grouped.setdefault(row["spec_id"], []).append(row)
     return grouped
+
+
+TWO_WHEEL_TYPES = {"motorcycle", "scooter"}
+# Catalog v2 metric -> two_wheel field. mass_kg counts only as wet weight.
+TWO_WHEEL_METRICS = {
+    "seat_height_mm": "seat_height_mm",
+    "mass_kg": "wet_weight_kg",
+    "fuel_tank_capacity_liters": "fuel_tank_capacity_liters",
+    "underseat_storage_liters": "underseat_storage_liters",
+}
 
 
 def _feature_response(row: dict[str, Any]) -> dict[str, Any]:
@@ -72,6 +82,9 @@ class VehiclesRepository:
         if filters.market:
             where_clauses.append("v.market = %s")
             params.append(filters.market)
+        if filters.vehicle_type:
+            where_clauses.append(f"{EFFECTIVE_VEHICLE_TYPE_SQL} = %s")
+            params.append(filters.vehicle_type)
 
         where_sql = ""
         if where_clauses:
@@ -183,6 +196,30 @@ class VehiclesRepository:
         ).fetchall()
 
         spec_ids = [spec["id"] for spec in specs]
+        two_wheel_by_spec: dict[UUID, dict[str, Any]] = {}
+        displacement_by_spec: dict[UUID, Any] = {}
+        # Displacement means the same for every type; v2 rows expose it from facts.
+        fact_metrics = ["engine_displacement_cc"]
+        if vehicle["vehicle_type"] in TWO_WHEEL_TYPES:
+            fact_metrics += list(TWO_WHEEL_METRICS)
+        # The scalar view already keeps only eligible, single-context point values.
+        for row in self.conn.execute(
+            """
+            SELECT spec_id, metric, value_min
+            FROM catalog_scalar_facts
+            WHERE spec_id = ANY(%s) AND metric = ANY(%s)
+              AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
+              AND (metric <> 'engine_displacement_cc'
+                   OR value_min = trunc(value_min))
+            """,
+            (spec_ids, fact_metrics),
+        ).fetchall():
+            if row["metric"] == "engine_displacement_cc":
+                displacement_by_spec[row["spec_id"]] = int(row["value_min"])
+                continue
+            two_wheel_by_spec.setdefault(row["spec_id"], {})[
+                TWO_WHEEL_METRICS[row["metric"]]
+            ] = row["value_min"]
         maintenance_by_spec = _group_by_spec_id(
             list(
                 self.conn.execute(
@@ -399,7 +436,11 @@ class VehiclesRepository:
                 "powertrain": {
                     "engine_description": spec["engine"],
                     "engine_code": spec["engine_code"],
-                    "displacement_cc": spec["displacement_cc"],
+                    "displacement_cc": (
+                        spec["displacement_cc"]
+                        if spec["displacement_cc"] is not None
+                        else displacement_by_spec.get(spec["id"])
+                    ),
                     "cylinders": spec["cylinders"],
                     "horsepower": spec["horsepower"],
                     "power_kw": spec["power_kw"],
@@ -483,6 +524,7 @@ class VehiclesRepository:
                     }
                     for row in media
                 ],
+                "two_wheel": two_wheel_by_spec.get(spec["id"], {}),
             }
             for field in (
                 "generation_name",
