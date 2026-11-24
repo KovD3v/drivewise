@@ -55,7 +55,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const optionValue = (label: string) => choices.find(choice => choice.label === label)?.value ?? label;
   // "none" excludes every other option; constraint modes may all apply at once, priorities stay a top 3.
   const exclusiveLabels = choices.filter(choice => choice.value === 'none').map(choice => choice.label);
-  const maxPicks = question?.id === 'constraint_modes' ? Math.max(choices.length, 1) : 3;
+  const maxPicks = question?.id === 'constraint_modes' ? Math.max(choices.length - exclusiveLabels.length, 1) : 3;
   const currentVersion = response?.profileVersion ?? null;
   const retryable = retry && retry.version === currentVersion ? retry : null;
   const ranking = response ? guidedRanking(response) : [];

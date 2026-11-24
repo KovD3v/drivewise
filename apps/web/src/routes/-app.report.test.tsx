@@ -56,6 +56,9 @@ test('?s= loads the decision from the API with no local state and re-enables bot
 
   // The Advisor's per-vehicle missing factors stay visible, apart from the tradeoffs.
   expect(screen.getByText('Da verificare su questo veicolo')).toBeInTheDocument()
+  expect(screen.getByText(/Dati mancanti nel catalogo: costo totale di possesso/)).toBeInTheDocument()
+  expect(screen.getByText('Dati da aggiungere al tuo profilo: misure del garage.')).toBeInTheDocument()
+  expect(screen.queryByText(/vehicle_dna_assessment|request\.garage/)).not.toBeInTheDocument()
 })
 
 test('a new decision id clears the previous result, and its error never shows the old winner', async () => {

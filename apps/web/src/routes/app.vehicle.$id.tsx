@@ -36,7 +36,12 @@ export const Route = createFileRoute("/app/vehicle/$id")({
     if (!detail) throw notFound();
     return { vehicle: fromApiVehicle(detail), detail };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, match }) => {
+    if (!loaderData && match.status === "error")
+      return { meta: [
+        { title: "Servizio temporaneamente non disponibile | DriveWise" },
+        { name: "robots", content: "noindex" },
+      ] };
     if (!loaderData)
       return { meta: [
         { title: "Veicolo non trovato | DriveWise" },
@@ -276,6 +281,18 @@ function VehiclePage() {
                 </ul>
               </div>
             </div>
+          ) : rankedHere ? (
+            <p className="relative mt-10 border-t border-border/70 pt-8 text-sm text-muted-foreground">
+              Il punteggio della tua Scelta Guidata riguarda un'altra versione di questo veicolo.{" "}
+              <Link
+                to="/app/vehicle/$id"
+                params={{ id: v.id }}
+                search={{ spec: rankedHere.specId, s: decisionId ?? profile?.decisionId }}
+                className="text-foreground underline underline-offset-4"
+              >
+                Vedi la versione valutata
+              </Link>
+            </p>
           ) : v.vehicle_type !== "car" ? (
             <p className="relative mt-10 border-t border-border/70 pt-8 text-sm text-muted-foreground">
               Per moto e scooter DriveWise mostra il catalogo senza punteggio: il motore decisionale valuta solo le auto.{" "}

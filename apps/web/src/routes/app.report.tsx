@@ -17,7 +17,7 @@ import {
   type DecisionProfile,
 } from "@/lib/decision-profile";
 import { clearState, loadState } from "@/lib/decision-state";
-import { formatResultLabel } from "@/lib/model-analysis-labels";
+import { describeAdvisorGaps } from "@/lib/advisor-gaps";
 import { safeHttpsUrl } from "@/lib/safe-url";
 import { EASE } from "@/lib/motion";
 import { buildReportSections } from "@/lib/report-sections";
@@ -162,12 +162,7 @@ function ReportContent({
   const { s: searchSessionId } = Route.useSearch();
   const sessionId = searchSessionId ?? profile.decisionId;
   const offerUrl = safeHttpsUrl(winner.offer?.source_url);
-  const checks = [
-    ...(winner.warnings ?? []).map(formatResultLabel),
-    ...((winner.missingFactors ?? []).length
-      ? [`Dati mancanti nel catalogo: ${(winner.missingFactors ?? []).map(formatResultLabel).join(", ")}.`]
-      : []),
-  ];
+  const checks = describeAdvisorGaps(winner.missingFactors ?? [], winner.warnings ?? []);
   const shownConfidence = useCountUp(confidence, reduce ? 0 : 1400, !!reduce);
   const [celebrated, setCelebrated] = useState(false);
   const alternatives = ranking.slice(1, 5);
