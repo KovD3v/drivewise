@@ -1,7 +1,6 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { useScrollReveal } from "@/hooks/use-scroll-reveal";
 import { Link } from "@tanstack/react-router";
 import { Logo } from "./Logo";
-import { viewportOnce } from "@/lib/motion";
 
 const routeLinks = [
   { label: "Privacy", to: "/privacy" as const },
@@ -10,15 +9,9 @@ const routeLinks = [
 ];
 
 export function Footer() {
-  const reduce = useReducedMotion();
+  const { ref } = useScrollReveal<HTMLElement>();
   return (
-    <motion.footer
-      initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={viewportOnce}
-      transition={{ duration: reduce ? 0 : 0.6 }}
-      className="border-t border-border/60 px-6 py-20 sm:px-8"
-    >
+    <footer ref={ref} className="dw-scroll-reveal border-t border-border/60 px-6 py-20 sm:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-10 sm:flex-row">
         <Logo />
         <nav aria-label="Footer" className="flex flex-wrap justify-center gap-9">
@@ -42,6 +35,6 @@ export function Footer() {
           © {new Date().getFullYear()} DriveWise
         </p>
       </div>
-    </motion.footer>
+    </footer>
   );
 }

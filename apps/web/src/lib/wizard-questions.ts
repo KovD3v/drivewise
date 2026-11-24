@@ -4,6 +4,7 @@
  * per quel vehicle_type (vedi coverage_matrix.csv).
  */
 import type { DecisionProfile } from "@/lib/decision-profile";
+import { categoryLabel } from "./category-labels";
 import {
   getCategories,
   getVehiclesByType,
@@ -101,7 +102,7 @@ export async function buildQuestions(type: VehicleTypeKey): Promise<Question[]> 
       hint: "Le categorie disponibili nel catalogo DriveWise per questa scelta.",
       kind: "single",
       options: [
-        ...categories.map((c) => ({ value: c, label: c })),
+        ...categories.map((c) => ({ value: c, label: categoryLabel(c) })),
         { value: "", label: "Non lo so ancora" },
       ],
     },

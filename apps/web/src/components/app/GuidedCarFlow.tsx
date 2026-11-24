@@ -102,7 +102,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
           <p className="mt-5 max-w-2xl text-[1.02rem] leading-relaxed text-muted-foreground">Le domande cambiano in base a ciò che stai cercando: ti chiediamo solo ciò che i dati reali dei veicoli permettono di valutare.</p>
           <div className="mt-9 space-y-8">
             <StepStage themeId="facts" active={false}><DecisionMessage><p>Cosa stai cercando?</p><p className="text-muted-foreground">Auto, moto o scooter: da qui cambia tutto il percorso.</p></DecisionMessage><div className="pl-[3.125rem]"><span className="inline-flex rounded-full border border-primary/35 bg-primary/10 px-4 py-2 text-[0.85rem]">Auto</span></div></StepStage>
-            <ProgressNarrative completion={completion} />
+            <ProgressNarrative completion={completion} remainingCount={response ? response.missingInformation.length : initialMissing.length - (category === null ? 0 : 1)} />
             <StepStage themeId="facts" active={category === null}>
               <DecisionMessage><p>{categoryPrompt}</p><p className="text-muted-foreground">{categoryHint}</p></DecisionMessage>
               <div className="pl-[3.125rem]">{category === null ? <QuickChoice options={categories} onSelect={setCategory} /> : <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/10 px-4 py-2 text-[0.85rem] text-foreground">{category}</span>}</div>

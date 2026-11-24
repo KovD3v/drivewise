@@ -18,6 +18,7 @@ import { loadState } from "@/lib/decision-state";
 import { buildReportSections } from "@/lib/report-sections";
 import { euro, fuelLabel, mm2cm, typeLabel, vehicleName } from "@/lib/vehicle-format";
 import { getVehicleById, getVehiclesByType, type Vehicle } from "@/services/vehicleService";
+import { categoryLabel } from "@/lib/category-labels";
 
 export const Route = createFileRoute("/app/vehicle/$id")({
   loader: async ({ params }) => {
@@ -28,7 +29,15 @@ export const Route = createFileRoute("/app/vehicle/$id")({
   },
   head: ({ loaderData }) => {
     if (!loaderData)
-      return { meta: [{ title: "Veicolo non trovato | DriveWise" }, { name: "robots", content: "noindex" }] };
+      return { meta: [
+        { title: "Veicolo non trovato | DriveWise" },
+        { name: "description", content: "Questo veicolo non è presente nel catalogo DriveWise." },
+        { property: "og:title", content: "Veicolo non trovato | DriveWise" },
+        { property: "og:description", content: "Questo veicolo non è presente nel catalogo DriveWise." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "robots", content: "noindex" },
+      ] };
     const v = loaderData.vehicle;
     const title = `${v.brand} ${v.model} — è adatto a te? | DriveWise`;
     const description = `Dati reali su ${v.brand} ${v.model}: profilo tecnico, affidabilità, furti osservati e compatibilità con il tuo profilo decisionale.`;
@@ -122,7 +131,7 @@ function VehiclePage() {
 
   const specs: { label: string; value: string }[] = [
     { label: "Tipo", value: typeLabel[v.vehicle_type] },
-    { label: "Categoria", value: v.category },
+    { label: "Categoria", value: categoryLabel(v.category) },
     ...(v.pricing.new_price_estimate
       ? [{ label: "Prezzo indicativo nuovo", value: euro(v.pricing.new_price_estimate) }]
       : []),
@@ -184,7 +193,7 @@ function VehiclePage() {
           <div className="relative flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
               <p className="text-[0.7rem] tracking-[0.2em] text-muted-foreground uppercase">
-                {typeLabel[v.vehicle_type]} · {v.category}
+                {typeLabel[v.vehicle_type]} · {categoryLabel(v.category)}
               </p>
               <h1 className="font-heading mt-3 text-[2rem] leading-tight font-extrabold tracking-[-0.03em] sm:text-[2.6rem]">
                 {vehicleName(v)}
@@ -294,7 +303,7 @@ function VehiclePage() {
                     className="block h-full rounded-2xl border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
                   >
                     <p className="truncate text-[0.9rem] font-medium">{vehicleName(a.vehicle)}</p>
-                    <p className="mt-1 text-[0.78rem] text-muted-foreground">{a.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : a.vehicle.category}</p>
+                    <p className="mt-1 text-[0.78rem] text-muted-foreground">{a.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : categoryLabel(a.vehicle.category)}</p>
                     {scored && (
                       <p className="font-heading mt-3 text-[1.1rem] font-bold tabular-nums">{a.score}%</p>
                     )}

@@ -45,7 +45,7 @@ export type Feature = {
 export const FEATURES: Feature[] = [
   {
     slug: "garage",
-    title: "My Garage",
+    title: "I miei veicoli",
     short: "Gestisci tutti i tuoi veicoli in un unico posto.",
     long: "Auto possedute, moto, scooter, cronologia, chilometri, bollo, assicurazione, revisione, tagliandi, pneumatici e valore usato: tutto il tuo parco veicoli in una sola vista, sempre aggiornata.",
     icon: "car",
@@ -58,7 +58,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "decision-history",
-    title: "Decision History",
+    title: "Cronologia delle scelte",
     short: "La cronologia di tutte le decisioni effettuate.",
     long: "Ogni analisi che fai con DriveWise resta consultabile e confrontabile nel tempo, in una timeline verticale che racconta come sono cambiate le tue esigenze.",
     icon: "history",
@@ -67,12 +67,12 @@ export const FEATURES: Feature[] = [
       "Timeline verticale di ogni analisi",
       "Confronto fra decisioni passate",
       "Motivazioni sempre riconsultabili",
-      "Esportazione del Decision Report",
+      "Esportazione del Riepilogo della scelta",
     ],
   },
   {
     slug: "wishlist",
-    title: "Wishlist",
+    title: "Preferiti",
     short: "Salva i veicoli preferiti e ricevi aggiornamenti.",
     long: "Metti da parte i veicoli che ti interessano e lascia che DriveWise ti avvisi su cambio prezzo, restyling, nuovi richiami, recensioni e miglioramenti del Decision Score.",
     icon: "bell",
@@ -86,9 +86,9 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "compare-later",
-    title: "Compare Later",
+    title: "Confronti salvati",
     short: "Confronta in qualsiasi momento i veicoli salvati.",
-    long: "Metti a confronto i veicoli della tua wishlist con lo stesso rigore del Decision Engine: costi, spazio, affidabilità e compatibilità con il tuo profilo.",
+    long: "Metti a confronto i veicoli della tua wishlist con lo stesso rigore del Motore decisionale: costi, spazio, affidabilità e compatibilità con il tuo profilo.",
     icon: "compare",
     preview: "vs",
     benefits: [
@@ -100,7 +100,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "cost-tracker",
-    title: "Cost Tracker",
+    title: "Spese",
     short: "Tutti i costi del tuo veicolo, in chiaro.",
     long: "Carburante, assicurazione, bollo, tagliandi, gomme e svalutazione: DriveWise raccoglie tutto e ti mostra il costo totale annuale, senza sorprese.",
     icon: "wallet",
@@ -114,7 +114,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "smart-maintenance",
-    title: "Smart Maintenance",
+    title: "Manutenzione",
     short: "Promemoria automatici per ogni scadenza.",
     long: "Tagliandi, olio, gomme, cinghia, pastiglie, revisione e scadenze amministrative: ricevi il promemoria giusto al momento giusto, calcolato sui tuoi chilometri reali.",
     icon: "wrench",
@@ -128,7 +128,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "vehicle-health",
-    title: "Vehicle Health",
+    title: "Stato del veicolo",
     short: "Il tuo veicolo connesso, in tempo reale.",
     long: "Con la futura connessione API/OBD, DriveWise legge stato batteria, errori, autonomia, usura e diagnostica, traducendoli in linguaggio comprensibile.",
     icon: "pulse",
@@ -142,7 +142,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "document-wallet",
-    title: "Document Wallet",
+    title: "Documenti",
     short: "Tutti i documenti del veicolo, sempre con te.",
     long: "Libretto, assicurazione, bollo, garanzia, fatture, contratti e revisioni in un archivio ordinato e ricercabile, disponibile quando serve davvero.",
     icon: "folder",
@@ -156,7 +156,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "ai-advisor",
-    title: "AI Advisor",
+    title: "Consulente digitale",
     short: "Fai una domanda, ricevi una decisione spiegata.",
     long: "Un consulente che conosce il tuo profilo, il tuo veicolo e i tuoi costi, e risponde con numeri e motivazioni, non con opinioni.",
     icon: "spark",
@@ -170,7 +170,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "family-garage",
-    title: "Family Garage",
+    title: "Veicoli di famiglia",
     short: "Più veicoli, più persone, un solo posto.",
     long: "Gestisci i veicoli della famiglia, le auto aziendali, le moto e gli scooter, con profili e scadenze separati ma una visione d'insieme.",
     icon: "users",
@@ -183,7 +183,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "finance",
-    title: "Finance",
+    title: "Finanziamenti",
     short: "Prestiti, leasing, noleggio e calcolo rata.",
     long: "Capisci quale formula conviene davvero al tuo utilizzo, con il costo totale reale e non solo la rata mensile in vetrina.",
     icon: "euro",
@@ -196,7 +196,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "insurance-center",
-    title: "Insurance Center",
+    title: "Assicurazioni",
     short: "Confronta RC, furto, incendio e kasko.",
     long: "Le coperture spiegate senza gergo, confrontate sul tuo profilo di guida e sul valore reale del veicolo.",
     icon: "shield",
@@ -209,7 +209,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "community",
-    title: "Community",
+    title: "Comunità",
     short: "Recensioni, esperienze, guide e discussioni.",
     long: "L'esperienza reale di chi guida quel veicolo ogni giorno, filtrata e organizzata per essere utile alla tua decisione.",
     icon: "chat",
@@ -222,7 +222,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "value-prediction",
-    title: "Value Prediction",
+    title: "Valore futuro",
     short: "Quanto varrà il tuo veicolo domani.",
     long: "Una previsione del valore futuro basata su modello, chilometri, stato e andamento del mercato, per scegliere il momento giusto per vendere.",
     icon: "trend",
@@ -236,7 +236,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "upgrade-advisor",
-    title: "Upgrade Advisor",
+    title: "Quando cambiare veicolo",
     short: "Quando conviene davvero cambiare veicolo.",
     long: "DriveWise incrocia costi, usura, valore residuo e nuove offerte per dirti se cambiare è un vero miglioramento o solo una spesa.",
     icon: "arrowup",
@@ -249,7 +249,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "smart-garage",
-    title: "Smart Garage",
+    title: "Monitoraggio del mercato",
     short:
       "DriveWise conosce garage, stile di guida, budget, famiglia e chilometri, e ti avvisa quando un nuovo veicolo è un reale miglioramento.",
     long: "Il tuo profilo decisionale continua a lavorare anche quando non stai cercando. Quando esce un veicolo che migliora davvero la tua situazione, lo sai per primo — con la spiegazione del perché.",
@@ -265,7 +265,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "insights",
-    title: "Insights",
+    title: "Statistiche",
     short: "I tuoi numeri, letti nel tempo.",
     long: "Km percorsi, spesa totale, costo mensile, svalutazione e Decision Score medio: una fotografia chiara di come guidi e di quanto ti costa.",
     icon: "chart",
@@ -279,7 +279,7 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "achievement",
-    title: "Achievement",
+    title: "Traguardi",
     short: "Le tue decisioni migliori, riconosciute.",
     long: "Badge e medaglie sobri che raccontano i risparmi ottenuti e le decisioni corrette prese con DriveWise.",
     icon: "medal",
@@ -298,7 +298,7 @@ export function getFeature(slug: string): Feature | undefined {
 }
 
 export const METRICS = [
-  { label: "Decision Profile", value: 92, suffix: "%", icon: "ring" as const },
+  { label: "Profilo decisionale", value: 92, suffix: "%", icon: "ring" as const },
   { label: "Decisioni effettuate", value: 3, suffix: "", icon: "check" as const },
   { label: "Veicoli salvati", value: 7, suffix: "", icon: "heart" as const },
   { label: "Auto nel Garage", value: 1, suffix: "", icon: "car" as const },
@@ -330,7 +330,7 @@ export const SECTIONS: {
   {
     id: "ai",
     icon: "brain",
-    title: "DriveWise AI",
+    title: "Consulente DriveWise",
     subtitle:
       "L'intelligenza artificiale che ti accompagna durante tutto il ciclo di vita del veicolo.",
     items: ["smart-garage", "ai-advisor", "insights"],

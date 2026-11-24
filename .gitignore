@@ -26,3 +26,4 @@ data/private/catalog/
 output/playwright/
 output/source-shortlist/
 .output/
+.vercel

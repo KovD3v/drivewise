@@ -1,24 +1,32 @@
-import { useRef } from "react";
+import { SectionAurora, TiltCard, RevealText } from "./DesignEffects";
+import { useScrollReveal } from "@/hooks/use-scroll-reveal";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
-import { AlignLeft, CircleUser, HelpCircle, ListX, Radio } from "lucide-react";
+import { AlignLeft, CircleUser, Database, HelpCircle, ListX, MapPin, Radio, Scale, ShieldCheck } from "lucide-react";
 import { Section } from "./Section";
 import { Reveal } from "./Reveal";
-import { EASE, viewportOnce } from "@/lib/motion";
+import { EASE } from "@/lib/motion";
 
 const generic = [
   { label: "risposta testuale", Icon: AlignLeft },
-  { label: "nessun ranking", Icon: ListX },
+  { label: "nessuna classifica", Icon: ListX },
   { label: "nessuna spiegazione", Icon: HelpCircle },
   { label: "nessun profilo", Icon: CircleUser },
 ];
 const drivewise = [
   "Decision Score",
-  "Decision Confidence",
-  "Vehicle DNA",
-  "Decision Profile",
+  "Affidabilità della scelta",
+  "Carta d'identità del veicolo",
+  "Profilo decisionale",
   "Alternative",
   "Compromessi",
   "Motivazioni",
+];
+
+const advantages = [
+  { Icon: ShieldCheck, title: "Verifiche concrete, non opinioni", body: "Misure del box, altezza della sella, sottosella, limiti di cilindrata: controlliamo che il veicolo vada bene per la tua vita reale." },
+  { Icon: Database, title: "Onesti sui dati", body: "Usiamo solo dati osservati e ti diciamo cosa non sappiamo. Il rischio furto, per esempio, si basa sui furti registrati in Italia, senza probabilità inventate." },
+  { Icon: MapPin, title: "Pensato per l'Italia", body: "Bollo, RC auto, furti e regole del Codice della Strada italiani entrano nel calcolo." },
+  { Icon: Scale, title: "Indipendente", body: "DriveWise non vende veicoli e nessun marchio paga per comparire in classifica." },
 ];
 
 function StrokeCheck({ reduce }: { reduce: boolean | null }) {
@@ -44,7 +52,7 @@ function StrokeCheck({ reduce }: { reduce: boolean | null }) {
 
 export function Difference() {
   const reduce = useReducedMotion();
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const { ref: sectionRef } = useScrollReveal<HTMLDivElement>();
 
   // Parallax: la posizione del cursore inclina leggermente le due card.
   const px = useMotionValue(0);
@@ -88,13 +96,14 @@ export function Difference() {
   });
 
   return (
-    <Section id="perche" surface className="overflow-x-clip pt-16 md:pt-20 lg:pt-24">
+    <Section id="perche" className="dw-band dw-band-card relative isolate pt-16 md:pt-20 lg:pt-24">
+      <SectionAurora variant="peach" />
       <Reveal>
         <h2 className="max-w-2xl text-4xl leading-[1.08] font-bold sm:text-5xl">
-          Perché DriveWise è diverso.
+          <RevealText text="Perché DriveWise è diverso." />
         </h2>
         <p className="mt-6 max-w-xl text-[1.0625rem] leading-relaxed text-muted-foreground">
-          Capisci sempre il perché di ogni consiglio, non solo la risposta.
+          Non ti diciamo solo quale veicolo: ti spieghiamo perché — con numeri, non impressioni.
         </p>
       </Reveal>
 
@@ -102,10 +111,8 @@ export function Difference() {
         ref={sectionRef}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
-        initial="hidden"
-        whileInView="show"
-        viewport={viewportOnce}
-        className="relative mt-16 grid items-center gap-10 md:grid-cols-2 md:gap-10"
+        initial={false}
+        className="dw-scroll-reveal relative mt-16 grid items-center gap-10 md:grid-cols-2 md:gap-10"
         style={{ perspective: 1200 }}
       >
         {/* VS badge — impatto al centro */}
@@ -177,7 +184,7 @@ export function Difference() {
 
         {/* Card vibrante */}
         <motion.div variants={enter(90)} style={{ rotateY: rotYB, rotateX: rotX }}>
-          <div className="group relative h-full rounded-[1.85rem] p-px shadow-[var(--shadow-card-hover)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_28px_70px_-28px_color-mix(in_oklab,var(--color-primary)_55%,transparent)] motion-safe:md:-translate-y-4 motion-safe:hover:scale-[1.015]">
+          <div className="group relative h-full overflow-hidden rounded-[1.85rem] p-px shadow-[var(--shadow-card-hover)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_28px_70px_-28px_color-mix(in_oklab,var(--color-primary)_55%,transparent)] motion-safe:md:-translate-y-4 motion-safe:hover:scale-[1.015]">
             <div
               aria-hidden
               className="dw-spin-slow pointer-events-none absolute inset-0 rounded-[1.85rem] bg-[conic-gradient(from_0deg,transparent_0deg,var(--color-primary)_60deg,transparent_140deg,transparent_220deg,var(--color-accent)_290deg,transparent_360deg)] opacity-45 transition-opacity duration-500 group-hover:opacity-80"
@@ -190,7 +197,7 @@ export function Difference() {
               />
               <div className="relative flex items-center gap-3">
                 <h3 className="text-lg font-bold">DriveWise</h3>
-                <span className="inline-flex translate-y-1 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.08em] text-foreground opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                <span className="inline-flex translate-y-1 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold tracking-[0.08em] text-foreground opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                   <Radio className="size-3 text-primary" />
                   In tempo reale
                 </span>
@@ -223,6 +230,22 @@ export function Difference() {
           </div>
         </motion.div>
       </motion.div>
+
+      <div className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {advantages.map(({ Icon, title, body }) => (
+          <Reveal key={title} className="h-full">
+            <TiltCard className="h-full rounded-[1.75rem]">
+            <article className="h-full rounded-[1.75rem] border border-border/70 bg-card p-8 shadow-[var(--shadow-soft)] transition-shadow duration-500 hover:shadow-[var(--shadow-card-hover)]">
+              <span className="grid size-11 place-items-center rounded-2xl bg-primary/12 text-foreground">
+                <Icon className="size-5" aria-hidden />
+              </span>
+              <h3 className="mt-7 text-lg font-bold">{title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{body}</p>
+            </article>
+            </TiltCard>
+          </Reveal>
+        ))}
+      </div>
     </Section>
   );
 }

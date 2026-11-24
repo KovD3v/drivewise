@@ -10,7 +10,7 @@ const suggestions = [
   "Cerco un SUV per la famiglia",
   "Vorrei una moto per iniziare",
   "Cerco un'auto affidabile sotto i 30.000 €",
-  "Quanto costa davvero mantenere una Tesla?",
+  "Quanto costa davvero mantenere un'auto elettrica?",
 ];
 
 export function DecisionBar() {
@@ -38,7 +38,7 @@ export function DecisionBar() {
     setHandoff(true);
     setFocused(true);
     // La navigazione parte subito: nessun handler può "mangiare" il primo click.
-    void navigate({ to: "/app/start" });
+    void navigate({ to: "/app/start", search: text ? { q: text } : {} });
   };
 
   const pickSuggestion = (s: string) => {
@@ -110,7 +110,7 @@ export function DecisionBar() {
               {!value && !focused && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center text-[1.0625rem] text-foreground/45 sm:text-[1.25rem]"
+                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center text-[1.0625rem] text-muted-foreground sm:text-[1.25rem]"
                 >
                   Raccontami cosa stai cercando...
                   <span className="caret-blink ml-[3px] inline-block h-[1.1em] w-[2px] translate-y-[0.05em] bg-primary" />
@@ -138,7 +138,7 @@ export function DecisionBar() {
           whileTap={{ scale: reduce ? 1 : 0.98 }}
           transition={{ duration: 0.3, ease: EASE }}
           className={cn(
-            "relative z-10 inline-flex h-16 shrink-0 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-[background-color,box-shadow] duration-300 hover:bg-primary-hover sm:h-[4.5rem] sm:px-9 sm:text-[1rem]",
+            "btn-shine relative z-10 inline-flex h-16 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-[background-color,box-shadow] duration-300 hover:bg-primary-hover sm:h-[4.5rem] sm:px-9 sm:text-[1rem]",
             (value.trim() || handoff) && "shadow-[var(--shadow-lift)]",
             handoff && "bg-primary-hover",
           )}
@@ -155,15 +155,15 @@ export function DecisionBar() {
       </motion.form>
 
       <div className="mt-8 flex flex-wrap justify-center gap-2.5">
-        {suggestions.map((s, i) => (
+        {suggestions.map((s) => (
           <motion.button
             key={s}
             type="button"
             onClick={() => pickSuggestion(s)}
-            initial={{ opacity: 0, y: 8 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: reduce ? 1 : 0.98 }}
-            transition={{ delay: 1 + i * 0.08, duration: 0.6, ease: EASE }}
+            transition={{ duration: 0.35, ease: EASE }}
             className={cn(
               "rounded-full border bg-card/70 px-4 py-2 text-[0.8125rem] backdrop-blur transition-all duration-300 hover:-translate-y-px hover:border-primary/40 hover:text-foreground",
               flash === s

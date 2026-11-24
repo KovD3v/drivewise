@@ -64,7 +64,7 @@ export const stepThemes: Record<string, StepTheme> = {
     icon: Ruler,
     tint: "primary",
     motif: "grid",
-    hint: "Serve per il Garage Fit",
+    hint: "Serve per verificare le misure",
   },
   budget: {
     id: "budget",
@@ -92,13 +92,15 @@ export const tintClasses: Record<Tint, { ring: string; soft: string; text: strin
 };
 
 /** Frasi di progressione: cambiano in base al completamento del profilo. */
-export function progressNarrative(completion: number): string {
+export function progressNarrative(completion: number, remainingCount = 1): string {
+  if (remainingCount === 0) return "Profilo decisionale completo: procedo con l'analisi.";
+  completion = Math.min(99, completion);
   if (completion < 25) return "Sto leggendo la tua richiesta e isolo i parametri utili…";
   if (completion < 50) return "Stiamo comprendendo il tuo stile di utilizzo…";
   if (completion < 70) return "Sto pesando le tue priorità sul Decision Score…";
-  if (completion < 90) return "Abbiamo quasi completato il tuo Decision Profile…";
+  if (completion < 90) return "Abbiamo quasi completato il tuo profilo decisionale…";
   if (completion < 100) return "Le ultime informazioni ci permettono di individuare il veicolo ideale.";
-  return "Decision Profile completo: procedo con l'analisi.";
+  return "Profilo decisionale completo: procedo con l'analisi.";
 }
 
 export type AnalysisPhase = { label: string; icon: LucideIcon; detail: string };
@@ -106,12 +108,12 @@ export type AnalysisPhase = { label: string; icon: LucideIcon; detail: string };
 export const analysisPhases: AnalysisPhase[] = [
   { label: "Analisi del profilo", icon: Brain, detail: "12 parametri dichiarati" },
   { label: "Analisi delle esigenze", icon: Layers, detail: "Uso reale e contesto" },
-  { label: "Analisi economica", icon: Calculator, detail: "TCO a 1, 3 e 5 anni" },
+  { label: "Analisi economica", icon: Calculator, detail: "Costo totale a 1, 3 e 5 anni" },
   { label: "Analisi tecnica", icon: Wrench, detail: "Affidabilità e manutenzione" },
   { label: "Compatibilità con il tuo utilizzo", icon: Gauge, detail: "Percorrenze e vincoli" },
   { label: "Calcolo Decision Score", icon: Activity, detail: "Pesatura multi-criterio" },
-  { label: "Explainability", icon: Lightbulb, detail: "Motivazioni verificabili" },
-  { label: "Preparazione del report finale", icon: ScrollText, detail: "Decision Report finale" },
+  { label: "Motivazioni della scelta", icon: Lightbulb, detail: "Motivazioni verificabili" },
+  { label: "Preparazione del riepilogo finale", icon: ScrollText, detail: "Riepilogo della scelta" },
 ];
 
 export const trustBadgeIcon = ShieldCheck;

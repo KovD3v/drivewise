@@ -8,43 +8,35 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 
+import { useEffect } from 'react'
 import { PageTransition } from '@/components/transition/PageTransition'
+import { CONTACT_SOURCE_KEY } from '@/lib/contact-intelligence'
 import legacyStyles from '../legacy.css?url'
 
 import appStyles from '../styles.css?url'
 
-const faviconHref =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231d4f48'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='Arial,sans-serif' font-size='32' font-weight='700' fill='white'%3ED%3C/text%3E%3C/svg%3E"
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'DriveWise',
-      },
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'DriveWise' },
+      { name: 'description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
+      { name: 'author', content: 'DriveWise' },
+      { name: 'theme-color', content: '#F4FAF7' },
+      { property: 'og:title', content: 'DriveWise' },
+      { property: 'og:description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
+      { property: 'og:type', content: 'website' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: 'DriveWise' },
+      { name: 'twitter:description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
     ],
     links: [
       ...(legacyStyles ? [{ rel: 'stylesheet', href: legacyStyles }] : []),
-      {
-        rel: 'icon',
-        href: faviconHref,
-        type: 'image/svg+xml',
-      },
-      ...(appStyles
-        ? [
-            {
-              rel: 'stylesheet',
-              href: appStyles,
-            },
-          ]
-        : []),
+      { rel: 'icon', href: '/favicon.png?v=3', type: 'image/png' },
+      ...(appStyles ? [{ rel: 'stylesheet', href: appStyles }] : []),
+      { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
     ],
   }),
   component: RootComponent,
@@ -53,6 +45,10 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const path = useRouterState({ select: s => s.location.pathname });
+  useEffect(() => {
+    if (path === '/contact') return
+    try { sessionStorage.setItem(CONTACT_SOURCE_KEY, path) } catch { /* storage unavailable */ }
+  }, [path])
   const legacy = !['/', '/contact', '/privacy', '/terms'].includes(path) && !path.startsWith('/app/');
   return (
     <RootDocument>

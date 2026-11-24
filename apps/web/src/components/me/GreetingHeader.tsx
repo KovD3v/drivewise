@@ -29,12 +29,12 @@ const AMBIENT = {
 };
 
 function insights() {
-  const profile = METRICS.find((m) => m.label === "Decision Profile")?.value ?? 92;
+  const profile = METRICS.find((m) => m.label === "Profilo decisionale")?.value ?? 92;
   const decisions = METRICS.find((m) => m.label === "Decisioni effettuate")?.value ?? 3;
   const analyses = METRICS.find((m) => m.label === "Analisi effettuate")?.value ?? 18;
   const saved = METRICS.find((m) => m.label === "Veicoli salvati")?.value ?? 7;
   return [
-    `Il tuo Decision Profile è al ${profile}% — tra i più alti degli ultimi 30 giorni.`,
+    `Il tuo profilo decisionale è al ${profile}% — tra i più alti degli ultimi 30 giorni.`,
     `Hai preso ${decisions} decisioni informate questo mese.`,
     `${analyses} analisi completate e ${saved} veicoli sotto osservazione.`,
   ];

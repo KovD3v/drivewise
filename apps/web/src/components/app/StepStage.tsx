@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -54,6 +53,7 @@ function Motif({ kind, tint }: { kind: string; tint: string }) {
 type Props = {
   themeId: keyof typeof stepThemes | string;
   active?: boolean;
+  fromText?: boolean;
   children: React.ReactNode;
 };
 
@@ -61,36 +61,18 @@ type Props = {
  * Contenitore di uno step: dà al blocco una identità (eyebrow, icona, tinta,
  * micro-illustrazione) senza cambiare il linguaggio grafico del prodotto.
  */
-export function StepStage({ themeId, active = true, children }: Props) {
+export function StepStage({ themeId, active = true, fromText = false, children }: Props) {
   const reduce = useReducedMotion();
-  const theme = stepThemes[themeId] ?? stepThemes["facts"]!;
+  const theme = stepThemes[themeId] ?? stepThemes["facts"];
+  if (!theme) return null;
   const t = tintClasses[theme.tint];
   const Icon = theme.icon;
-  const ref = useRef<HTMLElement | null>(null);
-
-  // La pagina segue il focus della conversazione: quando uno step diventa
-  // attivo viene portato in posizione di lettura comoda, con scroll fluido.
-  useEffect(() => {
-    if (!active) return;
-    const node = ref.current;
-    if (!node) return;
-    const id = window.setTimeout(() => {
-      const rect = node.getBoundingClientRect();
-      const target = window.scrollY + rect.top - Math.max(96, window.innerHeight * 0.22);
-      window.scrollTo({
-        top: Math.max(0, target),
-        behavior: reduce ? "auto" : "smooth",
-      });
-    }, 220);
-    return () => window.clearTimeout(id);
-  }, [active, reduce]);
 
   return (
     <motion.section
-      ref={ref}
       initial={{ opacity: 0, y: 14, filter: reduce ? "none" : "blur(6px)" }}
       animate={{
-        opacity: active ? 1 : 0.55,
+        opacity: 1,
         y: 0,
         scale: active || reduce ? 1 : 0.97,
         filter: "blur(0px)",
@@ -117,7 +99,7 @@ export function StepStage({ themeId, active = true, children }: Props) {
             {theme.eyebrow}
           </span>
           <span className="hidden text-[0.75rem] text-muted-foreground sm:inline">
-            · {theme.hint}
+            · {themeId === "facts" ? (fromText ? "Estratto dal tuo racconto" : "Le tue risposte") : theme.hint}
           </span>
         </div>
         <motion.div

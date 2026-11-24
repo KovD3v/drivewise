@@ -9,64 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VehiclesRouteImport } from './routes/vehicles'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as ModelAnalysisRouteImport } from './routes/model-analysis'
-import { Route as ListingsRouteImport } from './routes/listings'
-import { Route as DocumentsRouteImport } from './routes/documents'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as VehiclesVehicleIdRouteImport } from './routes/vehicles_.$vehicleId'
-import { Route as ListingsListingIdRouteImport } from './routes/listings_.$listingId'
-import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
-import { Route as AppStartRouteImport } from './routes/app.start'
-import { Route as AppReportRouteImport } from './routes/app.report'
+import { Route as AdvisorRouteImport } from './routes/advisor'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as ListingsRouteImport } from './routes/listings'
+import { Route as ModelAnalysisRouteImport } from './routes/model-analysis'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as VehiclesRouteImport } from './routes/vehicles'
 import { Route as AppCompareRouteImport } from './routes/app.compare'
+import { Route as AppReportRouteImport } from './routes/app.report'
+import { Route as AppStartRouteImport } from './routes/app.start'
+import { Route as DocumentsDocumentIdRouteImport } from './routes/documents_.$documentId'
+import { Route as ListingsListingIdRouteImport } from './routes/listings_.$listingId'
+import { Route as VehiclesVehicleIdRouteImport } from './routes/vehicles_.$vehicleId'
 import { Route as AppMeIndexRouteImport } from './routes/app.me.index'
-import { Route as AppVehicleIdRouteImport } from './routes/app.vehicle.$id'
 import { Route as AppMeSlugRouteImport } from './routes/app.me.$slug'
+import { Route as AppVehicleIdRouteImport } from './routes/app.vehicle.$id'
 
-const VehiclesRoute = VehiclesRouteImport.update({
-  id: '/vehicles',
-  path: '/vehicles',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ModelAnalysisRoute = ModelAnalysisRouteImport.update({
-  id: '/model-analysis',
-  path: '/model-analysis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ListingsRoute = ListingsRouteImport.update({
-  id: '/listings',
-  path: '/listings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentsRoute = DocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdvisorRoute = AdvisorRouteImport.update({
@@ -74,34 +39,44 @@ const AdvisorRoute = AdvisorRouteImport.update({
   path: '/advisor',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VehiclesVehicleIdRoute = VehiclesVehicleIdRouteImport.update({
-  id: '/vehicles_/$vehicleId',
-  path: '/vehicles/$vehicleId',
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
-  id: '/listings_/$listingId',
-  path: '/listings/$listingId',
+const ListingsRoute = ListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
-  id: '/documents_/$documentId',
-  path: '/documents/$documentId',
+const ModelAnalysisRoute = ModelAnalysisRouteImport.update({
+  id: '/model-analysis',
+  path: '/model-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppStartRoute = AppStartRouteImport.update({
-  id: '/app/start',
-  path: '/app/start',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppReportRoute = AppReportRouteImport.update({
-  id: '/app/report',
-  path: '/app/report',
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VehiclesRoute = VehiclesRouteImport.update({
+  id: '/vehicles',
+  path: '/vehicles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppCompareRoute = AppCompareRouteImport.update({
@@ -109,19 +84,44 @@ const AppCompareRoute = AppCompareRouteImport.update({
   path: '/app/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppReportRoute = AppReportRouteImport.update({
+  id: '/app/report',
+  path: '/app/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppStartRoute = AppStartRouteImport.update({
+  id: '/app/start',
+  path: '/app/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
+  id: '/documents_/$documentId',
+  path: '/documents/$documentId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
+  id: '/listings_/$listingId',
+  path: '/listings/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VehiclesVehicleIdRoute = VehiclesVehicleIdRouteImport.update({
+  id: '/vehicles_/$vehicleId',
+  path: '/vehicles/$vehicleId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppMeIndexRoute = AppMeIndexRouteImport.update({
   id: '/app/me/',
   path: '/app/me/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppVehicleIdRoute = AppVehicleIdRouteImport.update({
-  id: '/app/vehicle/$id',
-  path: '/app/vehicle/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppMeSlugRoute = AppMeSlugRouteImport.update({
   id: '/app/me/$slug',
   path: '/app/me/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppVehicleIdRoute = AppVehicleIdRouteImport.update({
+  id: '/app/vehicle/$id',
+  path: '/app/vehicle/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -279,60 +279,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/vehicles': {
-      id: '/vehicles'
-      path: '/vehicles'
-      fullPath: '/vehicles'
-      preLoaderRoute: typeof VehiclesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/model-analysis': {
-      id: '/model-analysis'
-      path: '/model-analysis'
-      fullPath: '/model-analysis'
-      preLoaderRoute: typeof ModelAnalysisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/listings': {
-      id: '/listings'
-      path: '/listings'
-      fullPath: '/listings'
-      preLoaderRoute: typeof ListingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documents': {
-      id: '/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof DocumentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/advisor': {
@@ -342,46 +293,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdvisorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vehicles_/$vehicleId': {
-      id: '/vehicles_/$vehicleId'
-      path: '/vehicles/$vehicleId'
-      fullPath: '/vehicles/$vehicleId'
-      preLoaderRoute: typeof VehiclesVehicleIdRouteImport
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/listings_/$listingId': {
-      id: '/listings_/$listingId'
-      path: '/listings/$listingId'
-      fullPath: '/listings/$listingId'
-      preLoaderRoute: typeof ListingsListingIdRouteImport
+    '/listings': {
+      id: '/listings'
+      path: '/listings'
+      fullPath: '/listings'
+      preLoaderRoute: typeof ListingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/documents_/$documentId': {
-      id: '/documents_/$documentId'
-      path: '/documents/$documentId'
-      fullPath: '/documents/$documentId'
-      preLoaderRoute: typeof DocumentsDocumentIdRouteImport
+    '/model-analysis': {
+      id: '/model-analysis'
+      path: '/model-analysis'
+      fullPath: '/model-analysis'
+      preLoaderRoute: typeof ModelAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/start': {
-      id: '/app/start'
-      path: '/app/start'
-      fullPath: '/app/start'
-      preLoaderRoute: typeof AppStartRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/report': {
-      id: '/app/report'
-      path: '/app/report'
-      fullPath: '/app/report'
-      preLoaderRoute: typeof AppReportRouteImport
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vehicles': {
+      id: '/vehicles'
+      path: '/vehicles'
+      fullPath: '/vehicles'
+      preLoaderRoute: typeof VehiclesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/compare': {
@@ -391,6 +356,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCompareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/report': {
+      id: '/app/report'
+      path: '/app/report'
+      fullPath: '/app/report'
+      preLoaderRoute: typeof AppReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/start': {
+      id: '/app/start'
+      path: '/app/start'
+      fullPath: '/app/start'
+      preLoaderRoute: typeof AppStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents_/$documentId': {
+      id: '/documents_/$documentId'
+      path: '/documents/$documentId'
+      fullPath: '/documents/$documentId'
+      preLoaderRoute: typeof DocumentsDocumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listings_/$listingId': {
+      id: '/listings_/$listingId'
+      path: '/listings/$listingId'
+      fullPath: '/listings/$listingId'
+      preLoaderRoute: typeof ListingsListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vehicles_/$vehicleId': {
+      id: '/vehicles_/$vehicleId'
+      path: '/vehicles/$vehicleId'
+      fullPath: '/vehicles/$vehicleId'
+      preLoaderRoute: typeof VehiclesVehicleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/me/': {
       id: '/app/me/'
       path: '/app/me'
@@ -398,18 +398,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/vehicle/$id': {
-      id: '/app/vehicle/$id'
-      path: '/app/vehicle/$id'
-      fullPath: '/app/vehicle/$id'
-      preLoaderRoute: typeof AppVehicleIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/app/me/$slug': {
       id: '/app/me/$slug'
       path: '/app/me/$slug'
       fullPath: '/app/me/$slug'
       preLoaderRoute: typeof AppMeSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/vehicle/$id': {
+      id: '/app/vehicle/$id'
+      path: '/app/vehicle/$id'
+      fullPath: '/app/vehicle/$id'
+      preLoaderRoute: typeof AppVehicleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

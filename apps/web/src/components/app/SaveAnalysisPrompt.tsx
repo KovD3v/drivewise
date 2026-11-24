@@ -159,7 +159,7 @@ export function SaveAnalysisPrompt({
                   <span className="min-w-0">
                     <span className="block text-[0.95rem] font-medium">Analisi salvata nel tuo profilo.</span>
                     <span className="block text-[0.8rem] text-muted-foreground">
-                      La trovi in My DriveWise → Decision History.
+                      La trovi in My DriveWise → Cronologia delle scelte.
                     </span>
                   </span>
                 </div>

@@ -23,6 +23,10 @@
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
   --color-primary-hover: var(--primary-hover);
+  --color-brand-ink: var(--brand-ink);
+  --color-focus-ink: var(--focus-ink);
+  --color-focus-inverse: var(--focus-inverse);
+  --color-cta-ink: var(--cta-ink);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -66,6 +70,10 @@
 }
 
 :root {
+  --brand-ink: #216C5B;
+  --focus-ink: #1F2A44;
+  --focus-inverse: #FFFFFF;
+  --cta-ink: #0F172A;
   --radius: 1rem;
   --background: oklch(0.972 0.009 165);
   --foreground: oklch(0.21 0.034 264.4);
@@ -94,6 +102,11 @@
   --shadow-card-hover: 0 2px 5px oklch(0.21 0.034 264 / 0.05), 0 34px 70px -30px oklch(0.21 0.034 264 / 0.16);
   --shadow-object: 0 1px 1px oklch(0.21 0.034 264 / 0.03), 0 4px 12px -6px oklch(0.21 0.034 264 / 0.06), 0 26px 60px -28px oklch(0.21 0.034 264 / 0.13);
   --shadow-focus: 0 0 0 5px oklch(0.759 0.114 180.5 / 0.09);
+  --journey-mint: oklch(0.94 0.043 167);
+  --journey-peach: oklch(0.93 0.044 48);
+  --journey-lavender: oklch(0.92 0.04 294);
+  --journey-butter: oklch(0.96 0.055 95);
+  --journey-sky: oklch(0.94 0.03 245);
   --gradient-soft: linear-gradient(180deg, oklch(1 0 0) 0%, oklch(0.972 0.009 165) 100%);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -111,6 +124,10 @@
 }
 
 .dark {
+  --brand-ink: #9DE4CF;
+  --focus-ink: #FFFFFF;
+  --focus-inverse: #FFFFFF;
+  --cta-ink: #0F172A;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -808,4 +825,154 @@
   .dw-vs-pulse {
     animation: dw-vs-glow 3.2s ease-in-out infinite;
   }
+}
+/* ===== Effetti di rifinitura DriveWise (da aggiungere al CSS globale) ===== */
+
+/* ---- 4 · fasce con raccordi morbidi ----
+   Usa .dw-band al posto dello sfondo pieno delle sezioni colorate (es. bg-muted / verde chiaro):
+   il colore sfuma in alto e in basso invece di avere un taglio netto. */
+.dw-band {
+  --band: oklch(96.5% 0.014 165); /* verde menta chiarissimo del sito; sostituibile con il token del tema */
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    var(--band) clamp(64px, 9vw, 140px),
+    var(--band) calc(100% - clamp(64px, 9vw, 140px)),
+    transparent 100%
+  );
+}
+
+/* variante per le sezioni bianche (bg-card): bianco che sfuma nel fondo della pagina */
+.dw-band-card { --band: var(--card, #fff); }
+
+/* ---- 4 · aurora pastello ---- */
+/* la <section> che la contiene deve avere `relative isolate`: l'aurora resta dietro a tutto il contenuto */
+.dw-aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent); }
+.dw-aurora span {
+  position: absolute; width: 42vmax; height: 42vmax; border-radius: 50%;
+  filter: blur(70px); opacity: 0.55; will-change: transform;
+  animation: dw-drift 26s ease-in-out infinite alternate;
+}
+.dw-aurora span:nth-child(1) { left: -12%; top: -18%; background: #cff1e6; }
+.dw-aurora span:nth-child(2) { right: -14%; top: 8%; background: #e6e0ff; animation-duration: 32s; animation-delay: -8s; }
+.dw-aurora span:nth-child(3) { left: 30%; bottom: -30%; background: #ffe1d3; opacity: 0.4; animation-duration: 38s; animation-delay: -15s; }
+.dw-aurora-lavender span:nth-child(1) { background: #e6e0ff; }
+.dw-aurora-lavender span:nth-child(2) { background: #dceeff; }
+.dw-aurora-peach span:nth-child(1) { background: #ffe1d3; }
+.dw-aurora-peach span:nth-child(3) { background: #fff2c6; }
+@keyframes dw-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4vmax, 3vmax, 0) scale(1.08); }
+  100% { transform: translate3d(-3vmax, 5vmax, 0) scale(0.96); }
+}
+
+/* ---- 5 · card vive ---- */
+.dw-tilt {
+  position: relative;
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s;
+  border-radius: inherit;
+}
+.dw-tilt[data-hover] { transition: transform 0.08s linear, box-shadow 0.35s; }
+.dw-tilt-glow {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.35s;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(207, 241, 230, 0.55), transparent 65%);
+  mix-blend-mode: multiply;
+}
+.dw-tilt[data-hover] .dw-tilt-glow { opacity: 1; }
+
+/* riflesso sui pulsanti principali: aggiungi la classe .btn-shine al pulsante (che deve avere overflow hidden) */
+.btn-shine { position: relative; overflow: hidden; isolation: isolate; }
+.btn-shine::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 45%; z-index: -1; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-18deg); animation: dw-shine 6.5s ease-in-out infinite;
+}
+.btn-shine:hover::after { animation-duration: 1.4s; }
+@keyframes dw-shine { 0%, 72% { left: -60%; } 100% { left: 130%; } }
+
+/* ---- 6 · titoli rivelati ---- */
+.dw-reveal-w { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.dw-reveal-w > span { display: inline-block; transform: none; opacity: 1; }
+.dw-scroll-reveal { opacity: 1; }
+html:not(.js-reveal) *, html:not(.js-reveal) *::before, html:not(.js-reveal) *::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .js-reveal .dw-scroll-reveal { transition: opacity var(--dw-reveal-duration, 350ms) ease-out, translate var(--dw-reveal-duration, 350ms) ease-out; }
+  .js-reveal .dw-scroll-reveal.dw-reveal-pending { opacity: 0; translate: 0 18px; }
+  .js-reveal .dw-reveal-w > span { transition: transform var(--dw-reveal-duration, 350ms) cubic-bezier(0.2, 0.8, 0.2, 1), opacity var(--dw-reveal-duration, 350ms); }
+  .js-reveal .dw-reveal.dw-reveal-pending .dw-reveal-w > span { transform: translateY(105%); opacity: 0; }
+}
+.dw-reveal-instant, .dw-reveal-instant .dw-reveal-w > span { transition: none !important; }
+html:not(.js-reveal) .dw-scroll-reveal, .dw-reveal-instant { opacity: 1 !important; translate: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .dw-scroll-reveal { opacity: 1 !important; translate: none !important; transition: none !important; }
+}
+
+/* ---- pausa delle vignette scelta dall'utente (MotionPause) ---- */
+.dw-user-paused *, .dw-user-paused *::before, .dw-user-paused *::after { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) { .dw-motion-btn { display: none; } }
+
+/* ---- riduci movimento ---- */
+@media (prefers-reduced-motion: reduce) {
+  .dw-aurora span, .btn-shine::after { animation: none !important; }
+  .btn-shine::after { display: none; }
+  .dw-tilt { transform: none !important; }
+  .dw-reveal-w > span { transform: none !important; opacity: 1 !important; transition: none !important; }
+}
+
+
+/* Keyboard focus is never suppressed by component resets or utility outlines. */
+:is(a[href], button, input, textarea, select, [role="button"], [role="tab"], [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-outline, var(--focus-ink)) !important;
+  outline-offset: 2px !important;
+}
+.dw-focus-inverse { --focus-outline: var(--focus-inverse); }
+.dw-home .text-xs { font-size: 12px; }
+.dw-home [class*="text-[0.78rem]"], .dw-home [class*="text-[0.8125rem]"] { font-size: 13px; }
+
+/* Contact receipt: live rows, blur-triggered CSS data flights, no vehicles. */
+.cj-preview-wrap { margin-top:28px; }
+.cj-scene { position:relative; overflow:hidden; padding:28px 24px 32px; border:1px solid var(--border); border-radius:var(--radius); background-color:var(--journey-mint); background-image:radial-gradient(var(--border) 1px, transparent 1px); background-size:14px 14px; box-shadow:var(--shadow-soft); color:var(--foreground); }
+.cj-heading { margin:0 0 28px; font:700 18px var(--font-heading); text-align:center; }
+.cj-ticket { position:relative; width:84%; margin:0 0 0 12%; padding:24px; background:var(--card); color:var(--foreground); box-shadow:var(--shadow-object); transform:rotate(-2deg); border-radius:0 0 8px 8px; }
+.cj-ticket::before { content:""; position:absolute; left:0; right:0; top:-8px; height:9px; background:radial-gradient(circle at 8px 0, transparent 5px, var(--card) 5.5px) 0 0 / 16px 9px repeat-x; }
+.cj-ticket-header { display:flex; align-items:center; gap:8px; padding-bottom:18px; border-bottom:1px dashed var(--border); font:700 14px var(--font-heading); }
+.cj-ticket-header svg { width:20px; height:20px; color:var(--brand-ink); flex-shrink:0; }
+.cj-ticket-rows { margin:10px 0 0; }
+.cj-ticket-row { position:relative; display:grid; grid-template-columns:90px minmax(0,1fr); gap:8px; padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; line-height:1.5; }
+.cj-ticket-row dt { color:var(--muted-foreground); }
+.cj-ticket-row dd { margin:0; font-weight:500; overflow-wrap:anywhere; }
+.cj-empty { color:var(--border); }
+.cj-due { margin:18px 0 0; font-size:13px; line-height:1.6; }
+.cj-due span { color:var(--muted-foreground); }.cj-due strong { font-weight:600; color:var(--brand-ink); }
+.cj-team { margin:8px 0 0; font-size:12px; color:var(--muted-foreground); }
+.cj-tone-0 { --cargo-tone:var(--journey-mint); }.cj-tone-1 { --cargo-tone:var(--journey-sky); }.cj-tone-2 { --cargo-tone:var(--journey-peach); }.cj-tone-3 { --cargo-tone:var(--journey-lavender); }.cj-tone-4 { --cargo-tone:var(--journey-butter); }
+.cj-data-card { position:absolute; left:0; top:0; width:max-content; max-width:100%; display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--cargo-tone); box-shadow:var(--shadow-soft); color:var(--foreground); font-size:13px; line-height:1.5; opacity:0; pointer-events:none; z-index:2; }
+.cj-data-card::before { content:""; position:absolute; left:-100px; width:100px; top:50%; border-top:1px dashed var(--brand-ink); z-index:-1; }
+.cj-data-card svg { width:14px; height:14px; flex-shrink:0; color:var(--brand-ink); }
+.cj-data-card span { overflow-wrap:anywhere; }
+.cj-confirmation { display:flex; align-items:center; gap:16px; margin-top:20px; }
+.cj-stamp { display:flex; align-items:center; justify-content:center; gap:3px; flex-shrink:0; width:84px; height:84px; border:2px solid var(--brand-ink); border-radius:50%; background:var(--journey-mint); color:var(--brand-ink); font-size:12px; font-weight:800; transform:rotate(-10deg); }
+.cj-stamp svg { width:15px; height:15px; }.cj-code { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.cj-mobile { display:none; }.contact-chip-pill { transition:transform 200ms ease-out, width 200ms ease-out, height 200ms ease-out; }
+@keyframes cj-data-flight { 0% { transform:translateX(-110px); opacity:1; } 50% { opacity:1; } 100% { transform:translateX(0) scale(.98); opacity:0; } }
+@keyframes cj-receipt-stamp { from { opacity:0; transform:rotate(-24deg) scale(1.15); } to { opacity:1; transform:rotate(-10deg) scale(1); } }
+@media (prefers-reduced-motion:no-preference) {
+ .cj-data-card { animation:cj-data-flight 400ms ease-out both; }
+ .cj-stamp { animation:cj-receipt-stamp 300ms ease-out both; }
+ .cj-outside * { animation-play-state:paused !important; }
+}
+@media (prefers-reduced-motion:reduce) { .contact-chip-pill { transition:none; }.cj-data-card { display:none; }.cj-stamp,.cj-ticket { transform:none; } }
+@media (min-width:640px) and (max-width:1023px) { .cj-ticket { width:70%; margin-left:18%; }.cj-scene { padding:28px 24px 36px; } }
+@media (max-width:639px) {
+ .cj-desktop { display:none; }.cj-preview-wrap { margin-top:0; }
+ .cj-mobile { display:block; width:100%; margin-top:12px; }
+ .cj-ticket-compact { width:100%; margin:0; padding:18px; transform:none; box-shadow:none; border:1px solid var(--border); }
+ .cj-ticket-compact::before { display:none; }.cj-ticket-compact .cj-ticket-header { font-size:13px; padding-bottom:12px; }
+ .cj-ticket-compact .cj-ticket-row { padding:8px 0; grid-template-columns:88px minmax(0,1fr); }
 }

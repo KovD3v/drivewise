@@ -3,9 +3,9 @@ import { EASE } from "@/lib/motion";
 import { progressNarrative } from "@/lib/wizard-theme";
 
 /** Frase contestuale che si "digita" e cambia con l'avanzare del profilo. */
-export function ProgressNarrative({ completion }: { completion: number }) {
+export function ProgressNarrative({ completion, remainingCount }: { completion: number; remainingCount: number }) {
   const reduce = useReducedMotion();
-  const full = progressNarrative(completion);
+  const full = progressNarrative(completion, remainingCount);
 
   return (
     <div className="flex items-center gap-2.5" aria-live="polite">
@@ -17,9 +17,9 @@ export function ProgressNarrative({ completion }: { completion: number }) {
       <AnimatePresence mode="wait">
         <motion.p
           key={full}
-          initial={{ opacity: 0, y: 4 }}
+          initial={{ y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
+          exit={{ y: -4 }}
           transition={{ duration: 0.35, ease: EASE }}
           className="text-[0.82rem] text-muted-foreground"
         >

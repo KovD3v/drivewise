@@ -1,32 +1,11 @@
+import { SectionAurora, TiltCard, RevealText } from "./DesignEffects";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Section, Eyebrow } from "./Section";
 import { Reveal } from "./Reveal";
 import { EASE } from "@/lib/motion";
-
-const faqs = [
-  {
-    q: "DriveWise vende veicoli?",
-    a: "No. DriveWise non vende e non intermedia: analizza e spiega. L'obiettivo è farti arrivare alla decisione giusta, non a un annuncio.",
-  },
-  {
-    q: "In cosa è diverso da un'IA generica?",
-    a: "Ogni risposta è una decisione strutturata: Decision Score, livello di confidenza, alternative valutate e compromessi espliciti.",
-  },
-  {
-    q: "Su quali dati si basa l'analisi?",
-    a: "Costi reali di possesso, affidabilità, consumi, sicurezza, dimensioni e caratteristiche tecniche, pesati sul tuo profilo d'uso.",
-  },
-  {
-    q: "Funziona anche per moto e scooter?",
-    a: "Sì. Auto, moto e scooter vengono valutati con lo stesso modello di decisione, adattato alla categoria.",
-  },
-  {
-    q: "Quanto tempo serve per avere una risposta?",
-    a: "Pochi minuti. Racconti cosa ti serve, rispondi a qualche domanda mirata e ricevi il tuo Decision Report.",
-  },
-];
+import { homeFaqs as faqs } from "@/lib/home-faqs";
 
 /** Progressive "typing" of an answer, character by character. */
 function Typewriter({ text, enabled }: { text: string; enabled: boolean }) {
@@ -87,12 +66,12 @@ export function Faq() {
   const progress = seen.length / faqs.length;
 
   return (
-    <Section id="faq">
+    <Section id="faq" className="dw-band">
       <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start lg:gap-20">
         <Reveal className="lg:sticky lg:top-32">
           <Eyebrow>FAQ</Eyebrow>
           <h2 className="mt-7 text-4xl leading-[1.08] font-bold sm:text-5xl">
-            Domande frequenti.
+            <RevealText text="Domande frequenti." />
           </h2>
         </Reveal>
 
@@ -115,7 +94,7 @@ export function Faq() {
                 return (
                   <motion.li
                     key={f.q}
-                    animate={{ scale: dimmed && !reduce ? 0.98 : 1, opacity: dimmed ? 0.72 : 1 }}
+                    animate={{ scale: dimmed && !reduce ? 0.98 : 1 }}
                     transition={{ duration: 0.4, ease: EASE }}
                     className="group relative border-b border-border"
                   >
@@ -135,6 +114,7 @@ export function Faq() {
                       />
                     )}
 
+                    <h3 className="m-0 text-base font-normal [font-family:inherit]">
                     <button
                       type="button"
                       onClick={() => toggle(i)}
@@ -143,15 +123,15 @@ export function Faq() {
                       className="relative flex w-full items-center gap-4 py-6 text-left"
                     >
                       <span
-                        className={`font-heading text-xs font-semibold tabular-nums transition-colors duration-300 ${
-                          open || seen.includes(i) ? "text-primary" : "text-muted-foreground"
-                        }`}
+                        aria-hidden
+                        className="font-heading text-xs font-semibold tabular-nums text-brand-ink"
                       >
                         0{i + 1}
                       </span>
                       <span className="flex-1 text-[1.0625rem] font-semibold">{f.q}</span>
                       <PlusIcon open={open} />
                     </button>
+                    </h3>
 
                     <AnimatePresence initial={false}>
                       {open && (
@@ -177,7 +157,7 @@ export function Faq() {
 
             <a
               href="#decision-bar"
-              className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
+              className="group mt-8 inline-flex min-h-6 items-center gap-2 py-2 max-sm:min-h-11 max-sm:py-3 text-sm font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               Altre domande? Inizia la scelta guidata
               <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />

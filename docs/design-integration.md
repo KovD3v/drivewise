@@ -39,3 +39,29 @@ Run with `bun run dev:web` and the existing FastAPI server. Verification:
 Browser smoke used the actual FastAPI routes and scoring engine with the existing
 test repositories, without a database connection. This does not verify production
 catalog contents or database persistence.
+
+## November 2026 design update
+
+The 24/11/2026 Lovable export was merged three ways onto this import: the
+13/09 export is the base, this branch is ours, and the November export is
+theirs. Design changes arrive, and the API boundaries above stay as they are.
+
+- **Home:** story chapters with vignettes (decision, weights, lifecycle),
+  `MotionPause` controls for looping motion, and the shared scroll-reveal
+  policy. The September `HeroVision`, `HowItWorks` and `WhyDriveWise` sections
+  were replaced by `HeroStory` and its chapters.
+- **Home requests:** `wizard-input` infers explicit answers from the home
+  request, but only for the local motorcycle and scooter wizard. Car requests
+  still go only to `GuidedCarFlow` and the Guided Decision API.
+- **Contact:** the split layout with reason-specific fields, a live ticket,
+  FAQ suggestions and a receipt. Lovable saved requests to Supabase through a
+  server function. Here `src/lib/contact-demo.ts` validates the form and shows
+  a `DEMO-…` receipt labelled as simulated; nothing is sent or stored.
+- **Accounts:** the browser-local demo account from this branch stays.
+  Lovable's Google/Apple broker and Supabase auth were not imported.
+- **Labels and metadata:** Italian category labels (`category-labels`), SEO and
+  social meta tags, the favicon, and `apple-touch-icon.png` and
+  `drivewise-social.png` in `public/`. Lovable hosted these images behind
+  `*.asset.json` pointers; the files now come from drivewise-italia.com.
+- **New UI primitives:** `button`, `checkbox` and `switch`, with their Radix
+  dependencies.

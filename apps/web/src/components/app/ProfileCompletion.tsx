@@ -9,9 +9,9 @@ export function ProfileCompletion({ value }: { value: number }) {
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-[var(--shadow-soft)]">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-heading text-[0.95rem] font-semibold text-foreground">
-          Profilo Decisionale
-        </h3>
+        <h2 className="font-heading text-[0.95rem] font-semibold text-foreground">
+          Profilo decisionale
+        </h2>
         <span className="font-heading text-[1.35rem] font-bold tabular-nums text-foreground">
           {shown}%
         </span>

@@ -17,7 +17,15 @@ export const Route = createFileRoute("/app/me/$slug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Non disponibile — My DriveWise" }, { name: "robots", content: "noindex" }] };
+      return { meta: [
+        { title: "Non disponibile — My DriveWise" },
+        { name: "description", content: "Questa funzione non è disponibile in My DriveWise." },
+        { property: "og:title", content: "Non disponibile — My DriveWise" },
+        { property: "og:description", content: "Questa funzione non è disponibile in My DriveWise." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "robots", content: "noindex" },
+      ] };
     }
     const { feature } = loaderData;
     const title = `${feature.title} — My DriveWise`;
@@ -27,6 +35,8 @@ export const Route = createFileRoute("/app/me/$slug")({
         { name: "description", content: feature.short },
         { property: "og:title", content: title },
         { property: "og:description", content: feature.short },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
       ],
     };
   },

@@ -20,10 +20,13 @@ import { loadState } from "@/lib/decision-state";
 import { EASE } from "@/lib/motion";
 import { buildReportSections } from "@/lib/report-sections";
 import { useCountUp } from "@/lib/use-count-up";
+import teslaModelYImage from "@/assets/tesla-model-y-studio.jpg";
+import { Button } from "@/components/ui/button";
+import { categoryLabel, categoryText } from "@/lib/category-labels";
 
-const title = "Decision Report | DriveWise";
+const title = "Riepilogo della scelta | DriveWise";
 const description =
-  "Il tuo Decision Report DriveWise: punteggio, motivazioni, compromessi e alternative calcolati sul tuo profilo.";
+  "Il tuo Riepilogo della scelta DriveWise: punteggio, motivazioni, compromessi e alternative calcolati sul tuo profilo.";
 
 export const Route = createFileRoute("/app/report")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -57,7 +60,7 @@ function ReportUnavailable() {
 function ReportMissing() {
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader label="Decision Report" maxWidth="max-w-[70rem]" />
+      <AppHeader label="Riepilogo della scelta" maxWidth="max-w-[70rem]" />
       <main className="mx-auto w-full max-w-[46rem] px-6 py-24 text-center sm:px-8">
         <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.03em]">
           Nessun profilo decisionale attivo.
@@ -118,9 +121,9 @@ function ReportPage() {
   if (ranking === null) {
     return (
       <div className="min-h-screen bg-background">
-        <AppHeader label="Decision Report" maxWidth="max-w-[70rem]" />
+        <AppHeader label="Riepilogo della scelta" maxWidth="max-w-[70rem]" />
         <main className="mx-auto w-full max-w-[46rem] px-6 py-24 text-center sm:px-8">
-          <p className="text-sm text-muted-foreground">Calcolo il tuo Decision Report…</p>
+          <p className="text-sm text-muted-foreground">Calcolo il tuo Riepilogo della scelta…</p>
         </main>
       </div>
     );
@@ -151,7 +154,7 @@ function ReportContent({
 
   const chips = [
     vehicleTypeLabels[profile.vehicleType],
-    profile.category,
+    profile.category ? categoryLabel(profile.category) : null,
     profile.budgetMax ? `Budget ${profile.budgetMax.toLocaleString("it-IT")} €` : null,
     ...(profile.usage ?? []).map((u) => usageLabels[u] ?? u),
     ...(profile.priorities ?? []).map((p) => dnaLabels[p] ?? p),
@@ -159,7 +162,7 @@ function ReportContent({
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader label="Decision Report" maxWidth="max-w-[70rem]" />
+      <AppHeader label="Riepilogo della scelta" maxWidth="max-w-[70rem]" />
       {winner.vehicle.mock && <p className="mx-auto max-w-[70rem] px-8 pt-5 text-xs text-muted-foreground">Demo: catalogo e ranking simulati.</p>}
       <main className="mx-auto w-full max-w-[70rem] space-y-14 px-6 py-12 sm:px-8 lg:py-20">
         <motion.article
@@ -185,18 +188,30 @@ function ReportContent({
             <p className="mt-4 text-[0.6875rem] tracking-[0.2em] text-muted-foreground uppercase">
               {winner.decisionStatus === 'insufficient_data' ? 'Punteggio provvisorio: dati insufficienti' : 'Decision Score'} · {winner.score}/100
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">Punteggio DriveWise</p>
+            {winner.vehicle.brand === "Tesla" && winner.vehicle.model.startsWith("Model Y") && (
+              <div className="mt-7 w-full max-w-2xl overflow-hidden rounded-lg border border-border/70 bg-background">
+                <img
+                  src={teslaModelYImage}
+                  alt="Tesla Model Y bianca vista di tre quarti anteriore"
+                  width={1536}
+                  height={1024}
+                  className="aspect-[3/2] w-full object-contain"
+                />
+              </div>
+            )}
             <h1 className="font-heading mt-6 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
               {winner.vehicle.brand} {winner.vehicle.model}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {winner.vehicle.category}
+              {categoryLabel(winner.vehicle.category)}
               {winner.vehicle.pricing.new_price_estimate
                 ? ` · ${winner.vehicle.pricing.new_price_estimate.toLocaleString("it-IT")} €`
                 : ""}
             </p>
             {winner.offer && <p className="mt-3 text-sm text-muted-foreground">{winner.offer.title} · {winner.offer.condition === 'new' ? 'Nuova' : 'Usata'} · {winner.offer.price_eur.toLocaleString('it-IT')} €{winner.offer.source_url && <> · <a href={winner.offer.source_url} target="_blank" rel="noopener noreferrer" className="underline">Vedi offerta</a></>}</p>}
             <p className="mt-3 text-sm text-muted-foreground">
-              Decision Confidence {shownConfidence}%
+              Affidabilità della scelta {shownConfidence}%
             </p>
             {chips.length > 0 && (
               <ul className="mt-7 flex flex-wrap justify-center gap-2">
@@ -249,22 +264,24 @@ function ReportContent({
             </div>
           </div>
 
-          <div className="relative mt-12 flex flex-col gap-3 sm:flex-row">
-            <Link
-              to="/app/vehicle/$id"
-              params={{ id: winner.vehicle.id }}
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition-all duration-300 hover:bg-primary-hover sm:w-auto"
+          <div className="relative mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              disabled
+              className="h-auto min-h-14 w-full gap-3 whitespace-normal rounded-full px-6 py-3 text-[0.95rem] font-semibold leading-snug disabled:opacity-70"
             >
-              Apri la scheda {winner.vehicle.model}
-              <ArrowRight className="size-4" />
-            </Link>
-            <Link
-              to="/app/start"
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-card px-7 text-[0.95rem] font-medium transition-colors duration-300 hover:border-primary/40 sm:w-auto"
+              <span className="min-w-0 text-center">Apri la scheda {winner.vehicle.model}</span>
+              <ArrowRight className="size-4 shrink-0" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled
+              className="h-auto min-h-14 w-full gap-3 whitespace-normal rounded-full border-border/70 bg-card px-6 py-3 text-[0.95rem] font-semibold leading-snug disabled:opacity-70"
             >
-              <ArrowLeft className="size-4" />
-              Rifai la Scelta Guidata
-            </Link>
+              <ArrowLeft className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 text-center">Rifai la Scelta Guidata</span>
+            </Button>
           </div>
         </motion.article>
 
@@ -303,7 +320,7 @@ function ReportContent({
                         {a.vehicle.brand} {a.vehicle.model}
                       </span>
                       <span className="mt-0.5 block truncate text-[0.8rem] text-muted-foreground">
-                        {a.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : a.why[0] ?? a.vehicle.category}
+                        {a.decisionStatus === 'insufficient_data' ? 'Valutazione provvisoria: dati insufficienti' : categoryText(a.why[0] ?? a.vehicle.category)}
                       </span>
                     </span>
                     <span className="font-heading shrink-0 font-semibold tabular-nums">

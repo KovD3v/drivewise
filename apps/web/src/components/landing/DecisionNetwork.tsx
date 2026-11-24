@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -12,7 +12,10 @@ export function DecisionNetwork({ className }: { className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const reduce = useReducedMotion();
   const isMobile = useIsMobile();
-  const active = !reduce && !isMobile;
+  const [mounted, setMounted] = useState(false);
+  const active = mounted && !reduce && !isMobile;
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!active) return;

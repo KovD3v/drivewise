@@ -12,7 +12,7 @@ const links = [
   { label: "FAQ", href: "#faq" },
 ];
 
-export function Header() {
+export function Header({ homeNavigation = false }: { homeNavigation?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -57,74 +57,65 @@ export function Header() {
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-all duration-500",
+        homeNavigation && "bg-background duration-200 motion-reduce:transition-none",
         scrolled
           ? "border-b border-border bg-card/80 backdrop-blur-md"
           : "border-b border-transparent",
       )}
     >
       <div className="mx-auto flex h-18 w-full max-w-6xl items-center justify-between px-6 py-4 sm:h-20 sm:px-8 sm:py-5">
-        <a href="#top" aria-label="DriveWise, torna in cima" onClick={(e) => onNavClick(e, "#top")}>
+        <a href={homeNavigation ? "/" : "#top"} aria-label={homeNavigation ? "DriveWise, torna alla home" : "DriveWise, torna in cima"} onClick={homeNavigation ? undefined : (e) => onNavClick(e, "#top")}>
           <Logo />
         </a>
 
-        <nav aria-label="Principale" className="hidden items-center gap-9 md:flex">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={(e) => onNavClick(e, l.href)}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {l.label}
-            </a>
-          ))}
-          <AppTransitionLink
-            to="/app/me"
-            ariaLabel="Vai a My DriveWise"
-            steps={["Accesso al tuo profilo...", "Caricamento dashboard...", "Pronto."]}
-            className="group relative mr-3 flex items-center justify-center"
-          >
-            <span className="sr-only">Vai a My DriveWise</span>
-            <span
+        <div className="hidden items-center gap-6 md:flex">
+          <nav aria-label="Principale" className="flex items-center gap-9">
+            {links.map((l) => (
+              <a
+                key={l.href}
+                href={homeNavigation ? `/${l.href}` : l.href}
+                onClick={homeNavigation ? undefined : (e) => onNavClick(e, l.href)}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* azioni: profilo (secondaria) + Inizia (principale), separate dai link */}
+          <div className="flex items-center gap-2.5 border-l border-border/70 pl-6">
+            <AppTransitionLink
+              to="/app/me"
+              ariaLabel="Vai a My DriveWise"
+              steps={["Accesso al tuo profilo...", "Caricamento dashboard...", "Pronto."]}
               className={cn(
-                "animate-badge-pop relative grid size-9 place-items-center rounded-full",
-                "border border-border/60 bg-card/40 backdrop-blur-md",
-                "transition-all duration-300 ease-out",
-                "group-hover:border-primary/50 group-hover:bg-primary/8 group-hover:shadow-[0_0_24px_-8px_var(--color-primary)]",
+                "group inline-flex h-9 items-center gap-2 rounded-full pr-3.5 pl-1.5",
+                "border border-border/70 bg-card/60 backdrop-blur-md",
+                "text-sm text-foreground transition-all duration-300 ease-out",
+                "hover:border-primary/50 hover:bg-primary/8 hover:text-foreground",
               )}
             >
-              <UserCircle
-                className="size-[1.15rem] text-muted-foreground transition-all duration-300 group-hover:scale-[1.08] group-hover:text-primary"
-                strokeWidth={1.8}
-              />
-              <span
-                className={cn(
-                  "absolute -right-0.5 -top-0.5 z-10 size-2.5 rounded-full bg-primary",
-                  "ring-2 ring-card",
-                  "animate-status-pulse",
-                )}
-                aria-hidden="true"
-              />
-            </span>
-            <span
-              className={cn(
-                "pointer-events-none absolute left-1/2 top-full z-50 mt-3 -translate-x-1/2 whitespace-nowrap",
-                "rounded-md bg-foreground px-2.5 py-1.5 text-[0.7rem] font-medium text-background opacity-0",
-                "shadow-lg transition-all duration-200 group-hover:opacity-100",
-              )}
+              <span className="relative grid size-6 place-items-center rounded-full bg-muted/70 transition-colors group-hover:bg-primary/15">
+                <UserCircle
+                  className="size-4 text-muted-foreground transition-colors group-hover:text-primary"
+                  strokeWidth={1.8}
+                />
+                <span
+                  className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-card"
+                  aria-hidden="true"
+                />
+              </span>
+              My DriveWise
+            </AppTransitionLink>
+            <CtaButton
+              to="/app/start"
+              size="sm"
+              onClick={() => track("landing_start_cta_click", { source: "header" })}
             >
-              Vai a My DriveWise
-              <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-foreground" />
-            </span>
-          </AppTransitionLink>
-          <CtaButton
-            to="/app/start"
-            size="sm"
-            onClick={() => track("landing_start_cta_click", { source: "header" })}
-          >
-            Inizia
-          </CtaButton>
-        </nav>
+              Inizia
+            </CtaButton>
+          </div>
+        </div>
 
         <button
           type="button"
@@ -143,14 +134,15 @@ export function Header() {
             {links.map((l) => (
               <a
                 key={l.label}
-                href={l.href}
+                href={homeNavigation ? `/${l.href}` : l.href}
                 onClick={(e) => {
+                  if (homeNavigation) { setOpen(false); return; }
                   e.preventDefault();
                   setOpen(false);
                   window.history.replaceState(null, "", l.href);
                   window.setTimeout(() => scrollToHash(l.href), 60);
                 }}
-                className="rounded-xl px-2 py-3 text-[0.95rem] text-foreground/80 hover:bg-muted"
+                className="rounded-xl px-2 py-3 text-[0.95rem] text-foreground hover:bg-muted"
               >
                 {l.label}
               </a>
@@ -160,7 +152,7 @@ export function Header() {
               steps={["Accesso al tuo profilo...", "Caricamento dashboard...", "Pronto."]}
               onNavigate={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-2 py-3 text-[0.95rem] text-foreground/80",
+                "flex items-center gap-3 rounded-xl px-2 py-3 text-[0.95rem] text-foreground",
                 "transition-colors hover:bg-muted",
               )}
             >

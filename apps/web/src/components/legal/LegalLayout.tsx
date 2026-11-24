@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppHeader } from "@/components/app/AppHeader";
+import { Header } from "@/components/landing/Header";
 import { Footer } from "@/components/landing/Footer";
 import { ScrollWayfinding } from "@/components/nav/ScrollWayfinding";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,8 @@ export function LegalPage({
   sections,
   children,
   updatedAt,
+  homeNavigation = false,
+  showWayfinding = true,
 }: {
   badge: string;
   title: string;
@@ -77,18 +80,20 @@ export function LegalPage({
   sections?: LegalSection[];
   children?: ReactNode;
   updatedAt?: string;
+  homeNavigation?: boolean;
+  showWayfinding?: boolean;
 }) {
   const reduce = useReducedMotion();
   const fade = (delay = 0) => ({
-    initial: reduce ? { opacity: 1 } : { opacity: 0, y: 16 },
+    initial: homeNavigation || reduce ? { opacity: 1 } : { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: reduce ? 0 : 0.6, delay: reduce ? 0 : delay, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: reduce ? 0 : homeNavigation ? 0.2 : 0.6, delay: reduce || homeNavigation ? 0 : delay, ease: [0.22, 1, 0.36, 1] as const },
   });
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader label={badge} maxWidth="max-w-[74rem]" sticky />
-      <main className="mx-auto w-full max-w-[74rem] px-6 pt-16 pb-24 sm:px-8 sm:pt-24">
+      {homeNavigation ? <Header homeNavigation /> : <AppHeader label={badge} maxWidth="max-w-[74rem]" sticky />}
+      <main className={cn("mx-auto w-full max-w-[74rem] px-6 pt-16 pb-24 sm:px-8 sm:pt-24", homeNavigation && "pt-34 sm:pt-44")}>
         <motion.header {...fade(0)} className="max-w-[46rem]">
           <LegalBadge>{badge}</LegalBadge>
           <h1 className="font-heading mt-6 text-[2.5rem] leading-[1.03] font-extrabold tracking-[-0.035em] sm:text-[3.25rem]">
@@ -99,7 +104,7 @@ export function LegalPage({
           )}
         </motion.header>
 
-        <div className="mt-14 grid gap-10 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start lg:gap-16">
+        <div className={cn("mt-14 grid gap-10 lg:items-start lg:gap-16", sections && "lg:grid-cols-[minmax(0,1fr)_16rem]")}>
           <div className="min-w-0 space-y-5">
             {sections?.map((s, i) => (
               <motion.section
@@ -130,7 +135,7 @@ export function LegalPage({
         </div>
       </main>
       <Footer />
-      <ScrollWayfinding />
+      {showWayfinding && <ScrollWayfinding />}
     </div>
   );
 }

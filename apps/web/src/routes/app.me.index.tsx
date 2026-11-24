@@ -32,6 +32,8 @@ export const Route = createFileRoute("/app/me/")({
           "My DriveWise: garage, costi, manutenzione, documenti e consigli intelligenti per tutto il ciclo di vita del tuo veicolo.",
       },
       { property: "og:title", content: "My DriveWise — la tua area personale" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content:
@@ -200,10 +202,10 @@ function MyDriveWise() {
               {...fade(0.4)}
               className="font-heading text-2xl font-extrabold tracking-tight"
             >
-              Decision History
+              Cronologia delle scelte
             </motion.h2>
             <motion.p {...fade(0.44)} className="mt-2 text-muted-foreground">
-              Le analisi che hai salvato dal tuo Decision Report.
+              Le analisi che hai salvato dal tuo Riepilogo della scelta.
             </motion.p>
             <ul className="mt-6 space-y-3">
               {saved.map((a, i) => (
@@ -240,6 +242,7 @@ function MyDriveWise() {
                       {new Date(a.createdAt).toLocaleDateString("it-IT")}
                     </span>
                   </Link>
+                  <Link to="/contact" search={{ from: "/app/me", analysis: a.id }} className="mt-1 inline-flex min-h-11 items-center px-4 text-[0.8125rem] text-muted-foreground underline underline-offset-4">Contattaci su questa analisi</Link>
                 </motion.li>
               ))}
             </ul>

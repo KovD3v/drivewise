@@ -84,9 +84,7 @@ export function AuthDialog({
               <X className="size-4" />
             </button>
 
-            <h2 className="font-heading pr-8 text-[1.2rem] font-extrabold tracking-tight">
-              {title}
-            </h2>
+            <h2 className="font-heading pr-8 text-[1.2rem] font-extrabold tracking-tight">{title}</h2>
             <p className="mt-2 text-[0.85rem] text-muted-foreground">{subtitle}</p>
             <p className="mt-2 text-xs text-muted-foreground">Demo locale: accesso simulato, nessun account creato. Non inserire credenziali reali.</p>
 

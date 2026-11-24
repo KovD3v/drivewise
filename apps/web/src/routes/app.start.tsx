@@ -35,6 +35,7 @@ import {
   type Answers,
   type Question,
 } from "@/lib/wizard-questions";
+import { answersFromText, chronologicalQuestions, isAnswered, summarizeRequest, vehicleTypeFromText, wizardCompletion } from "@/lib/wizard-input";
 import type { VehicleTypeKey } from "@/services/vehicleService";
 
 const title = "DriveWise — Costruisci la tua decisione";
@@ -42,6 +43,8 @@ const description =
   "Costruisci un profilo decisionale personale e confronta veicoli reali, pertinenti alle tue esigenze.";
 
 export const Route = createFileRoute("/app/start")({
+  validateSearch: (search: Record<string, unknown>): { q?: string } =>
+    typeof search["q"] === "string" ? { q: search["q"] } : {},
   head: () => ({
     meta: [
       { title },
@@ -85,7 +88,7 @@ function factsFromAnswers(type: VehicleTypeKey, answers: Answers, questions: Que
         facts.push({ id: q.id, label: "Garage", value: `${g["length"]} × ${g["width"]} cm` });
       return;
     }
-    const label = labelFor(q, value);
+    const label = q.id === "freeText" && typeof value === "string" ? summarizeRequest(value) : labelFor(q, value);
     if (label) facts.push({ id: q.id, label: shortLabel(q.id), value: label });
   });
   return facts;
@@ -109,6 +112,8 @@ function shortLabel(id: string) {
 }
 
 function labelFor(q: Question, value: string | string[] | Record<string, string>): string {
+  if (q.id === "experience" && value === "beginner") return "principiante";
+  if (q.id === "experience" && value === "experienced") return "esperto";
   const find = (v: string) => q.options?.find((o) => o.value === v)?.label ?? v;
   if (Array.isArray(value)) return value.map(find).join(", ");
   if (typeof value === "string") return value ? find(value) : "";
@@ -129,14 +134,13 @@ function recapValue(q: Question, value: Answers[string]): string {
   return labelFor(q, (value ?? "") as string) || "—";
 }
 
-function isAnswered(answers: Answers, id: string) {
-  if (!(id in answers)) return false;
-  const v = answers[id];
-  return Array.isArray(v) ? v.length > 0 : v !== undefined;
-}
 
 function AppStart() {
   const navigate = useNavigate();
+  const { q: query } = Route.useSearch();
+  const questionHeading = useRef<HTMLHeadingElement>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const [textAnswerIds, setTextAnswerIds] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState("");
   const [vehicleType, setVehicleType] = useState<VehicleTypeKey | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -150,10 +154,30 @@ function AppStart() {
   useEffect(() => {
     track("app_start_view");
     setSessionId(makeSessionId());
-    setInitialQuery(takeInitialQuery() ?? "");
+    const storedQuery = takeInitialQuery();
+    const text = query?.trim() || storedQuery || "";
+    setInitialQuery(text);
+    let alive = true;
+    const inferredType = vehicleTypeFromText(text);
+    if (inferredType) setVehicleType(inferredType);
+    // Cars go to GuidedCarFlow, which sends the request to the Guided Decision API.
+    if (inferredType && inferredType !== "car") {
+      setPhase("typing");
+      void buildQuestions(inferredType).then((list) => {
+        if (!alive) return;
+        const inferred = answersFromText(text, list, inferredType);
+        const active = list.filter((question) => isQuestionActive(question, inferred));
+        setAnswers(inferred);
+        setTextAnswerIds(["type", ...Object.keys(inferred)]);
+        setQuestions(list);
+        const nextIndex = active.findIndex((question) => !isAnswered(inferred, question.id));
+        setIndex(Math.max(0, nextIndex));
+        setPhase(nextIndex === -1 ? "result" : "questions");
+      });
+    }
     clearState();
-    return () => timers.current.forEach(clearTimeout);
-  }, []);
+    return () => { alive = false; timers.current.forEach(clearTimeout); };
+  }, [query]);
 
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -163,11 +187,7 @@ function AppStart() {
     () => questions.filter((q) => isQuestionActive(q, answers)),
     [questions, answers],
   );
-  const answeredCount = activeQuestions.filter((q) => isAnswered(answers, q.id)).length;
-  const totalCount = activeQuestions.length + 1; // + selezione tipo
-  const completion = vehicleType
-    ? Math.round(((answeredCount + 1) / totalCount) * 100)
-    : 0;
+  const completion = wizardCompletion(Boolean(vehicleType), activeQuestions, answers);
 
   const profile = useMemo(
     () => (vehicleType ? answersToProfile(vehicleType, answers) : null),
@@ -181,10 +201,11 @@ function AppStart() {
   );
   const missing: MissingItem[] = useMemo(() => {
     if (!vehicleType) return [{ id: "type", label: "Tipo di veicolo" }];
+    if (questions.length === 0) return [{ id: "loading", label: "Domande in preparazione" }];
     return activeQuestions
       .filter((q) => !isAnswered(answers, q.id))
       .map((q) => ({ id: q.id, label: shortLabel(q.id) }));
-  }, [vehicleType, activeQuestions, answers]);
+  }, [vehicleType, activeQuestions, answers, questions.length]);
 
   // Anteprima ranking: solo dataset, solo dal tipo scelto.
   useEffect(() => {
@@ -222,9 +243,14 @@ function AppStart() {
     if (type === "car") return;
     setPhase("typing");
     void buildQuestions(type).then((list) => {
+      const inferred = answersFromText(initialQuery, list, type);
+      const active = list.filter((question) => isQuestionActive(question, inferred));
+      setAnswers(inferred);
+      setTextAnswerIds(Object.keys(inferred));
       setQuestions(list);
-      setIndex(0);
-      setPhase("questions");
+      const nextIndex = active.findIndex((question) => !isAnswered(inferred, question.id));
+      setIndex(Math.max(0, nextIndex));
+      setPhase(nextIndex === -1 ? "result" : "questions");
     });
   };
 
@@ -246,8 +272,10 @@ function AppStart() {
   );
 
   const answer = (id: string, value: string | string[] | Record<string, string>) => {
-    const next = { ...answers, [id]: value };
+    const inferred = id === "freeText" && typeof value === "string" ? answersFromText(value, questions, vehicleType ?? undefined) : {};
+    const next = { ...inferred, ...answers, [id]: value };
     setAnswers(next);
+    if (id === "freeText") setTextAnswerIds((ids) => [...new Set([...ids, ...Object.keys(inferred)])]);
     advance(next);
   };
 
@@ -292,11 +320,21 @@ function AppStart() {
 
   const facts = vehicleType ? factsFromAnswers(vehicleType, answers, questions) : [];
   const currentQuestion = phase === "questions" ? activeQuestions[index] : undefined;
+  const headingText = currentQuestion?.prompt ?? (phase === "result" ? "Ho abbastanza elementi per consigliarti." : "");
+  useEffect(() => {
+    if (!headingText) return;
+    setAnnouncement(`Nuova domanda: ${headingText}`);
+    const heading = questionHeading.current;
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: "center", behavior: "instant" });
+  }, [headingText]);
 
   if (vehicleType === "car") return <GuidedCarFlow initialQuery={initialQuery} />;
 
   return (
     <div className="min-h-screen bg-background">
+      <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       <AppHeader label="Scelta Guidata" maxWidth="max-w-[86rem]" />
       {vehicleType && <p className="mx-auto max-w-[86rem] px-8 pt-5 text-xs text-muted-foreground">Demo {typeLabels[vehicleType]}: catalogo e ranking simulati.</p>}
       <main className="mx-auto w-full max-w-[86rem] px-6 py-10 sm:px-8 lg:py-16">
@@ -313,9 +351,10 @@ function AppStart() {
             </motion.div>
 
             <div className="mt-9 space-y-8">
-              <StepStage themeId="facts" active={phase === "type"}>
+              {initialQuery && <UserMessage>Hai scritto: {initialQuery}</UserMessage>}
+              <StepStage themeId="facts" active={phase === "type"} fromText={textAnswerIds.includes("type")}>
                 <DecisionMessage>
-                  <p>Cosa stai cercando?</p>
+                  <h2 tabIndex={-1}>Cosa stai cercando?</h2>
                   <p className="text-muted-foreground">Auto, moto o scooter: da qui cambia tutto il percorso.</p>
                 </DecisionMessage>
                 <div className="pl-[3.125rem]">
@@ -334,21 +373,21 @@ function AppStart() {
                 </div>
               </StepStage>
 
-              {vehicleType && phase !== "type" && <ProgressNarrative completion={completion} />}
+              {vehicleType && phase !== "type" && <ProgressNarrative completion={completion} remainingCount={missing.length} />}
 
-              {activeQuestions.map((q) => {
+              {chronologicalQuestions(activeQuestions, answers, currentQuestion?.id, Boolean(initialQuery)).map((q) => {
                 const answered = answers[q.id];
                 const isCurrent = currentQuestion?.id === q.id;
                 const isPast = !isCurrent && isAnswered(answers, q.id);
                 if (!isCurrent && !isPast) return null;
                 return (
                   <div key={q.id} className="space-y-4">
-                    {q.id === "freeText" && isPast && typeof answered === "string" && answered && (
+                    {q.id === "freeText" && !initialQuery && isPast && typeof answered === "string" && answered && (
                       <UserMessage>{answered}</UserMessage>
                     )}
-                    <StepStage themeId={q.themeId} active={isCurrent}>
+                    <StepStage themeId={q.themeId} active={isCurrent} fromText={textAnswerIds.includes(q.id)}>
                       <DecisionMessage>
-                        <p>{q.prompt}</p>
+                        <h2 ref={isCurrent ? questionHeading : undefined} tabIndex={-1} className="scroll-mt-28">{q.prompt}</h2>
                         {q.hint && <p className="text-muted-foreground">{q.hint}</p>}
                       </DecisionMessage>
                       <div className="pl-[3.125rem]">
@@ -356,7 +395,6 @@ function AppStart() {
                           q.kind === "text" ? (
                             <DecisionBar
                               key={q.id}
-                              initialValue={initialQuery}
                               placeholder="Descrivi liberamente cosa cerchi"
                               suggestions={vehicleType ? suggestionsByType[vehicleType] : []}
                               onSubmit={(text) => answer(q.id, text)}
@@ -402,10 +440,10 @@ function AppStart() {
 
               {phase === "result" && (
                 <>
-                  <StepStage themeId="facts" active>
+                  <StepStage themeId="facts" active fromText={textAnswerIds.length > 0}>
                     <DecisionMessage>
-                      <p>Ho abbastanza elementi per consigliarti.</p>
-                      <p className="text-muted-foreground">Questo è il profilo che userò per il Decision Report.</p>
+                      <h2 ref={questionHeading} tabIndex={-1} className="scroll-mt-28">Ho abbastanza elementi per consigliarti.</h2>
+                      <p className="text-muted-foreground">Questo è il profilo che userò per il riepilogo della scelta.</p>
                     </DecisionMessage>
                     <div className="pl-[3.125rem]">
                       <ExtractedFacts facts={facts} delay={0.1} />
@@ -417,7 +455,7 @@ function AppStart() {
                       onClick={showReport}
                       className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
                     >
-                      Mostrami il Decision Report
+                      Mostrami il riepilogo della scelta
                     </button>
                     <button
                       type="button"

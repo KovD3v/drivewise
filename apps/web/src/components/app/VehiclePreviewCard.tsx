@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { EASE } from "@/lib/motion";
 import { useCountUp } from "@/lib/use-count-up";
 import type { PreviewVehicle } from "@/lib/decision-engine";
+import { categoryText } from "@/lib/category-labels";
 
 export function VehiclePreviewCard({ vehicle, index }: { vehicle: PreviewVehicle; index: number }) {
   const reduce = useReducedMotion();
@@ -20,7 +21,7 @@ export function VehiclePreviewCard({ vehicle, index }: { vehicle: PreviewVehicle
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[0.9rem] font-medium text-foreground">{vehicle.name}</p>
-          <p className="mt-0.5 text-[0.75rem] text-muted-foreground">{vehicle.segment}</p>
+          <p className="mt-0.5 text-[0.75rem] text-muted-foreground">{categoryText(vehicle.segment)}</p>
         </div>
         <span className="font-heading text-[1.05rem] font-bold tabular-nums text-foreground">
           {score}%

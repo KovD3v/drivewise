@@ -17,13 +17,13 @@ export function DecisionConfidence({ value }: { value: number }) {
     <div className="rounded-2xl border border-primary/25 bg-card p-5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <h3 className="font-heading text-[0.95rem] font-semibold text-foreground">
-            Decision Confidence
-          </h3>
+          <h2 className="font-heading text-[0.95rem] font-semibold text-foreground">
+            Affidabilità della scelta
+          </h2>
           <TooltipProvider delayDuration={120}>
             <Tooltip>
               <TooltipTrigger
-                aria-label="Cos'è la Decision Confidence"
+                aria-label="Cos'è l'affidabilità della scelta"
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Info className="size-3.5" />

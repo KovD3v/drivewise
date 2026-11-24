@@ -436,7 +436,7 @@ export function GarageFit({ vehicle, garage }: { vehicle: Vehicle; garage?: Gara
           <div className="flex items-center gap-2">
             <span className={cn("size-2.5 rounded-full", toneBg[tone])} />
             <span className="text-[0.72rem] tracking-[0.14em] text-muted-foreground uppercase">
-              Garage Fit Score
+              Compatibilità con il garage
             </span>
           </div>
           <PreviewBadge />
