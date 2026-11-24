@@ -268,9 +268,10 @@ uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py 
   --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
 ```
 
-The shipped artifacts are explicitly synthetic and carry real SHA-256 hashes.
-They exercise storage/API behavior and **never qualify for ranking**, even when a
-fixture decision says `verified`. For real bundles, use the ignored
+The artifacts of `catalog-v2.synthetic.json` are explicitly synthetic and carry
+real SHA-256 hashes. They exercise storage/API behavior and **never qualify for
+ranking**, even when a fixture decision says `verified`. The demo bundle below is
+the one exception, and it says so in every source name. For real bundles, use the ignored
 `data/private/catalog/` directory and complete the [source review](source-review.md).
 
 `--check` is offline. `--stage` validates the contract and every artifact hash,
@@ -288,6 +289,40 @@ evidence in revision bundles. A stale bundle cannot replace a newer decision;
 a competing successor is rejected by the database. Batch publishers serialize on
 one transaction advisory lock. Existing sources retain their database metadata
 and permissions: importing an older bundle cannot re-enable a revoked source.
+
+### Demo catalogue (synthetic, ranks)
+
+`data/fixtures/catalog/catalog-v2.demo.synthetic.json` feeds the demo site. It holds
+10 invented cars (petrol, diesel, mild, full and plug-in hybrid, electric; list
+prices from 14,900 to 47,600 EUR), 3 invented motorcycles and 3 invented scooters.
+Every make, model, value and price is invented (ADR-011). Both sources end their
+name in "(synthetic)", carry the licence "Synthetic fixture only" and point to
+`https://example.test/demo/...`.
+
+The demo cars rank without any SQL update, so take care where you load the bundle:
+
+- each source declares `ranking_permission: "permitted"`, and the first
+  publication writes that permission (later bundles never change it);
+- each snapshot declares `evidence_kind: "sourced"`, because the read views only
+  publish sourced evidence. The artifacts are still invented files.
+
+Load it only into a local or demo database, never next to real data. From the
+repository root, with `DATABASE_URL` pointing at that database:
+
+```sh
+uv run --frozen --project apps/api python apps/api/scripts/migrate.py
+uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
+  --stage data/fixtures/catalog/catalog-v2.demo.synthetic.json \
+  --artifact-root data/fixtures/catalog/artifacts
+# Replace BATCH_UUID with the UUID printed by --stage.
+uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
+  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
+```
+
+Build the site with `VITE_SYNTHETIC_DATA=true` so every page shows the demo notice.
+The read views do not yet publish v2 length, width, height or transmission to the
+Advisor, so a profile with a garage or an automatic-gearbox requirement stays
+provisional (`insufficient_data`). Two-wheelers are listed but never ranked.
 
 ### Identity migration and ownership
 

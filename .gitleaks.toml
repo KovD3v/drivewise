@@ -10,4 +10,6 @@ regexes = [
   '''metro-g[0-9]+-[a-z0-9-]+''',
   # Public catalog key of a real model, used as a scraping fixture.
   '''toyota-yaris-xp210-[a-z0-9-]+''',
+  # Invented demo vehicles in catalog-v2.demo.synthetic.json (ADR-011).
+  '''(velto|corvane|ardea|nerio|lirae|tessaro|brisa|quillo|morvane|orsa|pixa|kestro|valdane|lumio|serra|ondo)-[a-z0-9-]+''',
 ]
