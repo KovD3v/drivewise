@@ -11,7 +11,7 @@ from pydantic import (
 )
 
 from app.schemas.base import ApiModel
-from app.schemas.vehicles import VehicleSpec, VehicleSummary
+from app.schemas.vehicles import ListPrice, VehicleSpec, VehicleSummary
 
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
 ConstraintMode = Literal["hard", "soft"]
@@ -202,6 +202,9 @@ class ModelAnalysisRequest(ApiModel):
 
 class ModelAnalysisCostSummary(ApiModel):
     market_reference_price_eur: float | None = None
+    # The list price and its source when market_reference_price_eur is the
+    # variant's list price; null for any other reference.
+    market_reference_list_price: ListPrice | None = None
     estimated_annual_maintenance_eur: float | None = None
     estimated_monthly_energy_eur: float | None = None
     estimated_depreciation_3y_eur: float | None = None
@@ -249,6 +252,10 @@ class AdvisorOffer(ApiModel):
         return value
 
 
+# The list-price block is shared with vehicle detail (ADR-013, ADR-015).
+AdvisorListPrice = ListPrice
+
+
 class AdvisorSelectedSpec(VehicleSpec):
     variant_key: str
     body_style: AdvisorBodyStyle
@@ -275,6 +282,8 @@ class AdvisorMetricProvenance(ApiModel):
     metric: str
     source_name: str
     source_url: str
+    # Licence or attribution text the product shows next to the source name.
+    source_license: str | None = None
     observed_at: date | datetime
 
     @field_validator("source_url")
@@ -288,7 +297,10 @@ class AdvisorMetricProvenance(ApiModel):
 class AdvisorRecommendationItem(ApiModel):
     vehicle: AdvisorVehicleSummary
     selected_spec: AdvisorSelectedSpec
-    offer: AdvisorOffer
+    # Null when the variant has no eligible offer and is evaluated at list price.
+    offer: AdvisorOffer | None
+    price_basis: Literal["offer", "list_price"] = "offer"
+    list_price: AdvisorListPrice | None = None
     score: float
     decision_status: Literal["complete", "insufficient_data"] = "insufficient_data"
     decision_score: float | None = None
@@ -308,6 +320,23 @@ class AdvisorRecommendationItem(ApiModel):
     tradeoffs: list[AdvisorFactor]
     evidence: dict[str, Any]
     provenance: list[AdvisorMetricProvenance]
+
+
+    @model_validator(mode="after")
+    def price_basis_matches_its_source(self) -> "AdvisorRecommendationItem":
+        if (self.price_basis == "offer") != (self.offer is not None):
+            raise ValueError("an offer is present exactly when the price basis is offer")
+        if (self.price_basis == "list_price") != (self.list_price is not None):
+            raise ValueError("a list price is present exactly for the list_price basis")
+        return self
+
+    @property
+    def price_eur(self) -> float:
+        return self.offer.price_eur if self.offer else self.list_price.price_eur
+
+    @property
+    def condition_group(self) -> Literal["new", "used"]:
+        return "used" if self.offer and self.offer.condition != "new" else "new"
 
 
 class AdvisorRecommendationGroup(ApiModel):

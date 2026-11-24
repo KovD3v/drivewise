@@ -6,6 +6,7 @@
 
 node_modules/
 dist/
+.output/
 .tanstack/
 
 .venv/
@@ -25,3 +26,4 @@ data/private/catalog/
 output/playwright/
 output/source-shortlist/
 .output/
+.vercel

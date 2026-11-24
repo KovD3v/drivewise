@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_vehicles_repository
+from app.ingestion.catalog_v2 import VehicleType
 from app.repositories.filters import VehicleFilters
 from app.repositories.vehicles import VehiclesRepository
 from app.schemas.vehicles import (
@@ -28,6 +29,7 @@ def list_vehicles(
     body_style: str | None = Query(default=None),
     market: str | None = Query(default=None),
     max_price_eur: float | None = Query(default=None, ge=0),
+    vehicle_type: VehicleType | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
@@ -38,6 +40,7 @@ def list_vehicles(
         body_style=body_style,
         market=market,
         max_price_eur=max_price_eur,
+        vehicle_type=vehicle_type,
         limit=limit,
         offset=offset,
     )

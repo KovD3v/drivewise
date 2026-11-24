@@ -2,7 +2,7 @@
 
 import json
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Context, Decimal, localcontext
 from pathlib import Path
 from typing import Annotated, Literal, Self
 from uuid import UUID
@@ -15,6 +15,7 @@ from pydantic import (
     Field,
     HttpUrl,
     ValidationError,
+    model_serializer,
     model_validator,
 )
 
@@ -24,6 +25,7 @@ from app.ingestion.catalog import CatalogValidationError, SourceRecord
 Key = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9._-]*$", max_length=240)]
 Text = Annotated[str, Field(min_length=1, max_length=500)]
 Number = Annotated[Decimal, Field(allow_inf_nan=False)]
+VehicleType = Literal["car", "motorcycle", "scooter"]
 Metric = Literal[
     "engine_power_kw",
     "system_power_kw",
@@ -45,6 +47,12 @@ Metric = Literal[
     "mass_kg",
     "ac_charge_power_kw",
     "dc_peak_charge_power_kw",
+    # Two-wheel registry (motorcycle, scooter); wet weight is mass_kg, method "wet".
+    "seat_height_mm",
+    "fuel_tank_capacity_liters",
+    "underseat_storage_liters",
+    # Public list price including VAT (ADR-015); terms ride on the observation.
+    "list_price_eur",
 ]
 # The unit is part of the metric definition, never guessed from a source label.
 METRIC_UNITS = {
@@ -68,6 +76,10 @@ METRIC_UNITS = {
     "mass_kg": "kg",
     "ac_charge_power_kw": "kW",
     "dc_peak_charge_power_kw": "kW",
+    "seat_height_mm": "mm",
+    "fuel_tank_capacity_liters": "l",
+    "underseat_storage_liters": "l",
+    "list_price_eur": "EUR",
 }
 MEASURED_METRICS = {
     "liquid_consumption_l_100km",
@@ -123,7 +135,7 @@ class VehicleIdentity(ContractModel):
     model_family_key: Key
     make: Text
     model: Text
-    vehicle_type: Literal["car", "motorcycle", "scooter"]
+    vehicle_type: VehicleType
     generation_key: Key | None
     phase_key: Key | None
     body_style: Key | None
@@ -197,6 +209,122 @@ class MeasurementContext(Applicability):
         return self
 
 
+CENT = Decimal("0.01")
+# Every amount fits the legacy numeric(12, 2) list price column.
+LIST_PRICE_LIMIT = Decimal("10000000000")
+# Money is computed in its own context, never the caller's: exact products, then
+# one half-up rounding to the cent, as the TCO money helper does.
+_MONEY_CONTEXT = Context(prec=40, rounding=ROUND_HALF_UP)
+
+
+def _in_cents(value: Decimal, limit: Decimal = LIST_PRICE_LIMIT) -> bool:
+    """A finite amount below the limit with at most two decimals."""
+    if not value.is_finite() or not Decimal(0) <= value < limit:
+        return False
+    with localcontext(_MONEY_CONTEXT):
+        return value == value.quantize(CENT)
+
+
+def with_vat(amount: Decimal, vat_rate_percent: Decimal) -> Decimal:
+    """gross = amount x (1 + rate / 100), rounded half up to the cent."""
+    with localcontext(_MONEY_CONTEXT):
+        return (amount * (100 + vat_rate_percent) / 100).quantize(CENT)
+
+
+ListPriceDerivation = Literal["printed", "computed_from_excl_vat", "computed_from_turnkey"]
+# Terms added after the first published bundles: omitted from canonical JSON when
+# absent, so a bundle staged before they existed keeps its dataset hash.
+_OPTIONAL_TURNKEY_TERMS = ("on_road_charge_eur", "on_road_charge_includes_vat")
+
+
+class ListPriceTerms(ContractModel):
+    """How a list price row was read. The observation value is always VAT-inclusive."""
+
+    # The amount as printed: the list price, or the turnkey price for `turnkey`.
+    printed_amount_eur: Number
+    printed_basis: Literal["incl_vat", "excl_vat", "turnkey"]
+    # Required when a printed amount or on-road charge excludes VAT.
+    vat_rate_percent: Number | None = None
+    # Required exactly for `turnkey`: the on-road charge the price list states.
+    on_road_charge_eur: Number | None = None
+    on_road_charge_includes_vat: bool | None = None
+    trim_label: Text
+    price_list_valid_from: date
+    # Set when the registered version is no longer listed and a current one supplies the price.
+    substitute_note: Text | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_turnkey_terms(self, handler):
+        data = handler(self)
+        for key in _OPTIONAL_TURNKEY_TERMS:
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
+
+    @property
+    def derivation(self) -> ListPriceDerivation:
+        return {
+            "incl_vat": "printed",
+            "excl_vat": "computed_from_excl_vat",
+            "turnkey": "computed_from_turnkey",
+        }[self.printed_basis]
+
+    @property
+    def computed_from_excl_vat(self) -> bool:
+        return self.printed_basis == "excl_vat"
+
+    def on_road_charge_incl_vat(self) -> Decimal | None:
+        if self.on_road_charge_eur is None:
+            return None
+        if self.on_road_charge_includes_vat:
+            return self.on_road_charge_eur
+        return with_vat(self.on_road_charge_eur, self.vat_rate_percent)
+
+    def incl_vat_amount(self) -> Decimal:
+        if self.printed_basis == "incl_vat":
+            return self.printed_amount_eur
+        if self.printed_basis == "excl_vat":
+            return with_vat(self.printed_amount_eur, self.vat_rate_percent)
+        # ADR-015: the turnkey price minus the on-road charge the document states.
+        with localcontext(_MONEY_CONTEXT):
+            return self.printed_amount_eur - self.on_road_charge_incl_vat()
+
+    @model_validator(mode="after")
+    def consistent_basis(self) -> Self:
+        if self.printed_amount_eur <= 0 or not _in_cents(self.printed_amount_eur):
+            raise ValueError(
+                "printed list price must be positive, below 10^10, "
+                "with at most two decimals"
+            )
+        turnkey = self.printed_basis == "turnkey"
+        if turnkey != (self.on_road_charge_eur is not None) or turnkey != (
+            self.on_road_charge_includes_vat is not None
+        ):
+            raise ValueError(
+                "an on-road charge and its VAT flag are required exactly for turnkey"
+            )
+        needs_rate = self.printed_basis == "excl_vat" or (
+            turnkey and self.on_road_charge_includes_vat is False
+        )
+        if needs_rate != (self.vat_rate_percent is not None):
+            raise ValueError(
+                "a VAT rate is required exactly when a printed amount excludes VAT"
+            )
+        if self.vat_rate_percent is not None and not (
+            0 < self.vat_rate_percent < 100 and _in_cents(self.vat_rate_percent)
+        ):
+            raise ValueError("VAT rate must be a percentage with at most two decimals")
+        if turnkey:
+            if self.on_road_charge_eur <= 0 or not _in_cents(self.on_road_charge_eur):
+                raise ValueError(
+                    "on-road charge must be positive, below 10^10, "
+                    "with at most two decimals"
+                )
+            if self.incl_vat_amount() <= 0:
+                raise ValueError("on-road charge must be below the turnkey price")
+        return self
+
+
 class SpecObservation(ContractModel):
     model_config = ConfigDict(json_schema_extra={"x-metric-units": METRIC_UNITS})
 
@@ -214,6 +342,16 @@ class SpecObservation(ContractModel):
     evidence_excerpt: Annotated[str, Field(min_length=1, max_length=4000)]
     evidence_locator: Text
     extractor_version: Key
+    list_price: ListPriceTerms | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_list_price(self, handler):
+        # Added after the first published bundles: an observation without terms
+        # serializes as before, so re-staging such a bundle keeps its dataset hash.
+        data = handler(self)
+        if data.get("list_price") is None:
+            data.pop("list_price", None)
+        return data
 
     @model_validator(mode="after")
     def valid_measurement(self) -> Self:
@@ -248,6 +386,14 @@ class SpecObservation(ContractModel):
                 )
         if self.metric == "mass_kg" and not self.context.method:
             raise ValueError("mass requires its measurement definition")
+        if (self.metric == "list_price_eur") != (self.list_price is not None):
+            raise ValueError("list price terms are required exactly for list_price_eur")
+        if self.list_price is not None:
+            expected = self.list_price.incl_vat_amount()
+            if self.value_min != expected or self.value_max != expected:
+                raise ValueError(
+                    "list price must equal its VAT-inclusive amount, rounded to cents"
+                )
         return self
 
 

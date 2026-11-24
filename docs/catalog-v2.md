@@ -65,6 +65,62 @@ globally unique commercial identifiers.
 | Dimensions | `length_mm`, `body_width_mm`, `width_with_mirrors_mm`, `height_mm`: mm |
 | Practicality | `seats`: integer count; `cargo_volume_liters`: l; `mass_kg`: kg |
 | Charging | `ac_charge_power_kw`, `dc_peak_charge_power_kw`: kW |
+| Two-wheel | `seat_height_mm`: mm; `fuel_tank_capacity_liters`, `underseat_storage_liters`: l |
+| Price | `list_price_eur`: EUR, the public list price including VAT |
+
+`vehicle_type` is `car`, `motorcycle` or `scooter`; variant fields are shared.
+Two-wheel wet weight is not a separate metric: it is `mass_kg` with
+`context.method: wet` (a dry mass uses another method). An adjustable seat height
+is an interval. Licence category (AM, A1, A2, A) is not in the contract because
+metrics are numeric; subjective scores such as agility or comfort are never
+catalog facts.
+
+### List price (ADR-015)
+
+`list_price_eur` is the manufacturer's public list price **including VAT**, not
+the turnkey price. It is exact and in cents. The observation that carries it must
+also carry `list_price`, the terms of the price-list row it was read from:
+
+| Field | Meaning |
+| --- | --- |
+| `printed_amount_eur` | The amount as printed in the row: the list price, or the turnkey price for `turnkey` |
+| `printed_basis` | `incl_vat`; `excl_vat` when the list prints the price without VAT; `turnkey` when it prints only the turnkey price |
+| `vat_rate_percent` | Required exactly when a printed amount excludes VAT: the price for `excl_vat`, or the on-road charge for `turnkey` |
+| `on_road_charge_eur` | Required exactly for `turnkey`: the on-road charge the price list states |
+| `on_road_charge_includes_vat` | Required exactly for `turnkey`: whether that charge includes VAT |
+| `trim_label` | The row's version label, as printed |
+| `price_list_valid_from` | The validity date the price list prints |
+| `substitute_note` | Set when the registered version is no longer listed and the nearest current row supplies the price; says which row and what differs |
+
+The stored value is always VAT-inclusive, and the validator checks it against
+the terms, rounding half up to the cent:
+
+| `printed_basis` | Stored value | Shown as |
+| --- | --- | --- |
+| `incl_vat` | the printed amount | printed |
+| `excl_vat` | printed x (1 + rate/100) | computed from ex-VAT |
+| `turnkey` | printed - charge, or printed - charge x (1 + rate/100) when the charge excludes VAT | computed from turnkey |
+
+The on-road charge must be below the turnkey price. Amounts are positive, below
+10^10 and have at most two decimals; the rate is a percentage with at most two
+decimals. The arithmetic uses its own decimal context, so the caller's context
+never changes a result, and an amount out of range is a validation error.
+Other metrics refuse `list_price`. The terms sit on the
+observation, not in the context, because the context is part of the fact key: a
+new price list adds an observation and a decision that supersedes the old one in
+the same context, instead of a second current fact. Keep the context to the
+market only, so the compatibility read below can project the price.
+
+The SQL check in `0011` repeats these rules for any direct write: required keys
+and their JSON types, basis, rate and charge consistency, a real calendar date,
+and the same amount with the same rounding (PostgreSQL's `round()` on these
+positive amounts rounds half up, like Python). A missing key fails the check
+instead of passing as SQL UNKNOWN.
+
+An observation without terms serializes without a `list_price` key, and terms
+without an on-road charge serialize without its two keys. A bundle staged before
+these fields existed therefore keeps its dataset hash, and staging it again
+finds the published batch instead of adding a second one.
 
 An exact measurement uses equal `value_min` and `value_max`. Intervals stay
 intervals. Original value/unit, source excerpt/locator and extractor version are
@@ -108,6 +164,23 @@ source independence detection, an agent or an automatic truth classifier.
 adds nullable vehicle type/generation/phase and variant powertrain/validity
 attributes. It does not infer them from existing labels. UUIDs, legacy values
 and source permissions are preserved.
+[`0010_two_wheel_metrics.sql`](../apps/api/migrations/0010_two_wheel_metrics.sql)
+extends the SQL metric domain and unit check with the two-wheel metrics. The unit
+check now also rejects a unit for a metric it does not list.
+[`0011_list_price_metric.sql`](../apps/api/migrations/0011_list_price_metric.sql)
+adds `list_price_eur` (unit `EUR`) and the nullable `spec_observations.list_price`
+column, required exactly for that metric.
+[`0012_list_price_read_view.sql`](../apps/api/migrations/0012_list_price_read_view.sql)
+replaces `catalog_read_specs` so a v2 spec exposes `list_price_eur` from its
+eligible list-price fact, and applies ADR-018 to `catalog_scalar_facts` (see
+"Current facts and consumers"). It must run after `0009`, which creates those
+views.
+[`0013_plug_in_hybrid_fuel_type.sql`](../apps/api/migrations/0013_plug_in_hybrid_fuel_type.sql)
+renames the `fuel_type` of published v2 plug-in hybrids from `phev` to the
+Advisor's names (see "Identity migration and ownership").
+[`0014_body_style_provenance.sql`](../apps/api/migrations/0014_body_style_provenance.sql)
+replaces `catalog_read_provenance` so a filled body style is credited to the
+snapshot that states it (see "Identity migration and ownership").
 
 | New table | Responsibility |
 | --- | --- |
@@ -195,9 +268,10 @@ uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py 
   --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
 ```
 
-The shipped artifacts are explicitly synthetic and carry real SHA-256 hashes.
-They exercise storage/API behavior and **never qualify for ranking**, even when a
-fixture decision says `verified`. For real bundles, use the ignored
+The artifacts of `catalog-v2.synthetic.json` are explicitly synthetic and carry
+real SHA-256 hashes. They exercise storage/API behavior and **never qualify for
+ranking**, even when a fixture decision says `verified`. The demo bundle below is
+the one exception, and it says so in every source name. For real bundles, use the ignored
 `data/private/catalog/` directory and complete the [source review](source-review.md).
 
 `--check` is offline. `--stage` validates the contract and every artifact hash,
@@ -216,6 +290,40 @@ a competing successor is rejected by the database. Batch publishers serialize on
 one transaction advisory lock. Existing sources retain their database metadata
 and permissions: importing an older bundle cannot re-enable a revoked source.
 
+### Demo catalogue (synthetic, ranks)
+
+`data/fixtures/catalog/catalog-v2.demo.synthetic.json` feeds the demo site. It holds
+10 invented cars (petrol, diesel, mild, full and plug-in hybrid, electric; list
+prices from 14,900 to 47,600 EUR), 3 invented motorcycles and 3 invented scooters.
+Every make, model, value and price is invented (ADR-011). Both sources end their
+name in "(synthetic)", carry the licence "Synthetic fixture only" and point to
+`https://example.test/demo/...`.
+
+The demo cars rank without any SQL update, so take care where you load the bundle:
+
+- each source declares `ranking_permission: "permitted"`, and the first
+  publication writes that permission (later bundles never change it);
+- each snapshot declares `evidence_kind: "sourced"`, because the read views only
+  publish sourced evidence. The artifacts are still invented files.
+
+Load it only into a local or demo database, never next to real data. From the
+repository root, with `DATABASE_URL` pointing at that database:
+
+```sh
+uv run --frozen --project apps/api python apps/api/scripts/migrate.py
+uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
+  --stage data/fixtures/catalog/catalog-v2.demo.synthetic.json \
+  --artifact-root data/fixtures/catalog/artifacts
+# Replace BATCH_UUID with the UUID printed by --stage.
+uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
+  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
+```
+
+Build the site with `VITE_SYNTHETIC_DATA=true` so every page shows the demo notice.
+The read views do not yet publish v2 length, width, height or transmission to the
+Advisor, so a profile with a garage or an automatic-gearbox requirement stays
+provisional (`insufficient_data`). Two-wheelers are listed but never ranked.
+
 ### Identity migration and ownership
 
 The new unique index covers case-insensitive make/model, vehicle type,
@@ -228,6 +336,30 @@ New identities use stable canonical/variant keys. Existing v2 identities must
 match exactly, including their identity evidence; the ingestion path cannot
 silently rename, merge, split or reparent them. Such corrections require a
 separately reviewed migration/mapping.
+
+One change is allowed: a later bundle may turn an unknown body style (`null`)
+into a known one. The vehicle must keep its stored identity evidence as a prefix
+and append at least one snapshot, the one that states the body style; that
+snapshot can come from any source. Every published v2 variant of the vehicle
+must be in the bundle, and gets the same body style. Identity eligibility then
+also requires the appended source to be permitted, so the fill can only make
+eligibility stricter. A known body style is never overwritten, and every other
+identity field stays frozen. Body style is part of the identity key, so a fill
+that collides with an existing identity is rejected by the unique index.
+
+The read provenance credits the body style to the vehicle's **last** identity
+snapshot and the fuel type to the variant's first. A bundle that fills a body
+style must therefore append the snapshot that states it last, and the writer
+refuses a fill whose last snapshot is already in the stored evidence (for example
+`[registry, coachwork, registry]` over `[registry]`). Before `0014` both
+were credited to the variant's first snapshot, so a filled body style still named
+the vehicle's original source.
+
+Publication derives `fuel_type` from powertrain and fuel. A petrol plug-in
+hybrid is `plug_in_hybrid_petrol`, the name the Advisor scores. A diesel plug-in
+is `plug_in_hybrid_diesel`, which the Advisor counts as `unsupported_fuel_type`
+because it has no diesel plug-in energy model. Any other or unknown plug-in fuel
+stays `phev`. Mild and full hybrids keep their existing names.
 
 Adopting existing v1 records requires `--adopt-legacy` at publication and the
 existing canonical/variant keys as the explicit mapping. Make, model, market,
@@ -253,16 +385,40 @@ head **before** checking eligibility. Source revocation or a new negative decisi
 therefore removes a fact from calculations immediately, with no cache refresh or
 fallback to an older verified value.
 
-Compatibility reads project only exact, unambiguous values from one current
-context covering the whole variant. Intervals, multiple contexts and configured
-measurements stay available in the facts API but are not flattened. Consumption,
+Compatibility reads project only unambiguous values from one current context
+covering the whole variant. Multiple contexts and configured measurements stay
+available in the facts API but are not flattened. Intervals are not flattened
+either, with one exception (ADR-018): liquid and electric consumption given as
+an interval are published at the upper value. `catalog_scalar_facts` carries
+the published `scalar_value` and its `scalar_basis` (`exact` or
+`interval_upper`); `catalog_read_specs` exposes the basis as
+`consumption_l_100km_basis` and `energy_consumption_kwh_100km_basis`, and the
+facts API adds `published_value` and `published_basis` to each fact, so the
+engine and the facts API read the same number. Consumption,
 range and CO₂ require WLTP combined and a known non-PHEV powertrain; cargo requires
 `method: VDA` and `seating_configuration: all_seats_up`. The legacy scalar mapping
-covers seats, cargo, liquid/electric consumption, WLTP range and CO₂. Precise
-power, battery, dimensions and other metrics remain in the facts API; ambiguous
-legacy horsepower/battery fields remain null for v2 records.
+covers seats, cargo, liquid/electric consumption, WLTP range, CO₂ and the list
+price. A v2 `list_price_eur` therefore follows the same permitted, sourced and
+licensed rule as the other metrics; v1 rows keep their stored column.
+For motorcycles and scooters, `GET /vehicles/{id}` adds a `two_wheel` block per
+spec from the same scalar rule: seat height, wet weight (`mass_kg` with
+`method: wet`), fuel tank and underseat storage. A seat range, or a dry and a wet
+mass for the same variant, therefore yields null there; the facts API keeps both.
+For every v2 spec, that response also fills the legacy fields that mean the same
+as a fact, from the same scalar rule: `powertrain.displacement_cc`
+(`engine_displacement_cc`), `dimensions.length_mm`, `dimensions.width_mm`
+(`body_width_mm`) and `dimensions.height_mm`, as whole numbers only.
+`powertrain.power_kw` is the power of the whole vehicle: it takes
+`system_power_kw`, or `engine_power_kw` only when the powertrain is `ICE`.
+`dimensions.curb_weight_kg` stays null, because no mass method of a fact is
+defined as curb weight. Battery, mirrors-included width and other metrics remain
+in the facts API; ambiguous legacy horsepower/battery fields remain null for v2
+records.
 
 Advisor and Model Analysis use the shared provenance and eligible scalar views.
+They, and Guided Decisions, rank cars only: rows whose `vehicle_type` is not
+`car` (legacy v1 rows without a type count as cars) never become candidates, and
+Recommendations count them under `unsupported_vehicle_type`.
 Model Analysis now also excludes unreviewed, inactive, expired and stale offers,
 and does not use an unreviewed vehicle base price. Missing age/identity inputs
 produce no maintenance estimate. Recommendations persist decision/observation IDs

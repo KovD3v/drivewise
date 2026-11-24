@@ -8,6 +8,7 @@ from typing import Any
 
 from app.schemas.advisor import (
     AdvisorFactor,
+    AdvisorListPrice,
     AdvisorMetricProvenance,
     AdvisorOffer,
     AdvisorRecommendationGroup,
@@ -28,6 +29,7 @@ from app.services.advisor.garage import (
 )
 from app.services.advisor.issues import ISSUES_VERSION, known_issue_penalty
 from app.services.advisor.powertrain import POWERTRAIN_FIT_VERSION, powertrain_fit
+from app.services.advisor.pricing import price_basis, priced_terms
 from app.services.advisor.recalls import RECALLS_VERSION, recall_penalty
 from app.services.advisor.reliability import RELIABILITY_VERSION, assess_reliability
 from app.services.advisor.safety import SAFETY_VERSION, assess_safety
@@ -177,6 +179,7 @@ EXCLUSION_REASON_ORDER = (
     "missing_model_family_key",
     "missing_spec_provenance",
     "missing_price",
+    "missing_list_price",
     "invalid_condition",
     "condition_mismatch",
     "below_budget_min",
@@ -282,8 +285,7 @@ def score_recommendations(
             constraint_tradeoffs=constraint_evaluation.soft_tradeoffs,
             constraint_missing=constraint_evaluation.missing_data,
         )
-        group_name = "new" if item.offer.condition == "new" else "used"
-        scored_by_group[group_name].append(item)
+        scored_by_group[item.condition_group].append(item)
 
     requested_groups = (
         ["new", "used"] if request.condition == "any" else [request.condition]
@@ -371,40 +373,27 @@ def _exclusion_reason(
 ) -> str | None:
     vehicle = candidate.get("vehicle") or {}
     spec = candidate.get("spec") or {}
-    offer = candidate.get("offer") or {}
 
     if str(vehicle.get("market", "")).upper() != "IT":
         return "non_it_market"
-    if offer.get("is_active") is not True:
-        return "inactive_offer"
-
-    last_seen = _as_aware_datetime(offer.get("last_seen_at"))
-    if last_seen is None or last_seen < as_of - timedelta(days=FRESHNESS_DAYS):
-        return "stale_offer"
-    valid_until = _as_aware_datetime(offer.get("valid_until"))
-    if valid_until is not None and valid_until < as_of:
-        return "expired_offer"
-
-    source = candidate.get("source") or {}
-    if source.get("ranking_permission") != "permitted":
-        return "source_not_permitted"
-    if not _is_reviewed(candidate, offer):
-        return "unreviewed_source"
-
-    if (
-        not spec
-        or offer.get("spec_id") is None
-        or str(offer.get("spec_id")) != str(spec.get("id"))
-        or str(offer.get("vehicle_id")) != str(vehicle.get("id"))
-        or not _nonblank(spec.get("variant_key"))
-    ):
-        return "unresolved_spec"
+    basis_reason = (
+        _list_price_reason(candidate, spec)
+        if price_basis(candidate) == "list_price"
+        else _offer_reason(candidate, vehicle, spec, as_of)
+    )
+    if basis_reason is not None:
+        return basis_reason
     if not _nonblank(vehicle.get("model_family_key")):
         return "missing_model_family_key"
 
+    offer = priced_terms(candidate)
     price = _number(offer.get("price_eur"))
     if price is None:
-        return "missing_price"
+        return (
+            "missing_list_price"
+            if price_basis(candidate) == "list_price"
+            else "missing_price"
+        )
 
     condition = offer.get("condition")
     if condition not in {"new", "used", "certified"}:
@@ -462,6 +451,61 @@ def _exclusion_reason(
     return None
 
 
+def _offer_reason(
+    candidate: dict[str, Any],
+    vehicle: dict[str, Any],
+    spec: dict[str, Any],
+    as_of: datetime,
+) -> str | None:
+    offer = candidate.get("offer") or {}
+    if offer.get("is_active") is not True:
+        return "inactive_offer"
+
+    last_seen = _as_aware_datetime(offer.get("last_seen_at"))
+    if last_seen is None or last_seen < as_of - timedelta(days=FRESHNESS_DAYS):
+        return "stale_offer"
+    valid_until = _as_aware_datetime(offer.get("valid_until"))
+    if valid_until is not None and valid_until < as_of:
+        return "expired_offer"
+
+    source = candidate.get("source") or {}
+    if source.get("ranking_permission") != "permitted":
+        return "source_not_permitted"
+    if not _is_reviewed(candidate, offer):
+        return "unreviewed_source"
+
+    if (
+        not spec
+        or offer.get("spec_id") is None
+        or str(offer.get("spec_id")) != str(spec.get("id"))
+        or str(offer.get("vehicle_id")) != str(vehicle.get("id"))
+        or not _nonblank(spec.get("variant_key"))
+    ):
+        return "unresolved_spec"
+    return None
+
+
+def _list_price_reason(
+    candidate: dict[str, Any],
+    spec: dict[str, Any],
+) -> str | None:
+    """A list price stands in for an offer only with its own reviewed provenance."""
+    if not spec or not _nonblank(spec.get("variant_key")):
+        return "unresolved_spec"
+    list_price = candidate.get("list_price") or {}
+    if (
+        _positive_number(list_price.get("price_eur")) is None
+        or _number(spec.get("list_price_eur")) != _number(list_price.get("price_eur"))
+        or not _nonblank(list_price.get("trim_label"))
+        or list_price.get("decision_id") is None
+        or not _nonblank(list_price.get("source_name"))
+        or not _is_https_url(list_price.get("source_url"))
+        or list_price.get("observed_at") is None
+    ):
+        return "missing_list_price"
+    return None
+
+
 def _is_reviewed(candidate: dict[str, Any], offer: dict[str, Any]) -> bool:
     source = candidate.get("source") or {}
     if source.get("ranking_permission") != "permitted":
@@ -504,6 +548,8 @@ def _has_spec_provenance(
         )
     else:
         required_metrics.add("consumption_l_100km")
+    if price_basis(candidate) == "list_price":
+        required_metrics.add("list_price_eur")
 
     covered_metrics = {
         entry["metric"]
@@ -528,8 +574,8 @@ def _score_candidate(
     constraint_missing: tuple[str, ...] = (),
 ) -> AdvisorRecommendationItem:
     vehicle_data = candidate["vehicle"]
-    spec_data = candidate["spec"]
-    offer_data = candidate["offer"]
+    spec_data = _cited_spec(candidate)
+    offer_data = priced_terms(candidate)
 
     price = float(offer_data["price_eur"])
     body_style = str(spec_data["body_style"])
@@ -753,7 +799,17 @@ def _score_candidate(
     return AdvisorRecommendationItem(
         vehicle=AdvisorVehicleSummary.model_validate(vehicle_data),
         selected_spec=AdvisorSelectedSpec.model_validate(spec_data),
-        offer=AdvisorOffer.model_validate(offer_data),
+        offer=(
+            AdvisorOffer.model_validate(candidate["offer"])
+            if price_basis(candidate) == "offer"
+            else None
+        ),
+        price_basis=price_basis(candidate),
+        list_price=(
+            AdvisorListPrice.model_validate(candidate["list_price"])
+            if price_basis(candidate) == "list_price"
+            else None
+        ),
         score=final_score,
         decision_status=decision_status,
         decision_score=decision_score,
@@ -1270,6 +1326,31 @@ def _cargo_high_band(primary_use: str) -> int:
     return 350 if primary_use in {"city", "new_driver"} else 450 if primary_use == "highway" else 500
 
 
+# Optional facts the gates do not demand for every fuel type. A value no HTTPS
+# source supports cannot be credited, so the payload omits it; the gates already
+# exclude a candidate whose required metrics lack HTTPS evidence.
+OPTIONAL_CITED_METRICS = (
+    "consumption_l_100km",
+    "energy_consumption_kwh_100km",
+    "wltp_range_km",
+)
+
+
+def _cited_spec(candidate: dict[str, Any]) -> dict[str, Any]:
+    cited = {
+        entry.get("metric")
+        for entry in candidate.get("provenance", [])
+        if _is_https_url(entry.get("source_url"))
+    }
+    spec = dict(candidate["spec"])
+    for metric in OPTIONAL_CITED_METRICS:
+        if metric not in cited:
+            spec[metric] = None
+            if f"{metric}_basis" in spec:
+                spec[f"{metric}_basis"] = None
+    return spec
+
+
 def _build_provenance(
     candidate: dict[str, Any],
     fuel_type: str,
@@ -1277,6 +1358,11 @@ def _build_provenance(
     entries: list[AdvisorMetricProvenance] = []
     seen: set[tuple[str, str, str | None, str | None]] = set()
     for raw_entry in candidate.get("provenance", []):
+        # Snapshots may cite http:// pages. The gates already demand HTTPS evidence
+        # for every required metric, so an entry that fails the Advisor URL rule is
+        # extra evidence: leave it out instead of failing the whole response.
+        if not _is_https_url(raw_entry.get("source_url")):
+            continue
         entry = AdvisorMetricProvenance.model_validate(raw_entry)
         observed_at = (
             entry.observed_at.isoformat() if entry.observed_at is not None else None
@@ -1318,16 +1404,16 @@ def _build_provenance(
 
 
 def _stable_rank_key(item: AdvisorRecommendationItem) -> tuple[Any, ...]:
-    mileage = item.offer.mileage
+    mileage = item.offer.mileage if item.offer else None
     return (
         0 if item.decision_status == "complete" else 1,
         -item.score,
         -(item.decision_confidence or 0.0),
-        item.offer.price_eur,
+        item.price_eur,
         mileage is None,
         mileage if mileage is not None else 0,
-        item.offer.listing_ref,
-        str(item.offer.id),
+        item.offer.listing_ref if item.offer else item.selected_spec.variant_key,
+        str(item.offer.id) if item.offer else str(item.selected_spec.id),
     )
 
 

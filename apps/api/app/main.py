@@ -16,6 +16,14 @@ from app.api.routers import (
     vehicles,
 )
 from app.core.config import get_settings
+from app.core.version import (
+    SERVICE_NAME,
+    get_api_version,
+    get_git_commit,
+    get_schema_version,
+)
+from app.schemas.version import VersionResponse
+from app.services.advisor.scoring import SCORING_VERSION
 
 
 @asynccontextmanager
@@ -51,6 +59,17 @@ app.include_router(guided_decisions.router)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "drivewise-api"}
+
+
+@app.get("/version", response_model=VersionResponse)
+def version() -> VersionResponse:
+    return VersionResponse(
+        service=SERVICE_NAME,
+        api_version=get_api_version(),
+        git_commit=get_git_commit(),
+        scoring_version=SCORING_VERSION,
+        schema_version=get_schema_version(),
+    )
 
 
 @app.get("/ready")

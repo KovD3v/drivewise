@@ -5,41 +5,38 @@ import {
   Link,
   Outlet,
   Scripts,
+  useRouterState,
 } from '@tanstack/react-router'
+
+import { useEffect } from 'react'
+import { PageTransition } from '@/components/transition/PageTransition'
+import { CONTACT_SOURCE_KEY } from '@/lib/contact-intelligence'
+import { AppHeader } from '@/components/app/AppHeader'
+import { DemoNotice } from '@/components/app/DemoNotice'
 
 import appStyles from '../styles.css?url'
 
-const faviconHref =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231d4f48'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='Arial,sans-serif' font-size='32' font-weight='700' fill='white'%3ED%3C/text%3E%3C/svg%3E"
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'Drivewise MVP',
-      },
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'DriveWise' },
+      { name: 'description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
+      { name: 'author', content: 'DriveWise' },
+      { name: 'theme-color', content: '#F4FAF7' },
+      { property: 'og:title', content: 'DriveWise' },
+      { property: 'og:description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
+      { property: 'og:type', content: 'website' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: 'DriveWise' },
+      { name: 'twitter:description', content: 'Analisi decisionale per la tua prossima scelta di mobilità.' },
     ],
     links: [
-      {
-        rel: 'icon',
-        href: faviconHref,
-        type: 'image/svg+xml',
-      },
-      ...(appStyles
-        ? [
-            {
-              rel: 'stylesheet',
-              href: appStyles,
-            },
-          ]
-        : []),
+      { rel: 'icon', href: '/favicon.png?v=3', type: 'image/png' },
+      ...(appStyles ? [{ rel: 'stylesheet', href: appStyles }] : []),
+      { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
     ],
   }),
   component: RootComponent,
@@ -47,47 +44,44 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const path = useRouterState({ select: s => s.location.pathname });
+  useEffect(() => {
+    if (path === '/contact') return
+    try { sessionStorage.setItem(CONTACT_SOURCE_KEY, path) } catch { /* storage unavailable */ }
+  }, [path])
   return (
     <RootDocument>
       <Outlet />
+      <PageTransition />
     </RootDocument>
   )
 }
 
 export function NotFoundPage() {
   return (
-    <main className="app-shell">
-      <section className="intro-panel" aria-labelledby="not-found-title">
-        <p className="eyebrow">Drivewise MVP</p>
-        <h1 id="not-found-title">Pagina non trovata</h1>
-        <p className="summary">
-          La pagina richiesta non esiste o e stata spostata.
+    <div className="min-h-screen bg-background">
+      <AppHeader label="Pagina non trovata" />
+      <main className="mx-auto w-full max-w-[46rem] px-6 py-24 text-center sm:px-8">
+        <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.03em]">Pagina non trovata</h1>
+        <p className="mt-4 text-[0.95rem] text-muted-foreground">
+          La pagina richiesta non esiste o è stata spostata.
         </p>
-        <nav className="home-actions" aria-label="Navigazione 404">
-          <Link className="primary-link" to="/">
+        <nav className="mt-8 flex flex-wrap justify-center gap-3" aria-label="Navigazione 404">
+          <Link
+            to="/"
+            className="inline-flex h-12 items-center rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
             Home
           </Link>
-          <Link className="secondary-link" to="/vehicles">
-            Veicoli
-          </Link>
-          <Link className="secondary-link" to="/listings">
-            Annunci
-          </Link>
-          <Link className="secondary-link" to="/documents">
-            Documenti
-          </Link>
-          <Link className="secondary-link" to="/search">
-            Search
-          </Link>
-          <Link className="secondary-link" to="/advisor">
-            Advisor
-          </Link>
-          <Link className="secondary-link" to="/model-analysis">
-            Analisi modello
+          <Link
+            to="/app/start"
+            className="inline-flex h-12 items-center rounded-full border border-border bg-card px-7 text-[0.95rem]"
+          >
+            Scelta Guidata
           </Link>
         </nav>
-      </section>
-    </main>
+      </main>
+    </div>
   )
 }
 
@@ -98,6 +92,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
+        <DemoNotice />
         {children}
         <Scripts />
       </body>

@@ -1,0 +1,4805 @@
+{
+  "schema_version": 2,
+  "sources": [
+    {
+      "source_key": "drivewise-demo-registry",
+      "name": "Drivewise demo registry (synthetic)",
+      "source_type": "curated_internal",
+      "market": "IT",
+      "ranking_permission": "permitted",
+      "url": "https://example.test/demo/registry",
+      "license": "Synthetic fixture only",
+      "notes": "Invented demo data (ADR-011): no real vehicle, maker or price."
+    },
+    {
+      "source_key": "drivewise-demo-price-list",
+      "name": "Drivewise demo price list (synthetic)",
+      "source_type": "curated_internal",
+      "market": "IT",
+      "ranking_permission": "permitted",
+      "url": "https://example.test/demo/price-list",
+      "license": "Synthetic fixture only",
+      "notes": "Invented demo data (ADR-011): no real vehicle, maker or price."
+    }
+  ],
+  "vehicles": [
+    {
+      "canonical_key": "velto-pico-2026",
+      "model_family_key": "velto-pico",
+      "make": "Velto",
+      "model": "Pico",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "city_car",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000001"
+      ]
+    },
+    {
+      "canonical_key": "corvane-lume-2026",
+      "model_family_key": "corvane-lume",
+      "make": "Corvane",
+      "model": "Lume",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "small_hatchback",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000003"
+      ]
+    },
+    {
+      "canonical_key": "ardea-sette-2026",
+      "model_family_key": "ardea-sette",
+      "make": "Ardea",
+      "model": "Sette",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "hatchback",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000005"
+      ]
+    },
+    {
+      "canonical_key": "nerio-strada-2026",
+      "model_family_key": "nerio-strada",
+      "make": "Nerio",
+      "model": "Strada",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "sedan",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000007"
+      ]
+    },
+    {
+      "canonical_key": "lirae-volt-2026",
+      "model_family_key": "lirae-volt",
+      "make": "Lirae",
+      "model": "Volt",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "small_hatchback",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000009"
+      ]
+    },
+    {
+      "canonical_key": "tessaro-vela-2026",
+      "model_family_key": "tessaro-vela",
+      "make": "Tessaro",
+      "model": "Vela",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "wagon",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000011"
+      ]
+    },
+    {
+      "canonical_key": "brisa-onda-2026",
+      "model_family_key": "brisa-onda",
+      "make": "Brisa",
+      "model": "Onda",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "crossover",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000013"
+      ]
+    },
+    {
+      "canonical_key": "quillo-famiglia-2026",
+      "model_family_key": "quillo-famiglia",
+      "make": "Quillo",
+      "model": "Famiglia",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "mpv",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000015"
+      ]
+    },
+    {
+      "canonical_key": "morvane-atlas-2026",
+      "model_family_key": "morvane-atlas",
+      "make": "Morvane",
+      "model": "Atlas",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "suv",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000017"
+      ]
+    },
+    {
+      "canonical_key": "orsa-terra-2026",
+      "model_family_key": "orsa-terra",
+      "make": "Orsa",
+      "model": "Terra",
+      "vehicle_type": "car",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "suv",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000019"
+      ]
+    },
+    {
+      "canonical_key": "pixa-uno-125-2026",
+      "model_family_key": "pixa-uno-125",
+      "make": "Pixa",
+      "model": "Uno 125",
+      "vehicle_type": "motorcycle",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "naked",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000021"
+      ]
+    },
+    {
+      "canonical_key": "kestro-ruta-500-2026",
+      "model_family_key": "kestro-ruta-500",
+      "make": "Kestro",
+      "model": "Ruta 500",
+      "vehicle_type": "motorcycle",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "naked",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000023"
+      ]
+    },
+    {
+      "canonical_key": "valdane-tour-900-2026",
+      "model_family_key": "valdane-tour-900",
+      "make": "Valdane",
+      "model": "Tour 900",
+      "vehicle_type": "motorcycle",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "touring",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000025"
+      ]
+    },
+    {
+      "canonical_key": "lumio-citta-125-2026",
+      "model_family_key": "lumio-citta-125",
+      "make": "Lumio",
+      "model": "Città 125",
+      "vehicle_type": "scooter",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "scooter",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000027"
+      ]
+    },
+    {
+      "canonical_key": "serra-glide-300-2026",
+      "model_family_key": "serra-glide-300",
+      "make": "Serra",
+      "model": "Glide 300",
+      "vehicle_type": "scooter",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "scooter",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000029"
+      ]
+    },
+    {
+      "canonical_key": "ondo-emove-2026",
+      "model_family_key": "ondo-emove",
+      "make": "Ondo",
+      "model": "E-Move",
+      "vehicle_type": "scooter",
+      "generation_key": null,
+      "phase_key": null,
+      "body_style": "scooter",
+      "model_year": 2026,
+      "market": "IT",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000031"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "variant_key": "velto-pico-demo",
+      "vehicle_key": "velto-pico-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000001"
+      ]
+    },
+    {
+      "variant_key": "corvane-lume-demo",
+      "vehicle_key": "corvane-lume-2026",
+      "trim": "Demo",
+      "powertrain_type": "HEV",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000003"
+      ]
+    },
+    {
+      "variant_key": "ardea-sette-demo",
+      "vehicle_key": "ardea-sette-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "diesel",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000005"
+      ]
+    },
+    {
+      "variant_key": "nerio-strada-demo",
+      "vehicle_key": "nerio-strada-2026",
+      "trim": "Demo",
+      "powertrain_type": "MHEV",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000007"
+      ]
+    },
+    {
+      "variant_key": "lirae-volt-demo",
+      "vehicle_key": "lirae-volt-2026",
+      "trim": "Demo",
+      "powertrain_type": "BEV",
+      "fuel": "electricity",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000009"
+      ]
+    },
+    {
+      "variant_key": "tessaro-vela-demo",
+      "vehicle_key": "tessaro-vela-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "diesel",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000011"
+      ]
+    },
+    {
+      "variant_key": "brisa-onda-demo",
+      "vehicle_key": "brisa-onda-2026",
+      "trim": "Demo",
+      "powertrain_type": "BEV",
+      "fuel": "electricity",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000013"
+      ]
+    },
+    {
+      "variant_key": "quillo-famiglia-demo",
+      "vehicle_key": "quillo-famiglia-2026",
+      "trim": "Demo",
+      "powertrain_type": "HEV",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000015"
+      ]
+    },
+    {
+      "variant_key": "morvane-atlas-demo",
+      "vehicle_key": "morvane-atlas-2026",
+      "trim": "Demo",
+      "powertrain_type": "PHEV",
+      "fuel": "petrol",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000017"
+      ]
+    },
+    {
+      "variant_key": "orsa-terra-demo",
+      "vehicle_key": "orsa-terra-2026",
+      "trim": "Demo",
+      "powertrain_type": "BEV",
+      "fuel": "electricity",
+      "transmission": "automatic",
+      "drivetrain": "FWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000019"
+      ]
+    },
+    {
+      "variant_key": "pixa-uno-125-demo",
+      "vehicle_key": "pixa-uno-125-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "manual",
+      "drivetrain": "RWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000021"
+      ]
+    },
+    {
+      "variant_key": "kestro-ruta-500-demo",
+      "vehicle_key": "kestro-ruta-500-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "manual",
+      "drivetrain": "RWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000023"
+      ]
+    },
+    {
+      "variant_key": "valdane-tour-900-demo",
+      "vehicle_key": "valdane-tour-900-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "manual",
+      "drivetrain": "RWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000025"
+      ]
+    },
+    {
+      "variant_key": "lumio-citta-125-demo",
+      "vehicle_key": "lumio-citta-125-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "manual",
+      "drivetrain": "RWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000027"
+      ]
+    },
+    {
+      "variant_key": "serra-glide-300-demo",
+      "vehicle_key": "serra-glide-300-2026",
+      "trim": "Demo",
+      "powertrain_type": "ICE",
+      "fuel": "petrol",
+      "transmission": "manual",
+      "drivetrain": "RWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000029"
+      ]
+    },
+    {
+      "variant_key": "ondo-emove-demo",
+      "vehicle_key": "ondo-emove-2026",
+      "trim": "Demo",
+      "powertrain_type": "BEV",
+      "fuel": "electricity",
+      "transmission": "manual",
+      "drivetrain": "RWD",
+      "evidence_snapshot_ids": [
+        "0000de00-0000-4000-a000-000000000031"
+      ]
+    }
+  ],
+  "snapshots": [
+    {
+      "id": "0000de00-0000-4000-a000-000000000001",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/velto-pico",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "e3ca0623b27b619feefedf42f22b3a4e083601888624e2ff5cde814f958372fb",
+      "artifact_path": "demo/registry/velto-pico.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000002",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/velto-pico",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "c2fdba9e5ea1762fa4650485c3db0d867fbf48ef69c0505f882932a426277071",
+      "artifact_path": "demo/price-list/velto-pico.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000003",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/corvane-lume",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "08b5075da98e38673a67463bd1699d1f6f88d15e839521c3f639aaf6270360cc",
+      "artifact_path": "demo/registry/corvane-lume.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000004",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/corvane-lume",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "088e1f2e3408d0bc545568abc95d9675fe979624ae5e5bae0c446acdb14c87bb",
+      "artifact_path": "demo/price-list/corvane-lume.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000005",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/ardea-sette",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "3dcd0df963b8134ecf8aad46eb0ead5c26da267a8d88ff48cb214ef8498f3967",
+      "artifact_path": "demo/registry/ardea-sette.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000006",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/ardea-sette",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "4333c31459962a61d25ab2969acbed889727b7ee0dc3ffc5fd5d778003ec8fa6",
+      "artifact_path": "demo/price-list/ardea-sette.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000007",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/nerio-strada",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "155cc5e4896331a89a9ce72965cacce5fa386b184a55c226be5b00d22125edba",
+      "artifact_path": "demo/registry/nerio-strada.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000008",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/nerio-strada",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "21cf57b29619828f7bf629aa109645f5d2f922f16d6b5ade46fefe78d47e2db0",
+      "artifact_path": "demo/price-list/nerio-strada.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000009",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/lirae-volt",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "15e167e6a3bd12f9211153205c09d3d743b61669b48a9120ef545965e4c71f37",
+      "artifact_path": "demo/registry/lirae-volt.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000010",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/lirae-volt",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "3a6c050abe050e3507f4aaab37284b9ebc8f863add4f9074a296caff8b70b90c",
+      "artifact_path": "demo/price-list/lirae-volt.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000011",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/tessaro-vela",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "9e2382be49a522b8e99224d6ee8050521f9329771ee035ac0ba154dc07025a02",
+      "artifact_path": "demo/registry/tessaro-vela.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000012",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/tessaro-vela",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "6672d5847779d16ac8d5c62920d4404ed0220dab40bdaf50760b4e7d460079c2",
+      "artifact_path": "demo/price-list/tessaro-vela.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000013",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/brisa-onda",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "be13d41531c8f5d9d3c407e8a3b417ec823c8e531c478c4f2988f8307558164f",
+      "artifact_path": "demo/registry/brisa-onda.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000014",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/brisa-onda",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "18189412c97e958a4e62cbec4d6cf85920ab807e629dd8684f35bf767c96c988",
+      "artifact_path": "demo/price-list/brisa-onda.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000015",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/quillo-famiglia",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "6603e5dc4d6b21af4d3917e8c8617486bd2d159bf3d430fc08561769b70dfbd8",
+      "artifact_path": "demo/registry/quillo-famiglia.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000016",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/quillo-famiglia",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "fe14e7ef89f58befc6bacbd40b9b9ff6bb3f2e5c969a93bbea324a696312ec7c",
+      "artifact_path": "demo/price-list/quillo-famiglia.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000017",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/morvane-atlas",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "ae51b77e46b9d7f1927935f2abdf23f2ad57735d775586d6e6562ee978df8d20",
+      "artifact_path": "demo/registry/morvane-atlas.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000018",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/morvane-atlas",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "f0838d330ad79a94525f8b42de2d64d2c42703dc26569df608e604605c41e892",
+      "artifact_path": "demo/price-list/morvane-atlas.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000019",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/orsa-terra",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "3a4cf680ee61e86b00a7c6a4d5aff980f9fbc919c509b252a045cbc0330aa249",
+      "artifact_path": "demo/registry/orsa-terra.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000020",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/orsa-terra",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "b8ef9a81e22f7dd1922aebe91d272ecf34ae3d4ba2bb80e03636b504c1f0b777",
+      "artifact_path": "demo/price-list/orsa-terra.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000021",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/pixa-uno-125",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "005a5c220653166f53f41e41f6918326187d1beee3697da205a7a7b48e00c1b4",
+      "artifact_path": "demo/registry/pixa-uno-125.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000022",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/pixa-uno-125",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "b312fcb999b8c4458b006c1225cb505866204f1d1932fa5b6da1c11841e70dbc",
+      "artifact_path": "demo/price-list/pixa-uno-125.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000023",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/kestro-ruta-500",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "b46025b2b96419ebea83a854cf722b91e930c9d35ac8ae2020b0fda18851689c",
+      "artifact_path": "demo/registry/kestro-ruta-500.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000024",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/kestro-ruta-500",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "0639964e1e0db01eb96fa427d812490662250b613b6daa227830354c337fe6c3",
+      "artifact_path": "demo/price-list/kestro-ruta-500.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000025",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/valdane-tour-900",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "8e297f1af3330498cfb30808b1b560cced44a80844d14294c59ecd0e9dc7fc5d",
+      "artifact_path": "demo/registry/valdane-tour-900.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000026",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/valdane-tour-900",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "60135ca910cb6b79ab75ead01a1e112507295e6ca5b00adb02de47a8f5aabb97",
+      "artifact_path": "demo/price-list/valdane-tour-900.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000027",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/lumio-citta-125",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "7e44cb999dcd36eab9568f0de99d6d98d251c0734eeae32ded251b7ef8beb575",
+      "artifact_path": "demo/registry/lumio-citta-125.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000028",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/lumio-citta-125",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "d7b7272c128cfa9f4da848b0adea896e0acc682354f44692e9253319601df982",
+      "artifact_path": "demo/price-list/lumio-citta-125.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000029",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/serra-glide-300",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "5a93f7b8634c54abec54676d1e0065049308afc2a671f65db29441eb043bc110",
+      "artifact_path": "demo/registry/serra-glide-300.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000030",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/serra-glide-300",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "1d534b08dc32dc26cea295b33dcfe5422e310f0777b827dd5fef0212e0b77bc8",
+      "artifact_path": "demo/price-list/serra-glide-300.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000031",
+      "source_key": "drivewise-demo-registry",
+      "url": "https://example.test/demo/registry/ondo-emove",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "e8664f6db5c50eb6c5361270ea6fe6fa57b309f0d53b40ff1475064e6f737d7f",
+      "artifact_path": "demo/registry/ondo-emove.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    },
+    {
+      "id": "0000de00-0000-4000-a000-000000000032",
+      "source_key": "drivewise-demo-price-list",
+      "url": "https://example.test/demo/price-list/ondo-emove",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "content_sha256": "c5a155ba0ab6ab92b1a2120e46b63d5d849ced15f8f999d16e7e7b1f577cb65d",
+      "artifact_path": "demo/price-list/ondo-emove.html",
+      "media_type": "text/html",
+      "evidence_kind": "sourced"
+    }
+  ],
+  "observations": [
+    {
+      "id": "0000de00-0000-4000-8000-000000000001",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "seats",
+      "raw_value": "4",
+      "raw_unit": "count",
+      "value_min": "4",
+      "value_max": "4",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 4",
+      "evidence_locator": "row 1",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000002",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "210",
+      "raw_unit": "l",
+      "value_min": "210",
+      "value_max": "210",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 210",
+      "evidence_locator": "row 2",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000003",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "51",
+      "raw_unit": "kW",
+      "value_min": "51",
+      "value_max": "51",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 51",
+      "evidence_locator": "row 3",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000004",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "length_mm",
+      "raw_value": "3610",
+      "raw_unit": "mm",
+      "value_min": "3610",
+      "value_max": "3610",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 3610",
+      "evidence_locator": "row 4",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000005",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "1880",
+      "raw_unit": "mm",
+      "value_min": "1880",
+      "value_max": "1880",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 1880",
+      "evidence_locator": "row 5",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000006",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "height_mm",
+      "raw_value": "1500",
+      "raw_unit": "mm",
+      "value_min": "1500",
+      "value_max": "1500",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1500",
+      "evidence_locator": "row 6",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000007",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "5.3",
+      "raw_unit": "l/100km",
+      "value_min": "5.3",
+      "value_max": "5.3",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 5.3",
+      "evidence_locator": "row 7",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000008",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000002",
+      "variant_key": "velto-pico-demo",
+      "metric": "list_price_eur",
+      "raw_value": "14900.00",
+      "raw_unit": "EUR",
+      "value_min": "14900.00",
+      "value_max": "14900.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 14900.00",
+      "evidence_locator": "row 8",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "14900.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000009",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 9",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000010",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "295",
+      "raw_unit": "l",
+      "value_min": "295",
+      "value_max": "295",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 295",
+      "evidence_locator": "row 10",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000011",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "system_power_kw",
+      "raw_value": "85",
+      "raw_unit": "kW",
+      "value_min": "85",
+      "value_max": "85",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: system_power_kw = 85",
+      "evidence_locator": "row 11",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000012",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "length_mm",
+      "raw_value": "3980",
+      "raw_unit": "mm",
+      "value_min": "3980",
+      "value_max": "3980",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 3980",
+      "evidence_locator": "row 12",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000013",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "1960",
+      "raw_unit": "mm",
+      "value_min": "1960",
+      "value_max": "1960",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 1960",
+      "evidence_locator": "row 13",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000014",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "height_mm",
+      "raw_value": "1490",
+      "raw_unit": "mm",
+      "value_min": "1490",
+      "value_max": "1490",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1490",
+      "evidence_locator": "row 14",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000015",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000003",
+      "variant_key": "corvane-lume-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "4.2",
+      "raw_unit": "l/100km",
+      "value_min": "4.2",
+      "value_max": "4.2",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 4.2",
+      "evidence_locator": "row 15",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000016",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000004",
+      "variant_key": "corvane-lume-demo",
+      "metric": "list_price_eur",
+      "raw_value": "19800.00",
+      "raw_unit": "EUR",
+      "value_min": "19800.00",
+      "value_max": "19800.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 19800.00",
+      "evidence_locator": "row 16",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "19800.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000017",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 17",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000018",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "380",
+      "raw_unit": "l",
+      "value_min": "380",
+      "value_max": "380",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 380",
+      "evidence_locator": "row 18",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000019",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "85",
+      "raw_unit": "kW",
+      "value_min": "85",
+      "value_max": "85",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 85",
+      "evidence_locator": "row 19",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000020",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "length_mm",
+      "raw_value": "4280",
+      "raw_unit": "mm",
+      "value_min": "4280",
+      "value_max": "4280",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4280",
+      "evidence_locator": "row 20",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000021",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2020",
+      "raw_unit": "mm",
+      "value_min": "2020",
+      "value_max": "2020",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2020",
+      "evidence_locator": "row 21",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000022",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "height_mm",
+      "raw_value": "1460",
+      "raw_unit": "mm",
+      "value_min": "1460",
+      "value_max": "1460",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1460",
+      "evidence_locator": "row 22",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000023",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000005",
+      "variant_key": "ardea-sette-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "4.6",
+      "raw_unit": "l/100km",
+      "value_min": "4.6",
+      "value_max": "4.6",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 4.6",
+      "evidence_locator": "row 23",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000024",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000006",
+      "variant_key": "ardea-sette-demo",
+      "metric": "list_price_eur",
+      "raw_value": "24500.00",
+      "raw_unit": "EUR",
+      "value_min": "24500.00",
+      "value_max": "24500.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 24500.00",
+      "evidence_locator": "row 24",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "20081.97",
+        "printed_basis": "excl_vat",
+        "vat_rate_percent": "22"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000025",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 25",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000026",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "480",
+      "raw_unit": "l",
+      "value_min": "480",
+      "value_max": "480",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 480",
+      "evidence_locator": "row 26",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000027",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "110",
+      "raw_unit": "kW",
+      "value_min": "110",
+      "value_max": "110",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 110",
+      "evidence_locator": "row 27",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000028",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "length_mm",
+      "raw_value": "4690",
+      "raw_unit": "mm",
+      "value_min": "4690",
+      "value_max": "4690",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4690",
+      "evidence_locator": "row 28",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000029",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2070",
+      "raw_unit": "mm",
+      "value_min": "2070",
+      "value_max": "2070",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2070",
+      "evidence_locator": "row 29",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000030",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "height_mm",
+      "raw_value": "1450",
+      "raw_unit": "mm",
+      "value_min": "1450",
+      "value_max": "1450",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1450",
+      "evidence_locator": "row 30",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000031",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000007",
+      "variant_key": "nerio-strada-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "5.8",
+      "raw_unit": "l/100km",
+      "value_min": "5.8",
+      "value_max": "5.8",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 5.8",
+      "evidence_locator": "row 31",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000032",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000008",
+      "variant_key": "nerio-strada-demo",
+      "metric": "list_price_eur",
+      "raw_value": "29900.00",
+      "raw_unit": "EUR",
+      "value_min": "29900.00",
+      "value_max": "29900.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 29900.00",
+      "evidence_locator": "row 32",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "29900.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000033",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 33",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000034",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "300",
+      "raw_unit": "l",
+      "value_min": "300",
+      "value_max": "300",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 300",
+      "evidence_locator": "row 34",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000035",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "100",
+      "raw_unit": "kW",
+      "value_min": "100",
+      "value_max": "100",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 100",
+      "evidence_locator": "row 35",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000036",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "length_mm",
+      "raw_value": "4050",
+      "raw_unit": "mm",
+      "value_min": "4050",
+      "value_max": "4050",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4050",
+      "evidence_locator": "row 36",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000037",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "1970",
+      "raw_unit": "mm",
+      "value_min": "1970",
+      "value_max": "1970",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 1970",
+      "evidence_locator": "row 37",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000038",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "height_mm",
+      "raw_value": "1530",
+      "raw_unit": "mm",
+      "value_min": "1530",
+      "value_max": "1530",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1530",
+      "evidence_locator": "row 38",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000039",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "electric_consumption_kwh_100km",
+      "raw_value": "14.2",
+      "raw_unit": "kWh/100km",
+      "value_min": "14.2",
+      "value_max": "14.2",
+      "unit": "kWh/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: electric_consumption_kwh_100km = 14.2",
+      "evidence_locator": "row 39",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000040",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000009",
+      "variant_key": "lirae-volt-demo",
+      "metric": "electric_range_km",
+      "raw_value": "330",
+      "raw_unit": "km",
+      "value_min": "330",
+      "value_max": "330",
+      "unit": "km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: electric_range_km = 330",
+      "evidence_locator": "row 40",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000041",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000010",
+      "variant_key": "lirae-volt-demo",
+      "metric": "list_price_eur",
+      "raw_value": "27400.00",
+      "raw_unit": "EUR",
+      "value_min": "27400.00",
+      "value_max": "27400.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 27400.00",
+      "evidence_locator": "row 41",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "27400.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000042",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 42",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000043",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "575",
+      "raw_unit": "l",
+      "value_min": "575",
+      "value_max": "575",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 575",
+      "evidence_locator": "row 43",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000044",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "110",
+      "raw_unit": "kW",
+      "value_min": "110",
+      "value_max": "110",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 110",
+      "evidence_locator": "row 44",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000045",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "length_mm",
+      "raw_value": "4720",
+      "raw_unit": "mm",
+      "value_min": "4720",
+      "value_max": "4720",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4720",
+      "evidence_locator": "row 45",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000046",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2080",
+      "raw_unit": "mm",
+      "value_min": "2080",
+      "value_max": "2080",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2080",
+      "evidence_locator": "row 46",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000047",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "height_mm",
+      "raw_value": "1480",
+      "raw_unit": "mm",
+      "value_min": "1480",
+      "value_max": "1480",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1480",
+      "evidence_locator": "row 47",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000048",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000011",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "5.0",
+      "raw_unit": "l/100km",
+      "value_min": "5.0",
+      "value_max": "5.0",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 5.0",
+      "evidence_locator": "row 48",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000049",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000012",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "list_price_eur",
+      "raw_value": "31200.00",
+      "raw_unit": "EUR",
+      "value_min": "31200.00",
+      "value_max": "31200.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 31200.00",
+      "evidence_locator": "row 49",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "31200.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000050",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 50",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000051",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "430",
+      "raw_unit": "l",
+      "value_min": "430",
+      "value_max": "430",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 430",
+      "evidence_locator": "row 51",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000052",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "150",
+      "raw_unit": "kW",
+      "value_min": "150",
+      "value_max": "150",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 150",
+      "evidence_locator": "row 52",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000053",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "length_mm",
+      "raw_value": "4390",
+      "raw_unit": "mm",
+      "value_min": "4390",
+      "value_max": "4390",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4390",
+      "evidence_locator": "row 53",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000054",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2060",
+      "raw_unit": "mm",
+      "value_min": "2060",
+      "value_max": "2060",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2060",
+      "evidence_locator": "row 54",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000055",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "height_mm",
+      "raw_value": "1600",
+      "raw_unit": "mm",
+      "value_min": "1600",
+      "value_max": "1600",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1600",
+      "evidence_locator": "row 55",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000056",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "electric_consumption_kwh_100km",
+      "raw_value": "15.8",
+      "raw_unit": "kWh/100km",
+      "value_min": "15.8",
+      "value_max": "15.8",
+      "unit": "kWh/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: electric_consumption_kwh_100km = 15.8",
+      "evidence_locator": "row 56",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000057",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000013",
+      "variant_key": "brisa-onda-demo",
+      "metric": "electric_range_km",
+      "raw_value": "410",
+      "raw_unit": "km",
+      "value_min": "410",
+      "value_max": "410",
+      "unit": "km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: electric_range_km = 410",
+      "evidence_locator": "row 57",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000058",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000014",
+      "variant_key": "brisa-onda-demo",
+      "metric": "list_price_eur",
+      "raw_value": "34900.00",
+      "raw_unit": "EUR",
+      "value_min": "34900.00",
+      "value_max": "34900.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 34900.00",
+      "evidence_locator": "row 58",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "34900.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000059",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "seats",
+      "raw_value": "7",
+      "raw_unit": "count",
+      "value_min": "7",
+      "value_max": "7",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 7",
+      "evidence_locator": "row 59",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000060",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "640",
+      "raw_unit": "l",
+      "value_min": "640",
+      "value_max": "640",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 640",
+      "evidence_locator": "row 60",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000061",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "system_power_kw",
+      "raw_value": "135",
+      "raw_unit": "kW",
+      "value_min": "135",
+      "value_max": "135",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: system_power_kw = 135",
+      "evidence_locator": "row 61",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000062",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "length_mm",
+      "raw_value": "4760",
+      "raw_unit": "mm",
+      "value_min": "4760",
+      "value_max": "4760",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4760",
+      "evidence_locator": "row 62",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000063",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2100",
+      "raw_unit": "mm",
+      "value_min": "2100",
+      "value_max": "2100",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2100",
+      "evidence_locator": "row 63",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000064",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "height_mm",
+      "raw_value": "1750",
+      "raw_unit": "mm",
+      "value_min": "1750",
+      "value_max": "1750",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1750",
+      "evidence_locator": "row 64",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000065",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000015",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "5.6",
+      "raw_unit": "l/100km",
+      "value_min": "5.6",
+      "value_max": "5.6",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 5.6",
+      "evidence_locator": "row 65",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000066",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000016",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "list_price_eur",
+      "raw_value": "36800.00",
+      "raw_unit": "EUR",
+      "value_min": "36800.00",
+      "value_max": "36800.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 36800.00",
+      "evidence_locator": "row 66",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "36800.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000067",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 67",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000068",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "470",
+      "raw_unit": "l",
+      "value_min": "470",
+      "value_max": "470",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 470",
+      "evidence_locator": "row 68",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000069",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "system_power_kw",
+      "raw_value": "200",
+      "raw_unit": "kW",
+      "value_min": "200",
+      "value_max": "200",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: system_power_kw = 200",
+      "evidence_locator": "row 69",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000070",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "length_mm",
+      "raw_value": "4650",
+      "raw_unit": "mm",
+      "value_min": "4650",
+      "value_max": "4650",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4650",
+      "evidence_locator": "row 70",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000071",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2120",
+      "raw_unit": "mm",
+      "value_min": "2120",
+      "value_max": "2120",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2120",
+      "evidence_locator": "row 71",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000072",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "height_mm",
+      "raw_value": "1690",
+      "raw_unit": "mm",
+      "value_min": "1690",
+      "value_max": "1690",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1690",
+      "evidence_locator": "row 72",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000073",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000017",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "liquid_consumption_l_100km",
+      "raw_value": "1.3",
+      "raw_unit": "l/100km",
+      "value_min": "1.3",
+      "value_max": "1.3",
+      "unit": "l/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined",
+        "battery_condition": "weighted"
+      },
+      "evidence_excerpt": "Synthetic demo row: liquid_consumption_l_100km = 1.3",
+      "evidence_locator": "row 73",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000074",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000018",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "list_price_eur",
+      "raw_value": "44500.00",
+      "raw_unit": "EUR",
+      "value_min": "44500.00",
+      "value_max": "44500.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 44500.00",
+      "evidence_locator": "row 74",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "44500.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000075",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "seats",
+      "raw_value": "5",
+      "raw_unit": "count",
+      "value_min": "5",
+      "value_max": "5",
+      "unit": "count",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seats = 5",
+      "evidence_locator": "row 75",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000076",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "cargo_volume_liters",
+      "raw_value": "540",
+      "raw_unit": "l",
+      "value_min": "540",
+      "value_max": "540",
+      "unit": "l",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "evidence_excerpt": "Synthetic demo row: cargo_volume_liters = 540",
+      "evidence_locator": "row 76",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000077",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "engine_power_kw",
+      "raw_value": "220",
+      "raw_unit": "kW",
+      "value_min": "220",
+      "value_max": "220",
+      "unit": "kW",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: engine_power_kw = 220",
+      "evidence_locator": "row 77",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000078",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "length_mm",
+      "raw_value": "4780",
+      "raw_unit": "mm",
+      "value_min": "4780",
+      "value_max": "4780",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: length_mm = 4780",
+      "evidence_locator": "row 78",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000079",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "width_with_mirrors_mm",
+      "raw_value": "2150",
+      "raw_unit": "mm",
+      "value_min": "2150",
+      "value_max": "2150",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: width_with_mirrors_mm = 2150",
+      "evidence_locator": "row 79",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000080",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "height_mm",
+      "raw_value": "1680",
+      "raw_unit": "mm",
+      "value_min": "1680",
+      "value_max": "1680",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: height_mm = 1680",
+      "evidence_locator": "row 80",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000081",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "electric_consumption_kwh_100km",
+      "raw_value": "18.1",
+      "raw_unit": "kWh/100km",
+      "value_min": "18.1",
+      "value_max": "18.1",
+      "unit": "kWh/100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: electric_consumption_kwh_100km = 18.1",
+      "evidence_locator": "row 81",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000082",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000019",
+      "variant_key": "orsa-terra-demo",
+      "metric": "electric_range_km",
+      "raw_value": "470",
+      "raw_unit": "km",
+      "value_min": "470",
+      "value_max": "470",
+      "unit": "km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "evidence_excerpt": "Synthetic demo row: electric_range_km = 470",
+      "evidence_locator": "row 82",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000083",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000020",
+      "variant_key": "orsa-terra-demo",
+      "metric": "list_price_eur",
+      "raw_value": "47600.00",
+      "raw_unit": "EUR",
+      "value_min": "47600.00",
+      "value_max": "47600.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 47600.00",
+      "evidence_locator": "row 83",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "47600.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000084",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000021",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "seat_height_mm",
+      "raw_value": "790",
+      "raw_unit": "mm",
+      "value_min": "790",
+      "value_max": "790",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seat_height_mm = 790",
+      "evidence_locator": "row 84",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000085",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000021",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "mass_kg",
+      "raw_value": "142",
+      "raw_unit": "kg",
+      "value_min": "142",
+      "value_max": "142",
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic demo row: mass_kg = 142",
+      "evidence_locator": "row 85",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000086",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000021",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "11",
+      "raw_unit": "l",
+      "value_min": "11",
+      "value_max": "11",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: fuel_tank_capacity_liters = 11",
+      "evidence_locator": "row 86",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000087",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000022",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "list_price_eur",
+      "raw_value": "4690.00",
+      "raw_unit": "EUR",
+      "value_min": "4690.00",
+      "value_max": "4690.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 4690.00",
+      "evidence_locator": "row 87",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "4690.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000088",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000023",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "seat_height_mm",
+      "raw_value": "805",
+      "raw_unit": "mm",
+      "value_min": "805",
+      "value_max": "805",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seat_height_mm = 805",
+      "evidence_locator": "row 88",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000089",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000023",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "mass_kg",
+      "raw_value": "192",
+      "raw_unit": "kg",
+      "value_min": "192",
+      "value_max": "192",
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic demo row: mass_kg = 192",
+      "evidence_locator": "row 89",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000090",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000023",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "14",
+      "raw_unit": "l",
+      "value_min": "14",
+      "value_max": "14",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: fuel_tank_capacity_liters = 14",
+      "evidence_locator": "row 90",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000091",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000024",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "list_price_eur",
+      "raw_value": "7350.00",
+      "raw_unit": "EUR",
+      "value_min": "7350.00",
+      "value_max": "7350.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 7350.00",
+      "evidence_locator": "row 91",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "7350.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000092",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000025",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "seat_height_mm",
+      "raw_value": "835",
+      "raw_unit": "mm",
+      "value_min": "835",
+      "value_max": "835",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seat_height_mm = 835",
+      "evidence_locator": "row 92",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000093",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000025",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "mass_kg",
+      "raw_value": "238",
+      "raw_unit": "kg",
+      "value_min": "238",
+      "value_max": "238",
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic demo row: mass_kg = 238",
+      "evidence_locator": "row 93",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000094",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000025",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "20",
+      "raw_unit": "l",
+      "value_min": "20",
+      "value_max": "20",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: fuel_tank_capacity_liters = 20",
+      "evidence_locator": "row 94",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000095",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000026",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "list_price_eur",
+      "raw_value": "13900.00",
+      "raw_unit": "EUR",
+      "value_min": "13900.00",
+      "value_max": "13900.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 13900.00",
+      "evidence_locator": "row 95",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "13900.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000096",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000027",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "seat_height_mm",
+      "raw_value": "765",
+      "raw_unit": "mm",
+      "value_min": "765",
+      "value_max": "765",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seat_height_mm = 765",
+      "evidence_locator": "row 96",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000097",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000027",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "mass_kg",
+      "raw_value": "128",
+      "raw_unit": "kg",
+      "value_min": "128",
+      "value_max": "128",
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic demo row: mass_kg = 128",
+      "evidence_locator": "row 97",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000098",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000027",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "7",
+      "raw_unit": "l",
+      "value_min": "7",
+      "value_max": "7",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: fuel_tank_capacity_liters = 7",
+      "evidence_locator": "row 98",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000099",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000027",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "underseat_storage_liters",
+      "raw_value": "34",
+      "raw_unit": "l",
+      "value_min": "34",
+      "value_max": "34",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: underseat_storage_liters = 34",
+      "evidence_locator": "row 99",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000100",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000028",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "list_price_eur",
+      "raw_value": "3290.00",
+      "raw_unit": "EUR",
+      "value_min": "3290.00",
+      "value_max": "3290.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 3290.00",
+      "evidence_locator": "row 100",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "3290.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000101",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000029",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "seat_height_mm",
+      "raw_value": "790",
+      "raw_unit": "mm",
+      "value_min": "790",
+      "value_max": "790",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seat_height_mm = 790",
+      "evidence_locator": "row 101",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000102",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000029",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "mass_kg",
+      "raw_value": "182",
+      "raw_unit": "kg",
+      "value_min": "182",
+      "value_max": "182",
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic demo row: mass_kg = 182",
+      "evidence_locator": "row 102",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000103",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000029",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "raw_value": "13",
+      "raw_unit": "l",
+      "value_min": "13",
+      "value_max": "13",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: fuel_tank_capacity_liters = 13",
+      "evidence_locator": "row 103",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000104",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000029",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "underseat_storage_liters",
+      "raw_value": "42",
+      "raw_unit": "l",
+      "value_min": "42",
+      "value_max": "42",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: underseat_storage_liters = 42",
+      "evidence_locator": "row 104",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000105",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000030",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "list_price_eur",
+      "raw_value": "5990.00",
+      "raw_unit": "EUR",
+      "value_min": "5990.00",
+      "value_max": "5990.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 5990.00",
+      "evidence_locator": "row 105",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "5990.00",
+        "printed_basis": "incl_vat"
+      }
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000106",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000031",
+      "variant_key": "ondo-emove-demo",
+      "metric": "seat_height_mm",
+      "raw_value": "760",
+      "raw_unit": "mm",
+      "value_min": "760",
+      "value_max": "760",
+      "unit": "mm",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: seat_height_mm = 760",
+      "evidence_locator": "row 106",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000107",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000031",
+      "variant_key": "ondo-emove-demo",
+      "metric": "mass_kg",
+      "raw_value": "105",
+      "raw_unit": "kg",
+      "value_min": "105",
+      "value_max": "105",
+      "unit": "kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "evidence_excerpt": "Synthetic demo row: mass_kg = 105",
+      "evidence_locator": "row 107",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000108",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000031",
+      "variant_key": "ondo-emove-demo",
+      "metric": "underseat_storage_liters",
+      "raw_value": "25",
+      "raw_unit": "l",
+      "value_min": "25",
+      "value_max": "25",
+      "unit": "l",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: underseat_storage_liters = 25",
+      "evidence_locator": "row 108",
+      "extractor_version": "synthetic-demo-1"
+    },
+    {
+      "id": "0000de00-0000-4000-8000-000000000109",
+      "snapshot_id": "0000de00-0000-4000-a000-000000000032",
+      "variant_key": "ondo-emove-demo",
+      "metric": "list_price_eur",
+      "raw_value": "3890.00",
+      "raw_unit": "EUR",
+      "value_min": "3890.00",
+      "value_max": "3890.00",
+      "unit": "EUR",
+      "context": {
+        "market": "IT"
+      },
+      "evidence_excerpt": "Synthetic demo row: list_price_eur = 3890.00",
+      "evidence_locator": "row 109",
+      "extractor_version": "synthetic-demo-1",
+      "list_price": {
+        "trim_label": "Versione unica (dimostrativa)",
+        "price_list_valid_from": "2026-11-01",
+        "printed_amount_eur": "3890.00",
+        "printed_basis": "incl_vat"
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "id": "0000de00-0000-4000-9000-000000000001",
+      "variant_key": "velto-pico-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000001",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000001"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000002",
+      "variant_key": "velto-pico-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000002",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000002"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000003",
+      "variant_key": "velto-pico-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000003",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000003"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000004",
+      "variant_key": "velto-pico-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000004",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000004"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000005",
+      "variant_key": "velto-pico-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000005",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000005"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000006",
+      "variant_key": "velto-pico-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000006",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000006"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000007",
+      "variant_key": "velto-pico-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000007",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000007"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000008",
+      "variant_key": "velto-pico-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000008",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000008"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000009",
+      "variant_key": "corvane-lume-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000009",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000009"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000010",
+      "variant_key": "corvane-lume-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000010",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000010"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000011",
+      "variant_key": "corvane-lume-demo",
+      "metric": "system_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000011",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000011"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000012",
+      "variant_key": "corvane-lume-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000012",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000012"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000013",
+      "variant_key": "corvane-lume-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000013",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000013"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000014",
+      "variant_key": "corvane-lume-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000014",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000014"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000015",
+      "variant_key": "corvane-lume-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000015",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000015"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000016",
+      "variant_key": "corvane-lume-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000016",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000016"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000017",
+      "variant_key": "ardea-sette-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000017",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000017"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000018",
+      "variant_key": "ardea-sette-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000018",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000018"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000019",
+      "variant_key": "ardea-sette-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000019",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000019"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000020",
+      "variant_key": "ardea-sette-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000020",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000020"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000021",
+      "variant_key": "ardea-sette-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000021",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000021"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000022",
+      "variant_key": "ardea-sette-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000022",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000022"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000023",
+      "variant_key": "ardea-sette-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000023",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000023"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000024",
+      "variant_key": "ardea-sette-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000024",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000024"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000025",
+      "variant_key": "nerio-strada-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000025",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000025"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000026",
+      "variant_key": "nerio-strada-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000026",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000026"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000027",
+      "variant_key": "nerio-strada-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000027",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000027"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000028",
+      "variant_key": "nerio-strada-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000028",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000028"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000029",
+      "variant_key": "nerio-strada-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000029",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000029"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000030",
+      "variant_key": "nerio-strada-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000030",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000030"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000031",
+      "variant_key": "nerio-strada-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000031",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000031"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000032",
+      "variant_key": "nerio-strada-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000032",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000032"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000033",
+      "variant_key": "lirae-volt-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000033",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000033"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000034",
+      "variant_key": "lirae-volt-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000034",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000034"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000035",
+      "variant_key": "lirae-volt-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000035",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000035"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000036",
+      "variant_key": "lirae-volt-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000036",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000036"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000037",
+      "variant_key": "lirae-volt-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000037",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000037"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000038",
+      "variant_key": "lirae-volt-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000038",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000038"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000039",
+      "variant_key": "lirae-volt-demo",
+      "metric": "electric_consumption_kwh_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000039",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000039"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000040",
+      "variant_key": "lirae-volt-demo",
+      "metric": "electric_range_km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000040",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000040"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000041",
+      "variant_key": "lirae-volt-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000041",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000041"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000042",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000042",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000042"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000043",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000043",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000043"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000044",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000044",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000044"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000045",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000045",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000045"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000046",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000046",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000046"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000047",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000047",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000047"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000048",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000048",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000048"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000049",
+      "variant_key": "tessaro-vela-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000049",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000049"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000050",
+      "variant_key": "brisa-onda-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000050",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000050"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000051",
+      "variant_key": "brisa-onda-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000051",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000051"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000052",
+      "variant_key": "brisa-onda-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000052",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000052"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000053",
+      "variant_key": "brisa-onda-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000053",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000053"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000054",
+      "variant_key": "brisa-onda-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000054",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000054"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000055",
+      "variant_key": "brisa-onda-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000055",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000055"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000056",
+      "variant_key": "brisa-onda-demo",
+      "metric": "electric_consumption_kwh_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000056",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000056"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000057",
+      "variant_key": "brisa-onda-demo",
+      "metric": "electric_range_km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000057",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000057"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000058",
+      "variant_key": "brisa-onda-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000058",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000058"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000059",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000059",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000059"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000060",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000060",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000060"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000061",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "system_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000061",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000061"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000062",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000062",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000062"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000063",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000063",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000063"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000064",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000064",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000064"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000065",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000065",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000065"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000066",
+      "variant_key": "quillo-famiglia-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000066",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000066"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000067",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000067",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000067"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000068",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000068",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000068"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000069",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "system_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000069",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000069"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000070",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000070",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000070"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000071",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000071",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000071"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000072",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000072",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000072"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000073",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "liquid_consumption_l_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined",
+        "battery_condition": "weighted"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000073",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000073"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000074",
+      "variant_key": "morvane-atlas-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000074",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000074"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000075",
+      "variant_key": "orsa-terra-demo",
+      "metric": "seats",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000075",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000075"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000076",
+      "variant_key": "orsa-terra-demo",
+      "metric": "cargo_volume_liters",
+      "context": {
+        "market": "IT",
+        "method": "VDA",
+        "seating_configuration": "all_seats_up"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000076",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000076"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000077",
+      "variant_key": "orsa-terra-demo",
+      "metric": "engine_power_kw",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000077",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000077"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000078",
+      "variant_key": "orsa-terra-demo",
+      "metric": "length_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000078",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000078"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000079",
+      "variant_key": "orsa-terra-demo",
+      "metric": "width_with_mirrors_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000079",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000079"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000080",
+      "variant_key": "orsa-terra-demo",
+      "metric": "height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000080",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000080"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000081",
+      "variant_key": "orsa-terra-demo",
+      "metric": "electric_consumption_kwh_100km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000081",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000081"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000082",
+      "variant_key": "orsa-terra-demo",
+      "metric": "electric_range_km",
+      "context": {
+        "market": "IT",
+        "procedure": "WLTP",
+        "cycle": "combined"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000082",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000082"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000083",
+      "variant_key": "orsa-terra-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000083",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000083"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000084",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000084",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000084"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000085",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000085",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000085"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000086",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000086",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000086"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000087",
+      "variant_key": "pixa-uno-125-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000087",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000087"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000088",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000088",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000088"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000089",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000089",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000089"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000090",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000090",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000090"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000091",
+      "variant_key": "kestro-ruta-500-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000091",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000091"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000092",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000092",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000092"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000093",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000093",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000093"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000094",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000094",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000094"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000095",
+      "variant_key": "valdane-tour-900-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000095",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000095"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000096",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000096",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000096"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000097",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000097",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000097"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000098",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000098",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000098"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000099",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "underseat_storage_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000099",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000099"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000100",
+      "variant_key": "lumio-citta-125-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000100",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000100"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000101",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000101",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000101"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000102",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000102",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000102"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000103",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "fuel_tank_capacity_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000103",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000103"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000104",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "underseat_storage_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000104",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000104"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000105",
+      "variant_key": "serra-glide-300-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000105",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000105"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000106",
+      "variant_key": "ondo-emove-demo",
+      "metric": "seat_height_mm",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000106",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000106"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000107",
+      "variant_key": "ondo-emove-demo",
+      "metric": "mass_kg",
+      "context": {
+        "market": "IT",
+        "method": "wet"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000107",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000107"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000108",
+      "variant_key": "ondo-emove-demo",
+      "metric": "underseat_storage_liters",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000108",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000108"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    },
+    {
+      "id": "0000de00-0000-4000-9000-000000000109",
+      "variant_key": "ondo-emove-demo",
+      "metric": "list_price_eur",
+      "context": {
+        "market": "IT"
+      },
+      "status": "verified",
+      "selected_observation_id": "0000de00-0000-4000-8000-000000000109",
+      "evidence_ids": [
+        "0000de00-0000-4000-8000-000000000109"
+      ],
+      "reason": "Synthetic demo value (ADR-011)",
+      "actor_kind": "human",
+      "actor_id": "synthetic-demo-reviewer",
+      "policy_version": "synthetic-demo-1",
+      "decided_at": "2026-11-02T09:00:00Z"
+    }
+  ]
+}

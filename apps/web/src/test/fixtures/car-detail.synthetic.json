@@ -1,0 +1,183 @@
+{
+    "id": "9e301d15-cf60-4bec-9f2f-5fcffda6cf2e",
+    "canonical_key": "ardea-sette-2026",
+    "model_family_key": "ardea-sette",
+    "vehicle_type": "car",
+    "generation_key": null,
+    "phase_key": null,
+    "catalog_version": 2,
+    "make": "Ardea",
+    "model": "Sette",
+    "model_year": 2026,
+    "body_style": "hatchback",
+    "fuel_type": null,
+    "market": "IT",
+    "base_price_eur": null,
+    "specs": [
+        {
+            "catalog_version": 2,
+            "powertrain_type": "ICE",
+            "fuel": "diesel",
+            "engine_code": null,
+            "valid_from": null,
+            "valid_to": null,
+            "external_references": [],
+            "id": "defd1c27-78ac-47f6-b199-2bd45383f4d3",
+            "variant_key": "ardea-sette-demo",
+            "is_default": false,
+            "trim": "Demo",
+            "body_style": "hatchback",
+            "fuel_type": "diesel",
+            "list_price_eur": 24500.0,
+            "drivetrain": "FWD",
+            "transmission": "automatic",
+            "engine": null,
+            "horsepower": null,
+            "battery_kwh": null,
+            "energy_consumption_kwh_100km": null,
+            "consumption_l_100km": 4.6,
+            "consumption_l_100km_basis": "exact",
+            "energy_consumption_kwh_100km_basis": null,
+            "wltp_range_km": null,
+            "co2_g_km": null,
+            "euro_emission_standard": null,
+            "seats": 5,
+            "cargo_volume_liters": 380.0,
+            "provenance": [
+                {
+                    "source_id": "b00d1fe4-4035-4bf4-8445-80da715b43ef",
+                    "source_key": "drivewise-demo-price-list",
+                    "source_name": "Drivewise demo price list (synthetic)",
+                    "source_url": "https://example.test/demo/price-list/ardea-sette",
+                    "source_license": "Synthetic fixture only",
+                    "observed_at": "2026-11-01T09:00:00Z",
+                    "record_observed_at": "2026-11-01T09:00:00Z",
+                    "content_hash": "4333c31459962a61d25ab2969acbed889727b7ee0dc3ffc5fd5d778003ec8fa6",
+                    "is_current": true,
+                    "supported_metrics": [
+                        "list_price_eur"
+                    ]
+                },
+                {
+                    "source_id": "af80db9a-c818-4eb5-9a21-16de8e154377",
+                    "source_key": "drivewise-demo-registry",
+                    "source_name": "Drivewise demo registry (synthetic)",
+                    "source_url": "https://example.test/demo/registry/ardea-sette",
+                    "source_license": "Synthetic fixture only",
+                    "observed_at": "2026-11-01T09:00:00Z",
+                    "record_observed_at": "2026-11-01T09:00:00Z",
+                    "content_hash": "3dcd0df963b8134ecf8aad46eb0ead5c26da267a8d88ff48cb214ef8498f3967",
+                    "is_current": true,
+                    "supported_metrics": [
+                        "body_style",
+                        "cargo_volume_liters",
+                        "consumption_l_100km",
+                        "engine_power_kw",
+                        "fuel_type",
+                        "height_mm",
+                        "length_mm",
+                        "seats",
+                        "width_with_mirrors_mm"
+                    ]
+                }
+            ],
+            "identity": {
+                "generation_name": null,
+                "restyling_label": null,
+                "category": null,
+                "doors": null
+            },
+            "dimensions": {
+                "length_mm": 4280,
+                "width_mm": null,
+                "height_mm": 1460,
+                "wheelbase_mm": null,
+                "curb_weight_kg": null,
+                "gross_weight_kg": null,
+                "payload_kg": null,
+                "seats": 5,
+                "cargo_volume_liters": 380.0
+            },
+            "powertrain": {
+                "engine_description": null,
+                "engine_code": null,
+                "displacement_cc": null,
+                "cylinders": null,
+                "horsepower": null,
+                "power_kw": 85.0,
+                "torque_nm": null,
+                "fuel_type": "diesel",
+                "battery_total_kwh": null,
+                "battery_usable_kwh": null,
+                "wltp_range_km": null
+            },
+            "transmission_details": {
+                "transmission": "automatic",
+                "transmission_type": null,
+                "gear_count": null,
+                "drivetrain": "FWD",
+                "differential_type": null
+            },
+            "performance": {
+                "acceleration_0_100_s": null,
+                "top_speed_kmh": null,
+                "braking_100_0_m": null,
+                "power_to_weight_kw_per_t": null
+            },
+            "official_efficiency": {
+                "homologation_cycle": null,
+                "consumption_l_100km": 4.6,
+                "energy_consumption_kwh_100km": null,
+                "co2_g_km": null,
+                "euro_emission_standard": null
+            },
+            "maintenance_schedule": [],
+            "safety": {
+                "ratings": [],
+                "adas": [],
+                "equipment": []
+            },
+            "technology_comfort": [],
+            "media": [],
+            "two_wheel": {
+                "seat_height_mm": null,
+                "wet_weight_kg": null,
+                "fuel_tank_capacity_liters": null,
+                "underseat_storage_liters": null
+            },
+            "list_price": {
+                "price_eur": 24500.0,
+                "computed_from_excl_vat": true,
+                "derivation": "computed_from_excl_vat",
+                "printed_amount_eur": 20081.97,
+                "printed_basis": "excl_vat",
+                "vat_rate_percent": 22.0,
+                "on_road_charge_eur": null,
+                "on_road_charge_includes_vat": null,
+                "trim_label": "Versione unica (dimostrativa)",
+                "price_list_valid_from": "2026-11-01",
+                "substitute_note": null,
+                "source_name": "Drivewise demo price list (synthetic)",
+                "source_url": "https://example.test/demo/price-list/ardea-sette",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z",
+                "decision_id": "0000de00-0000-4000-9000-000000000024",
+                "observation_id": "0000de00-0000-4000-8000-000000000024"
+            }
+        }
+    ],
+    "provenance": [
+        {
+            "source_id": "af80db9a-c818-4eb5-9a21-16de8e154377",
+            "source_key": "drivewise-demo-registry",
+            "source_name": "Drivewise demo registry (synthetic)",
+            "source_url": "https://example.test/demo/registry/ardea-sette",
+            "source_license": "Synthetic fixture only",
+            "observed_at": "2026-11-01T09:00:00Z",
+            "record_observed_at": "2026-11-01T09:00:00Z",
+            "content_hash": "3dcd0df963b8134ecf8aad46eb0ead5c26da267a8d88ff48cb214ef8498f3967",
+            "is_current": true,
+            "supported_metrics": []
+        }
+    ]
+}

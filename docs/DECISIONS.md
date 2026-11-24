@@ -97,3 +97,68 @@ The product must label them as mock data until reviewed sources replace them.
 The retired `decision_engine/` package is not a compatibility runtime. Its
 reports are historical snapshots and its calibration JSON is non-runtime
 dataset material. API and Guided Decision use `advisor-v3.0`.
+
+## ADR-013: The Advisor evaluates models and offers
+
+**Status:** Accepted (2026-11-24)
+
+The Advisor ranks exact vehicle variants. A variant with no eligible offer is
+evaluated as a new vehicle at its list price. An eligible offer adds its own
+price, mileage, condition, and freshness to the same evaluation. Offers still
+enter ranking only from sources with written authorization, so the product
+must recommend models while no such source exists.
+
+## ADR-014: Each vehicle type has its own Advisor module
+
+**Status:** Accepted (2026-11-24)
+
+Cars, motorcycles, and scooters are evaluated by separate Advisor modules,
+each with its own questions, required facts, and formulas, behind the same API
+boundary. A vehicle type without a module is shown as a catalogue without a
+score.
+
+## ADR-015: Manufacturer documents supply list price and cargo volume
+
+**Status:** Accepted (2026-11-24)
+
+No open source publishes Italian list prices or cargo volumes. These values
+come from the manufacturers' public price lists and technical sheets. Each
+value keeps the link to its document, and the source passes the source review
+before it affects ranking. The first group is the twelve cars of the current
+public site.
+
+The price shown is the public list price including VAT, not the turnkey price.
+When a document prints only the price without VAT, the value is computed from
+it and marked as computed. When a document prints only the turnkey price, the
+value is that price minus the on-road charge the document states, also marked
+as computed. When a registered version is no longer in the
+current price list, the nearest current version supplies the price, and the
+product says so.
+
+## ADR-016: Two-wheel modules score measurable facts only
+
+**Status:** Accepted (2026-11-24)
+
+The motorcycle and scooter modules score facts that a source measures or
+states, such as price, seat height, weight, under-seat storage, displacement,
+and power. Hand-written 0–100 indices do not enter ranking until a reviewed
+source measures them. The car module already follows this rule.
+
+## ADR-017: The public domain moves when the car module recommends cars
+
+**Status:** Accepted (2026-11-24)
+
+The public domain moves to this build when the car module recommends the
+first twelve cars in production. Until their modules exist, motorcycles and
+scooters are shown without a score. The web app gets no local scoring bridge,
+because ADR-008 keeps ranking in the API.
+
+## ADR-018: An interval consumption is published at its upper value
+
+**Status:** Accepted (2026-11-24)
+
+Open registries give the consumption of many variants as an interval. The read
+catalogue publishes the upper value of that interval, and the product says the
+figure is the upper value. The rule lives in publication, not in a hand
+decision per bundle, so it applies whatever source supplies the interval. The
+upper value is chosen so that running costs are not understated.

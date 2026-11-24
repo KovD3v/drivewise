@@ -62,6 +62,11 @@ def test_migration_files_are_ordered():
         "0007_https_primary_provenance.sql",
         "0008_catalog_evidence.sql",
         "0009_catalog_publication.sql",
+        "0010_two_wheel_metrics.sql",
+        "0011_list_price_metric.sql",
+        "0012_list_price_read_view.sql",
+        "0013_plug_in_hybrid_fuel_type.sql",
+        "0014_body_style_provenance.sql",
     ]
 
 

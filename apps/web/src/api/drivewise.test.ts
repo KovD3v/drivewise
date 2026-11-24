@@ -1,42 +1,13 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
-import {
-  analyzeModel,
-  fetchDocuments,
-  fetchVehicle,
-  fetchListings,
-  fetchVehicles,
-  isApiNotFoundError,
-  searchDocuments,
-} from './drivewise'
+import { analyzeModel, fetchVehicle, fetchVehicles, isApiNotFoundError, resolveApiBaseUrl } from './drivewise'
 
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
 })
 
-test('does not fall back to mock data unless VITE_USE_MOCK_API is enabled', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-
-  await expect(fetchVehicles()).rejects.toThrow('Failed to fetch')
-})
-
-test('uses mock data when VITE_USE_MOCK_API is enabled', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-
-  await expect(fetchVehicles()).resolves.toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        make: 'Fiat',
-        model: 'Panda',
-      }),
-    ]),
-  )
-})
-
-test('does not hide HTTP failures behind mock fallback', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
+test('surfaces HTTP failures with the API detail', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({
@@ -49,19 +20,20 @@ test('does not hide HTTP failures behind mock fallback', async () => {
   await expect(fetchVehicles()).rejects.toThrow('Catalog unavailable')
 })
 
-test('does not hide malformed GET responses behind mock fallback', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => {
-        throw new SyntaxError('Unexpected token')
-      },
-    }),
-  )
+test('surfaces network failures instead of inventing data', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-  await expect(fetchVehicles()).rejects.toThrow('Unexpected token')
+  await expect(fetchVehicles()).rejects.toThrow('Failed to fetch')
+})
+
+test('asks the API for one vehicle type', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
+
+  await fetchVehicles({ vehicle_type: 'scooter', limit: 100, offset: 0 })
+
+  expect(fetch).toHaveBeenCalledWith(
+    'http://127.0.0.1:8000/vehicles?vehicle_type=scooter&limit=100&offset=0',
+  )
 })
 
 test('identifies missing API records as not found errors', async () => {
@@ -77,128 +49,6 @@ test('identifies missing API records as not found errors', async () => {
   const error = await fetchVehicle('missing').catch((caughtError) => caughtError)
 
   expect(isApiNotFoundError(error)).toBe(true)
-})
-
-test('uses mock document search only when VITE_USE_MOCK_API is enabled', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-
-  await expect(
-    searchDocuments({ query: 'fiat panda', include_content: true }),
-  ).resolves.toEqual(
-    expect.objectContaining({
-      mode: 'text_only',
-      items: expect.arrayContaining([
-        expect.objectContaining({
-          title: 'Fiat Panda local listing',
-          content: expect.stringContaining('Fiat Panda'),
-        }),
-      ]),
-    }),
-  )
-})
-
-test('does not hide HTTP or malformed POST responses behind mock fallback', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: async () => ({ detail: 'Invalid query' }),
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: async () => {
-        throw new SyntaxError('Malformed search response')
-      },
-    })
-  vi.stubGlobal('fetch', fetchMock)
-
-  await expect(searchDocuments({ query: 'fiat panda' })).rejects.toThrow(
-    'Invalid query',
-  )
-  await expect(searchDocuments({ query: 'fiat panda' })).rejects.toThrow(
-    'Malformed search response',
-  )
-})
-
-test('validates document search length and normalized token limits before fetch', async () => {
-  const fetchMock = vi.fn()
-  vi.stubGlobal('fetch', fetchMock)
-
-  await expect(searchDocuments({ query: 'x'.repeat(161) })).rejects.toThrow(
-    '160 characters or fewer',
-  )
-  await expect(
-    searchDocuments({
-      query:
-        'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen',
-    }),
-  ).rejects.toThrow('16 terms or fewer')
-  expect(fetchMock).not.toHaveBeenCalled()
-})
-
-test('mock search normalizes query and mirrors backend text-only scoring', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-
-  await expect(
-    searchDocuments({ query: ' fiat    panda ', document_type: 'seed_note' }),
-  ).resolves.toEqual(
-    expect.objectContaining({
-      query: 'fiat panda',
-      items: [
-        expect.objectContaining({
-          title: 'Synthetic profile: Fiat Panda',
-          score: 12.05,
-          snippet: 'Synthetic profile: Fiat Panda',
-        }),
-      ],
-    }),
-  )
-})
-
-test('mock search supports vector fake mode', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-
-  await expect(
-    searchDocuments({ query: 'fiat panda', mode: 'vector_fake' }),
-  ).resolves.toEqual(
-    expect.objectContaining({
-      query: 'fiat panda',
-      mode: 'vector_fake',
-      items: expect.any(Array),
-    }),
-  )
-})
-
-test('mock collection filters include backend id filters', async () => {
-  vi.stubEnv('VITE_USE_MOCK_API', 'true')
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-
-  await expect(
-    fetchListings({ vehicle_id: '00000000-0000-4000-8000-000000000004' }),
-  ).resolves.toEqual([
-    expect.objectContaining({
-      title: 'Dacia Sandero Eco-G 100',
-    }),
-  ])
-
-  await expect(
-    fetchDocuments({
-      source_id: '10000000-0000-4000-8000-000000000001',
-      vehicle_id: '00000000-0000-4000-8000-000000000001',
-      listing_id: '30000000-0000-4000-8000-000000000001',
-      q: 'compact',
-      document_type: 'seed_note',
-    }),
-  ).resolves.toEqual([
-    expect.objectContaining({
-      title: 'Synthetic profile: Fiat Panda',
-    }),
-  ])
 })
 
 test('posts model analysis requests to the advisor endpoint', async () => {
@@ -265,4 +115,18 @@ test('posts model analysis requests to the advisor endpoint', async () => {
       method: 'POST',
     }),
   )
+})
+
+test('a one-origin build sends browser requests to /api, never to the local API', async () => {
+  vi.stubEnv('VITE_API_BASE_URL', '/api')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
+  await fetchVehicles({ vehicle_type: 'car' })
+  expect(fetch).toHaveBeenCalledWith('/api/vehicles?vehicle_type=car')
+  expect(resolveApiBaseUrl({ ssr: false, publicUrl: '/api' })).toBe('/api')
+})
+
+test('server rendering uses API_INTERNAL_URL and refuses a relative base without it', () => {
+  expect(resolveApiBaseUrl({ ssr: true, internalUrl: 'http://api.internal/api/', publicUrl: '/api' })).toBe('http://api.internal/api')
+  expect(() => resolveApiBaseUrl({ ssr: true, publicUrl: '/api' })).toThrow('API_INTERNAL_URL')
+  expect(resolveApiBaseUrl({ ssr: true, publicUrl: 'http://127.0.0.1:8047' })).toBe('http://127.0.0.1:8047')
 })

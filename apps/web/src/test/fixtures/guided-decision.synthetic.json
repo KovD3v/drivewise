@@ -1,0 +1,672 @@
+{
+  "contractVersion": "guided-decision-v1",
+  "decisionId": "0d22124c-69ed-4d0b-ad4d-d4ad0aa1621b",
+  "profileVersion": 10,
+  "status": "active",
+  "message": "Perfetto, ho aggiornato il profilo: constraint_modes, constraint_modes_confirmed. Il profilo contiene già le informazioni previste.",
+  "decisionProfile": {
+    "vehicleType": {
+      "value": "car",
+      "confidence": 0.99,
+      "source": "inferred",
+      "confirmed": false,
+      "updatedAt": "2026-11-24T18:51:11.329403Z"
+    },
+    "category": {
+      "value": "wagon",
+      "confidence": 0.98,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.329403Z"
+    },
+    "budgetEur": {
+      "value": 35000.0,
+      "confidence": 0.98,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.329403Z"
+    },
+    "family": {
+      "value": true,
+      "confidence": 0.98,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.329403Z"
+    },
+    "primaryUse": {
+      "value": "family",
+      "confidence": 0.95,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.329403Z"
+    },
+    "usage": {
+      "value": [
+        "family"
+      ],
+      "confidence": 0.93,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.329403Z"
+    },
+    "childrenCount": {
+      "value": 1,
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.587305Z"
+    },
+    "passengersUsual": {
+      "value": 4,
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.632311Z"
+    },
+    "annualKm": {
+      "value": 12000,
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.377720Z"
+    },
+    "condition": {
+      "value": "any",
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.420069Z"
+    },
+    "preferredFuelType": {
+      "value": "diesel",
+      "confidence": 0.95,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.461245Z"
+    },
+    "maxMileageKm": null,
+    "priorities": {
+      "value": [
+        "price",
+        "efficiency_range"
+      ],
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.545585Z"
+    },
+    "automaticRequired": {
+      "value": false,
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.682093Z"
+    },
+    "constraintModes": {
+      "budget": "hard",
+      "bodyStyle": "hard",
+      "fuelType": "soft",
+      "transmission": "soft",
+      "garage": "soft"
+    },
+    "constraintModesConfirmed": {
+      "value": true,
+      "confidence": 0.99,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.735967Z"
+    },
+    "parking": {
+      "value": "outdoor_space",
+      "confidence": 0.96,
+      "source": "user",
+      "confirmed": true,
+      "updatedAt": "2026-11-24T18:51:11.504018Z"
+    },
+    "garage": {
+      "usefulLengthMm": null,
+      "usefulWidthMm": null,
+      "usefulHeightMm": null,
+      "doorWidthMm": null,
+      "doorHeightMm": null
+    }
+  },
+  "updatedFields": [
+    "constraint_modes",
+    "constraint_modes_confirmed"
+  ],
+  "profileCompletion": 1.0,
+  "decisionConfidence": 0.92,
+  "missingInformation": [],
+  "nextQuestion": null,
+  "previewRanking": {
+    "status": "ready",
+    "scoringVersion": "advisor-v3.0",
+    "blockingReasons": [],
+    "assumptions": [
+      "Annual distance: 12000 km (provided by the request); used only for the annual energy-cost estimate.",
+      "The running_cost component covers energy only; maintenance, tax, insurance, depreciation, and financing are excluded.",
+      "Only the first three ordered priorities contribute to Preference Fit; extra priorities remain accepted for compatibility.",
+      "it-energy-2026-07-16-v1: MIMIT arithmetic mean of published regional/provincial averages on 2026-07-16: petrol EUR 1.91662/L, diesel EUR 2.04276/L, LPG EUR 0.77695/L.",
+      "it-energy-2026-07-16-v1: electricity EUR 0.29593/kWh, inferred from the ARERA Q3 2026 vulnerable-household reference of EUR 591.86 for 2,000 kWh/year; this is not a public-charging tariff."
+    ],
+    "groups": [
+      {
+        "condition": "new",
+        "items": [
+          {
+            "vehicle": {
+              "id": "2713201f-4c00-4f9f-b8c5-bf99ecc79a4d",
+              "canonical_key": "tessaro-vela-2026",
+              "model_family_key": "tessaro-vela",
+              "vehicle_type": "car",
+              "generation_key": null,
+              "phase_key": null,
+              "catalog_version": 2,
+              "make": "Tessaro",
+              "model": "Vela",
+              "model_year": 2026,
+              "body_style": "wagon",
+              "fuel_type": null,
+              "market": "IT",
+              "base_price_eur": null
+            },
+            "selected_spec": {
+              "catalog_version": 2,
+              "powertrain_type": "ICE",
+              "fuel": "diesel",
+              "engine_code": null,
+              "valid_from": null,
+              "valid_to": null,
+              "external_references": [],
+              "id": "eb6550ed-cf0f-4905-9095-60317bfff5b0",
+              "variant_key": "tessaro-vela-demo",
+              "is_default": false,
+              "trim": "Demo",
+              "body_style": "wagon",
+              "fuel_type": "diesel",
+              "list_price_eur": 31200.0,
+              "drivetrain": "FWD",
+              "transmission": "automatic",
+              "engine": null,
+              "horsepower": null,
+              "battery_kwh": null,
+              "energy_consumption_kwh_100km": null,
+              "consumption_l_100km": 5.0,
+              "consumption_l_100km_basis": "exact",
+              "energy_consumption_kwh_100km_basis": null,
+              "wltp_range_km": null,
+              "co2_g_km": null,
+              "euro_emission_standard": null,
+              "seats": 5,
+              "cargo_volume_liters": 575.0,
+              "provenance": []
+            },
+            "offer": null,
+            "price_basis": "list_price",
+            "list_price": {
+              "price_eur": 31200.0,
+              "computed_from_excl_vat": false,
+              "derivation": "printed",
+              "printed_amount_eur": 31200.0,
+              "printed_basis": "incl_vat",
+              "vat_rate_percent": null,
+              "on_road_charge_eur": null,
+              "on_road_charge_includes_vat": null,
+              "trim_label": "Versione unica (dimostrativa)",
+              "price_list_valid_from": "2026-11-01",
+              "substitute_note": null,
+              "source_name": "Drivewise demo price list (synthetic)",
+              "source_url": "https://example.test/demo/price-list/tessaro-vela",
+              "source_license": "Synthetic fixture only",
+              "observed_at": "2026-11-01T09:00:00Z",
+              "decision_id": "0000de00-0000-4000-9000-000000000049",
+              "observation_id": "0000de00-0000-4000-8000-000000000049"
+            },
+            "score": 82.5,
+            "decision_status": "complete",
+            "decision_score": 82.5,
+            "decision_confidence": 46.7,
+            "structural_fit": 83.2,
+            "preference_fit": 81.1,
+            "pillar_scores": {
+              "economics": 74.2,
+              "practicality": 100.0,
+              "powertrain_fit": 78.0
+            },
+            "penalties": [],
+            "strengths": [
+              "practicality"
+            ],
+            "missing_factors": [
+              "tco",
+              "garage_fit",
+              "usage_fit",
+              "reliability_safety",
+              "driving",
+              "technology",
+              "tax",
+              "vehicle_dna_usage",
+              "request.garage",
+              "reliability_assessment",
+              "safety_ratings",
+              "vehicle_dna_assessment"
+            ],
+            "warnings": [],
+            "module_versions": {
+              "tco": "tco-v1",
+              "sport": "vehicle-dna-v1",
+              "safety": "safety-v1",
+              "travel": "vehicle-dna-v1",
+              "comfort": "vehicle-dna-v1",
+              "recalls": "recalls-v1",
+              "usage_fit": "usage-fit-v1",
+              "family_fit": "family-fit-v1",
+              "garage_fit": "garage-fit-v1",
+              "technology": "vehicle-dna-v1",
+              "reliability": "reliability-v1",
+              "known_issues": "known-issues-v1",
+              "powertrain_fit": "powertrain-fit-v1"
+            },
+            "assumptions": [
+              "tco-v1: annual kilometres come from the request.",
+              "Energy formula: consumption × rate × annual_km ÷ 100.",
+              "Energy rates from MIMIT fuel and ARERA electricity (it-energy-2026-07-16-v1): petrol EUR 1.91662/L, full_hybrid_petrol EUR 1.91662/L, hybrid_petrol EUR 1.91662/L, mild_hybrid_petrol EUR 1.91662/L, plug_in_hybrid_petrol EUR 1.91662/L, diesel EUR 2.04276/L, petrol_lpg EUR 0.77695/L; electricity EUR 0.29593/kWh.",
+              "Insurance formula: EUR 650 + 0.8% of list price, capped at EUR 1,600.",
+              "Tax formula: EUR 2.58/kW through 100 kW (100 kW cap), then EUR 3.87/kW above 100 kW.",
+              "maintenance-v1 formula: EUR 420 city car or EUR 520 other body + EUR 70 per age year + EUR 2.50 per 1,000 km; electric base EUR 340.",
+              "Tyres: city_car/small_hatchback EUR 180; hatchback/sedan/wagon EUR 240; crossover/SUV/MPV/van EUR 300.",
+              "Depreciation formula: 9.333% of list price annually (28% over three years).",
+              "PHEV energy uses the liquid-fuel consumption and rate only; electric share and charging context remain in powertrain-fit-v1.",
+              "powertrain-fit-v1 uses deterministic city/highway and annual-distance thresholds.",
+              "EV highway range affects fit continuously; it is not a hard exclusion."
+            ],
+            "score_composition": {
+              "pillar_weights": {
+                "driving": 0.111111,
+                "economics": 0.266667,
+                "technology": 0.111111,
+                "practicality": 0.177778,
+                "powertrain_fit": 0.111111,
+                "reliability_safety": 0.222222
+              },
+              "pillar_components": {
+                "driving": {
+                  "sport": 0.22,
+                  "travel": 0.3,
+                  "comfort": 0.48
+                },
+                "economics": {
+                  "tco": 0.4,
+                  "price_fit": 0.45,
+                  "running_cost": 0.15
+                },
+                "technology": {
+                  "technology": 1.0
+                },
+                "practicality": {
+                  "usage_fit": 0.33,
+                  "family_fit": 0.25,
+                  "garage_fit": 0.2,
+                  "category_fit": 0.22
+                },
+                "powertrain_fit": {
+                  "powertrain_fit": 1.0
+                },
+                "reliability_safety": {
+                  "safety": 0.42,
+                  "reliability": 0.58
+                }
+              },
+              "preference_weights": [
+                0.5,
+                0.3,
+                0.2
+              ],
+              "preference_fit_weight": 35,
+              "structural_fit_weight": 65
+            },
+            "component_scores": {
+              "space": 100.0,
+              "price_fit": 83.03,
+              "running_cost": 47.86,
+              "use_case_fit": 100.0,
+              "efficiency_range": 75.0
+            },
+            "positive_factors": [
+              {
+                "component": "price_fit",
+                "message": "Il prezzo usa bene il budget disponibile.",
+                "metric": "price_eur",
+                "value": 31200.0,
+                "threshold": 35000.0,
+                "contribution": 31.14
+              },
+              {
+                "component": "use_case_fit",
+                "message": "Carrozzeria e preferenze sono adatte all'uso principale.",
+                "metric": "body_style",
+                "value": "wagon",
+                "threshold": "family",
+                "contribution": 20.83
+              },
+              {
+                "component": "space",
+                "message": "Posti e bagagliaio offrono una buona versatilita.",
+                "metric": "cargo_volume_liters",
+                "value": 575.0,
+                "threshold": 500,
+                "contribution": 12.5
+              }
+            ],
+            "tradeoffs": [
+              {
+                "component": "running_cost",
+                "message": "Il costo energia stimato e elevato.",
+                "metric": "energy_cost_eur_100km",
+                "value": 10.21,
+                "threshold": 15.0,
+                "contribution": 7.98
+              }
+            ],
+            "evidence": {
+              "seats": 5,
+              "mileage": null,
+              "annual_km": 12000,
+              "fuel_type": "diesel",
+              "price_eur": 31200.0,
+              "body_style": "wagon",
+              "assessments": {
+                "tco": {
+                  "value": 5867.16,
+                  "status": "estimated",
+                  "details": {
+                    "annual_eur": {
+                      "total": 5867.16,
+                      "tyres": 240.0,
+                      "energy": 1225.66,
+                      "insurance": 899.6,
+                      "maintenance": 590.0,
+                      "depreciation": 2911.9
+                    }
+                  },
+                  "version": "tco-v1",
+                  "evidence": [],
+                  "assumptions": [
+                    "tco-v1: annual kilometres come from the request.",
+                    "Energy formula: consumption × rate × annual_km ÷ 100.",
+                    "Energy rates from MIMIT fuel and ARERA electricity (it-energy-2026-07-16-v1): petrol EUR 1.91662/L, full_hybrid_petrol EUR 1.91662/L, hybrid_petrol EUR 1.91662/L, mild_hybrid_petrol EUR 1.91662/L, plug_in_hybrid_petrol EUR 1.91662/L, diesel EUR 2.04276/L, petrol_lpg EUR 0.77695/L; electricity EUR 0.29593/kWh.",
+                    "Insurance formula: EUR 650 + 0.8% of list price, capped at EUR 1,600.",
+                    "Tax formula: EUR 2.58/kW through 100 kW (100 kW cap), then EUR 3.87/kW above 100 kW.",
+                    "maintenance-v1 formula: EUR 420 city car or EUR 520 other body + EUR 70 per age year + EUR 2.50 per 1,000 km; electric base EUR 340.",
+                    "Tyres: city_car/small_hatchback EUR 180; hatchback/sedan/wagon EUR 240; crossover/SUV/MPV/van EUR 300.",
+                    "Depreciation formula: 9.333% of list price annually (28% over three years).",
+                    "PHEV energy uses the liquid-fuel consumption and rate only; electric share and charging context remain in powertrain-fit-v1."
+                  ],
+                  "missing_data": [
+                    "tax"
+                  ]
+                },
+                "sport": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "vehicle-dna-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "vehicle_dna_assessment"
+                  ]
+                },
+                "safety": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "safety-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "safety_ratings"
+                  ]
+                },
+                "travel": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "vehicle-dna-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "vehicle_dna_assessment"
+                  ]
+                },
+                "comfort": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "vehicle-dna-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "vehicle_dna_assessment"
+                  ]
+                },
+                "recalls": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "recalls-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "recalls"
+                  ]
+                },
+                "usage_fit": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "usage-fit-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "vehicle_dna_usage"
+                  ]
+                },
+                "family_fit": {
+                  "value": 100.0,
+                  "status": "available",
+                  "details": {
+                    "seats": 5.0,
+                    "passengers_usual": 4,
+                    "cargo_target_liters": 325,
+                    "cargo_volume_liters": 575.0
+                  },
+                  "version": "family-fit-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": []
+                },
+                "garage_fit": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "garage-fit-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "request.garage"
+                  ]
+                },
+                "technology": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "vehicle-dna-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "vehicle_dna_assessment"
+                  ]
+                },
+                "reliability": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "reliability-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "reliability_assessment"
+                  ]
+                },
+                "known_issues": {
+                  "value": null,
+                  "status": "insufficient_data",
+                  "details": {},
+                  "version": "known-issues-v1",
+                  "evidence": [],
+                  "assumptions": [],
+                  "missing_data": [
+                    "known_issues"
+                  ]
+                },
+                "powertrain_fit": {
+                  "value": 78.0,
+                  "status": "available",
+                  "details": {
+                    "usage": [
+                      "family"
+                    ],
+                    "annual_km": 12000.0,
+                    "fuel_type": "diesel",
+                    "energy_rate": 2.04276,
+                    "ev_highway_range_threshold_km": 250
+                  },
+                  "version": "powertrain-fit-v1",
+                  "evidence": [
+                    {
+                      "value": "diesel",
+                      "metric": "fuel_type"
+                    },
+                    {
+                      "value": 12000.0,
+                      "metric": "annual_km"
+                    }
+                  ],
+                  "assumptions": [
+                    "powertrain-fit-v1 uses deterministic city/highway and annual-distance thresholds.",
+                    "EV highway range affects fit continuously; it is not a hard exclusion."
+                  ],
+                  "missing_data": []
+                }
+              },
+              "energy_rate": 2.04276,
+              "missing_data": [
+                "tax",
+                "vehicle_dna_usage",
+                "request.garage",
+                "reliability_assessment",
+                "safety_ratings",
+                "vehicle_dna_assessment",
+                "known_issues",
+                "recalls"
+              ],
+              "budget_max_eur": 35000.0,
+              "ranking_stability": 0.0,
+              "budget_overrun_eur": 0.0,
+              "energy_rate_metric": "fuel_price_eur_liter",
+              "normalized_weights": {
+                "space": 12.5,
+                "price_fit": 37.5,
+                "running_cost": 16.666667,
+                "use_case_fit": 20.833333,
+                "efficiency_range": 12.5
+              },
+              "ranking_comparison": "none",
+              "cargo_volume_liters": 575.0,
+              "consumption_l_100km": 5.0,
+              "legacy_compatibility": {
+                "note": "Retained for clients that still inspect the v2 component weights; v3 ranking uses pillar and preference composition.",
+                "label": "v2_normalized_weights"
+              },
+              "profile_completeness": 87.5,
+              "energy_cost_eur_100km": 10.21,
+              "evidence_completeness": 20.8,
+              "annual_energy_cost_eur": 1225.66,
+              "budget_overrun_percent": 0.0,
+              "energy_assumption_version": "it-energy-2026-07-16-v1"
+            },
+            "provenance": [
+              {
+                "decision_id": null,
+                "observation_id": null,
+                "metric": "body_style",
+                "source_name": "Drivewise demo registry (synthetic)",
+                "source_url": "https://example.test/demo/registry/tessaro-vela",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z"
+              },
+              {
+                "decision_id": "0000de00-0000-4000-9000-000000000043",
+                "observation_id": "0000de00-0000-4000-8000-000000000043",
+                "metric": "cargo_volume_liters",
+                "source_name": "Drivewise demo registry (synthetic)",
+                "source_url": "https://example.test/demo/registry/tessaro-vela",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z"
+              },
+              {
+                "decision_id": "0000de00-0000-4000-9000-000000000048",
+                "observation_id": "0000de00-0000-4000-8000-000000000048",
+                "metric": "consumption_l_100km",
+                "source_name": "Drivewise demo registry (synthetic)",
+                "source_url": "https://example.test/demo/registry/tessaro-vela",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z"
+              },
+              {
+                "decision_id": null,
+                "observation_id": null,
+                "metric": "fuel_price_eur_liter",
+                "source_name": "MIMIT regional fuel-price averages",
+                "source_url": "https://www.mimit.gov.it/it/prezzo-medio-carburanti/regioni",
+                "source_license": null,
+                "observed_at": "2026-07-16"
+              },
+              {
+                "decision_id": null,
+                "observation_id": null,
+                "metric": "fuel_type",
+                "source_name": "Drivewise demo registry (synthetic)",
+                "source_url": "https://example.test/demo/registry/tessaro-vela",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z"
+              },
+              {
+                "decision_id": "0000de00-0000-4000-9000-000000000049",
+                "observation_id": "0000de00-0000-4000-8000-000000000049",
+                "metric": "list_price_eur",
+                "source_name": "Drivewise demo price list (synthetic)",
+                "source_url": "https://example.test/demo/price-list/tessaro-vela",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z"
+              },
+              {
+                "decision_id": "0000de00-0000-4000-9000-000000000042",
+                "observation_id": "0000de00-0000-4000-8000-000000000042",
+                "metric": "seats",
+                "source_name": "Drivewise demo registry (synthetic)",
+                "source_url": "https://example.test/demo/registry/tessaro-vela",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "garageCompatibility": [],
+  "warnings": []
+}

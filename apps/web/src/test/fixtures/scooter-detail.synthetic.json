@@ -1,0 +1,180 @@
+{
+    "id": "951082eb-62e9-4435-8c9f-6784e4ff1d82",
+    "canonical_key": "serra-glide-300-2026",
+    "model_family_key": "serra-glide-300",
+    "vehicle_type": "scooter",
+    "generation_key": null,
+    "phase_key": null,
+    "catalog_version": 2,
+    "make": "Serra",
+    "model": "Glide 300",
+    "model_year": 2026,
+    "body_style": "scooter",
+    "fuel_type": null,
+    "market": "IT",
+    "base_price_eur": null,
+    "specs": [
+        {
+            "catalog_version": 2,
+            "powertrain_type": "ICE",
+            "fuel": "petrol",
+            "engine_code": null,
+            "valid_from": null,
+            "valid_to": null,
+            "external_references": [],
+            "id": "9e68378d-24f8-4232-8c22-4ea08de088ba",
+            "variant_key": "serra-glide-300-demo",
+            "is_default": false,
+            "trim": "Demo",
+            "body_style": "scooter",
+            "fuel_type": "petrol",
+            "list_price_eur": 5990.0,
+            "drivetrain": "RWD",
+            "transmission": "manual",
+            "engine": null,
+            "horsepower": null,
+            "battery_kwh": null,
+            "energy_consumption_kwh_100km": null,
+            "consumption_l_100km": null,
+            "consumption_l_100km_basis": null,
+            "energy_consumption_kwh_100km_basis": null,
+            "wltp_range_km": null,
+            "co2_g_km": null,
+            "euro_emission_standard": null,
+            "seats": null,
+            "cargo_volume_liters": null,
+            "provenance": [
+                {
+                    "source_id": "b00d1fe4-4035-4bf4-8445-80da715b43ef",
+                    "source_key": "drivewise-demo-price-list",
+                    "source_name": "Drivewise demo price list (synthetic)",
+                    "source_url": "https://example.test/demo/price-list/serra-glide-300",
+                    "source_license": "Synthetic fixture only",
+                    "observed_at": "2026-11-01T09:00:00Z",
+                    "record_observed_at": "2026-11-01T09:00:00Z",
+                    "content_hash": "1d534b08dc32dc26cea295b33dcfe5422e310f0777b827dd5fef0212e0b77bc8",
+                    "is_current": true,
+                    "supported_metrics": [
+                        "list_price_eur"
+                    ]
+                },
+                {
+                    "source_id": "af80db9a-c818-4eb5-9a21-16de8e154377",
+                    "source_key": "drivewise-demo-registry",
+                    "source_name": "Drivewise demo registry (synthetic)",
+                    "source_url": "https://example.test/demo/registry/serra-glide-300",
+                    "source_license": "Synthetic fixture only",
+                    "observed_at": "2026-11-01T09:00:00Z",
+                    "record_observed_at": "2026-11-01T09:00:00Z",
+                    "content_hash": "5a93f7b8634c54abec54676d1e0065049308afc2a671f65db29441eb043bc110",
+                    "is_current": true,
+                    "supported_metrics": [
+                        "body_style",
+                        "fuel_tank_capacity_liters",
+                        "fuel_type",
+                        "mass_kg",
+                        "seat_height_mm",
+                        "underseat_storage_liters"
+                    ]
+                }
+            ],
+            "identity": {
+                "generation_name": null,
+                "restyling_label": null,
+                "category": null,
+                "doors": null
+            },
+            "dimensions": {
+                "length_mm": null,
+                "width_mm": null,
+                "height_mm": null,
+                "wheelbase_mm": null,
+                "curb_weight_kg": null,
+                "gross_weight_kg": null,
+                "payload_kg": null,
+                "seats": null,
+                "cargo_volume_liters": null
+            },
+            "powertrain": {
+                "engine_description": null,
+                "engine_code": null,
+                "displacement_cc": null,
+                "cylinders": null,
+                "horsepower": null,
+                "power_kw": null,
+                "torque_nm": null,
+                "fuel_type": "petrol",
+                "battery_total_kwh": null,
+                "battery_usable_kwh": null,
+                "wltp_range_km": null
+            },
+            "transmission_details": {
+                "transmission": "manual",
+                "transmission_type": null,
+                "gear_count": null,
+                "drivetrain": "RWD",
+                "differential_type": null
+            },
+            "performance": {
+                "acceleration_0_100_s": null,
+                "top_speed_kmh": null,
+                "braking_100_0_m": null,
+                "power_to_weight_kw_per_t": null
+            },
+            "official_efficiency": {
+                "homologation_cycle": null,
+                "consumption_l_100km": null,
+                "energy_consumption_kwh_100km": null,
+                "co2_g_km": null,
+                "euro_emission_standard": null
+            },
+            "maintenance_schedule": [],
+            "safety": {
+                "ratings": [],
+                "adas": [],
+                "equipment": []
+            },
+            "technology_comfort": [],
+            "media": [],
+            "two_wheel": {
+                "seat_height_mm": 790.0,
+                "wet_weight_kg": 182.0,
+                "fuel_tank_capacity_liters": 13.0,
+                "underseat_storage_liters": 42.0
+            },
+            "list_price": {
+                "price_eur": 5990.0,
+                "computed_from_excl_vat": false,
+                "derivation": "printed",
+                "printed_amount_eur": 5990.0,
+                "printed_basis": "incl_vat",
+                "vat_rate_percent": null,
+                "on_road_charge_eur": null,
+                "on_road_charge_includes_vat": null,
+                "trim_label": "Versione unica (dimostrativa)",
+                "price_list_valid_from": "2026-11-01",
+                "substitute_note": null,
+                "source_name": "Drivewise demo price list (synthetic)",
+                "source_url": "https://example.test/demo/price-list/serra-glide-300",
+                "source_license": "Synthetic fixture only",
+                "observed_at": "2026-11-01T09:00:00Z",
+                "decision_id": "0000de00-0000-4000-9000-000000000105",
+                "observation_id": "0000de00-0000-4000-8000-000000000105"
+            }
+        }
+    ],
+    "provenance": [
+        {
+            "source_id": "af80db9a-c818-4eb5-9a21-16de8e154377",
+            "source_key": "drivewise-demo-registry",
+            "source_name": "Drivewise demo registry (synthetic)",
+            "source_url": "https://example.test/demo/registry/serra-glide-300",
+            "source_license": "Synthetic fixture only",
+            "observed_at": "2026-11-01T09:00:00Z",
+            "record_observed_at": "2026-11-01T09:00:00Z",
+            "content_hash": "5a93f7b8634c54abec54676d1e0065049308afc2a671f65db29441eb043bc110",
+            "is_current": true,
+            "supported_metrics": []
+        }
+    ]
+}
