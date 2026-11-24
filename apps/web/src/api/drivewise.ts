@@ -499,6 +499,7 @@ function buildMockModelAnalysisResponse(
     price_assessment: priceAssessment,
     estimated_costs: {
       market_reference_price_eur: referencePrice,
+      market_reference_list_price: null,
       estimated_annual_maintenance_eur: 560,
       estimated_monthly_energy_eur: spec?.consumption_l_100km
         ? roundScore((12000 * spec.consumption_l_100km * 1.85) / 1200)

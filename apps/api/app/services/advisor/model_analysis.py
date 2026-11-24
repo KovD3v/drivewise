@@ -10,6 +10,7 @@ from app.schemas.advisor import (
     ModelAnalysisResponse,
 )
 from app.schemas.vehicles import (
+    ListPrice,
     VehicleResolveResponse,
     VehicleSpec,
     VehicleSummary,
@@ -133,6 +134,14 @@ def build_model_analysis(
         include_tco=include_tco,
         analysis_year=analysis_year,
     )
+    if include_price and reference_basis == "list_price":
+        # Credit the price list the reference amount comes from.
+        list_price = next(
+            (raw.get("list_price") for raw in candidate.get("specs", []) if raw["id"] == spec.id),
+            None,
+        )
+        if list_price is not None:
+            estimated_costs.market_reference_list_price = ListPrice.model_validate(list_price)
     checklist = _build_checklist(vehicle, spec, red_flags)
     verdict = _build_verdict(
         missing_data,

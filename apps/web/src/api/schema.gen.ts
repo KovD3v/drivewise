@@ -1382,6 +1382,7 @@ export interface components {
             estimated_depreciation_3y_eur: number | null;
             /** Estimated Monthly Energy Eur */
             estimated_monthly_energy_eur: number | null;
+            market_reference_list_price: components["schemas"]["ListPrice"] | null;
             /** Market Reference Price Eur */
             market_reference_price_eur: number | null;
             /** Notes */

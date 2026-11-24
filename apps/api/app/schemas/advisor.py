@@ -202,6 +202,9 @@ class ModelAnalysisRequest(ApiModel):
 
 class ModelAnalysisCostSummary(ApiModel):
     market_reference_price_eur: float | None = None
+    # The list price and its source when market_reference_price_eur is the
+    # variant's list price; null for any other reference.
+    market_reference_list_price: ListPrice | None = None
     estimated_annual_maintenance_eur: float | None = None
     estimated_monthly_energy_eur: float | None = None
     estimated_depreciation_3y_eur: float | None = None

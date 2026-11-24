@@ -171,6 +171,25 @@ def test_recommendations_omit_a_value_whose_only_source_is_http(client):
     assert "consumption_l_100km" in {p["metric"] for p in item["provenance"]}
 
 
+def test_model_analysis_credits_the_list_price_it_uses(client, conn):  # noqa: F811
+    spec_id = conn.execute(
+        "SELECT id FROM vehicle_specs WHERE variant_key = %s", ("tavo-electric",)
+    ).fetchone()["id"]
+    response = client.post(
+        "/advisor/model-analysis",
+        json={"vehicle_id": str(_car(conn)), "spec_id": str(spec_id), "analysis_scope": ["price"]},
+    )
+    assert response.status_code == 200, response.text
+    costs = response.json()["estimated_costs"]
+    assert costs["market_reference_price_eur"] == 30500.0
+    credit = costs["market_reference_list_price"]
+    assert credit["price_eur"] == 30500.0
+    assert credit["source_name"] == "Lumen open vehicle registry (synthetic)"
+    assert credit["source_url"] == "https://lumen-registry.example.com/export"
+    assert credit["source_license"] == LICENCE
+    assert credit["observed_at"].startswith("2026-10-01")
+
+
 def test_guided_preview_carries_the_same_list_price_item(client):
     created = client.post(
         "/guided-decisions",

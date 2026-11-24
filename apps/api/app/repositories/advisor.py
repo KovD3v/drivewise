@@ -713,7 +713,9 @@ class AdvisorRepository:
               s.euro_emission_standard,
               s.seats,
               s.cargo_volume_liters,
-              l.id AS listing_id,
+"""
+            + LIST_PRICE_COLUMNS
+            + """              l.id AS listing_id,
               l.source_id,
               l.listing_ref,
               l.title,
@@ -729,7 +731,9 @@ class AdvisorRepository:
             FROM vehicles AS v
             LEFT JOIN catalog_analysis_specs AS s
               ON s.vehicle_id = v.id
-            LEFT JOIN catalog_usable_listings AS l
+            """
+            + LIST_PRICE_FACT_JOIN
+            + """            LEFT JOIN catalog_usable_listings AS l
               ON l.vehicle_id = v.id
              AND l.spec_id = s.id
              AND l.last_seen_at >= %s
@@ -1073,6 +1077,13 @@ def _model_analysis_spec(row: dict[str, Any]) -> dict[str, Any]:
         "euro_emission_standard": row["euro_emission_standard"],
         "seats": row["seats"],
         "cargo_volume_liters": row["cargo_volume_liters"],
+        # The source and terms of list_price_eur, under the Advisor URL rule.
+        "list_price": (
+            list_price_block(row)
+            if row.get("list_price_decision_id") is not None
+            and str(row.get("list_price_source_url") or "").startswith("https://")
+            else None
+        ),
     }
 
 

@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import { analyzeModel } from '../api/drivewise'
+import { SourceCredits } from './sourceFacts'
 import type {
   ModelAnalysisResponse,
   ModelAnalysisScope,
@@ -282,6 +283,16 @@ function ModelAnalysisResult({ response }: { response: ModelAnalysisResponse }) 
             )}
           />
         </dl>
+        {response.estimated_costs.market_reference_list_price ? (
+          <SourceCredits
+            credits={[
+              {
+                name: response.estimated_costs.market_reference_list_price.source_name,
+                license: response.estimated_costs.market_reference_list_price.source_license,
+              },
+            ]}
+          />
+        ) : null}
 
         <div className="analysis-sections">
           <TokenSection title="Red flags" items={response.red_flags} empty="Nessuna" />

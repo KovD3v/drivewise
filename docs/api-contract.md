@@ -973,6 +973,7 @@ Response:
   "price_assessment": "in_range",
   "estimated_costs": {
     "market_reference_price_eur": 14200.0,
+    "market_reference_list_price": null,
     "estimated_annual_maintenance_eur": 576.0,
     "estimated_monthly_energy_eur": 92.5,
     "estimated_depreciation_3y_eur": 4060.0,
@@ -1007,6 +1008,7 @@ Model analysis rules:
 - requires asking price only for price or red-flag analysis, and current kilometres only for maintenance or red-flag analysis
 - returns `requested_spec_not_found` instead of silently substituting another trim when an explicit `spec_id` is unknown
 - compares asking price against available listing prices, then base price fallback
+- returns `estimated_costs.market_reference_list_price` only when the reference price is the variant's list price: the same block as vehicle detail's `list_price` (price-list terms, `source_name`, `source_url`, `source_license`, `observed_at`), so the amount keeps its source credit; null for any other reference and for a list price with no catalog v2 fact or no HTTPS price-list URL
 - estimates maintenance, monthly energy/fuel cost, and 3-year depreciation with deterministic MVP assumptions
 - emits rule-based red flags for above-reference asking price and high mileage for age
 - returns assumptions, warnings, missing data, and next actions for frontend display
