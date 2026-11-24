@@ -33,7 +33,8 @@ licensed rule as the other required facts. Legacy v1 rows never become
 list-price candidates. The formulas below do not change: they read price,
 condition and mileage from
 [`pricing.py`](../apps/api/app/services/advisor/pricing.py), and a list price
-of X scores exactly like a new offer at X. Exclusions add
+of X scores exactly like a new offer at X with the same inputs and zero or
+absent mileage. Exclusions add
 `missing_list_price` (no eligible list price) and reuse `source_not_permitted`
 when a list price exists but its evidence is not permitted.
 
