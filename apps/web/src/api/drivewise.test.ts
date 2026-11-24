@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
-import { analyzeModel, fetchVehicle, fetchVehicles, isApiNotFoundError } from './drivewise'
+import { analyzeModel, fetchVehicle, fetchVehicles, isApiNotFoundError, resolveApiBaseUrl } from './drivewise'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -115,4 +115,18 @@ test('posts model analysis requests to the advisor endpoint', async () => {
       method: 'POST',
     }),
   )
+})
+
+test('a one-origin build sends browser requests to /api, never to the local API', async () => {
+  vi.stubEnv('VITE_API_BASE_URL', '/api')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
+  await fetchVehicles({ vehicle_type: 'car' })
+  expect(fetch).toHaveBeenCalledWith('/api/vehicles?vehicle_type=car')
+  expect(resolveApiBaseUrl({ ssr: false, publicUrl: '/api' })).toBe('/api')
+})
+
+test('server rendering uses API_INTERNAL_URL and refuses a relative base without it', () => {
+  expect(resolveApiBaseUrl({ ssr: true, internalUrl: 'http://api.internal/api/', publicUrl: '/api' })).toBe('http://api.internal/api')
+  expect(() => resolveApiBaseUrl({ ssr: true, publicUrl: '/api' })).toThrow('API_INTERNAL_URL')
+  expect(resolveApiBaseUrl({ ssr: true, publicUrl: 'http://127.0.0.1:8047' })).toBe('http://127.0.0.1:8047')
 })

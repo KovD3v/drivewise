@@ -28,7 +28,20 @@ Copy the example environment file and fill local values as needed:
 cp .env.example .env
 ```
 
-The frontend reads `VITE_API_BASE_URL` and falls back to `http://127.0.0.1:8000` when it is not set. API failures are shown as errors; the site has no mock data.
+The frontend reads `VITE_API_BASE_URL` and falls back to `http://127.0.0.1:8000` only when it is not set at build time. API failures are shown as errors; the site has no mock data.
+
+### One origin (site and API under `/api`)
+
+Build the site with `VITE_API_BASE_URL=/api` and run the API with `API_ROOT_PATH=/api`. Server rendering cannot fetch a relative URL, so the site server needs `API_INTERNAL_URL` (Vercel injects it; locally, for example, `http://127.0.0.1:8047/api`); without it a server render fails with an explicit error. Locally, `API_PROXY_TARGET=http://127.0.0.1:8047` at build or dev time makes the site forward `/api` to that API:
+
+```bash
+API_ROOT_PATH=/api uv run --project apps/api uvicorn app.main:app --app-dir apps/api --port 8047
+cd apps/web
+VITE_API_BASE_URL=/api API_PROXY_TARGET=http://127.0.0.1:8047 bun run build
+API_INTERNAL_URL=http://127.0.0.1:8047/api PORT=3047 bun .output/server/index.mjs
+```
+
+`VITE_SYNTHETIC_DATA=true` at build time shows a demo notice on every page; use it with the synthetic demo catalogue (see `docs/catalog-v2.md`).
 
 Install frontend dependencies:
 

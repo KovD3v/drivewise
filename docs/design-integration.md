@@ -12,19 +12,21 @@ not include backend code or database migrations.
 | Function | Implementation |
 | --- | --- |
 | Car catalog and details | Existing `/vehicles` API and canonical IDs |
+| List price and sources | `list_price` and `provenance` of the API, labelled "Prezzo di listino" with date, notes, a link and source credits |
 | Car guided decision | Existing `/guided-decisions` create, versioned turns and reload |
 | Ranking and confidence | Backend response; no ZIP scoring engine for cars |
 | Vehicle questions | Existing `/advisor/model-analysis` API |
 | Documents / Advisor | Links to existing frontend routes |
-| Motorcycles and scooters | Explicit mock catalog and fixed demo ranking |
-| Reliability / theft presentation | Labelled mock sections, never used for car ranking |
+| Motorcycles and scooters | `/app/catalog?type=` from `GET /vehicles?vehicle_type=`, without a score |
 | Accounts, profiles, saved reports, preferences | Browser-local mocks; no Supabase, OAuth or email requests |
-| Comparison and future personal-area features | Labelled previews; early-access action is simulated |
+| Comparison | `/app/compare?vehicle=&with=`: two vehicles of one type from the API |
+| Future personal-area features | Labelled previews; early-access action is simulated |
 | Contact and voice input | Explicit simulation, no outgoing message or recording |
 
 An unavailable existing API produces an error, not a fallback to the ZIP's car
-catalog. Existing `VITE_API_BASE_URL` and `VITE_USE_MOCK_API` behavior is preserved
-for the original API client. Guided Decision always needs the backend.
+catalog. The site has no mock API: `VITE_API_BASE_URL` names the API, and Guided
+Decision always needs the backend. The bundled two-wheel dataset, its fixed scores
+and the theft and reliability previews were removed (`feat/unified-demo`).
 
 The landing hero uses the original artwork downloaded from drivewise-italia.com.
 The car intake restores the reference category selection before sending the selected
@@ -50,9 +52,9 @@ theirs. Design changes arrive, and the API boundaries above stay as they are.
   `MotionPause` controls for looping motion, and the shared scroll-reveal
   policy. The September `HeroVision`, `HowItWorks` and `WhyDriveWise` sections
   were replaced by `HeroStory` and its chapters.
-- **Home requests:** `wizard-input` infers explicit answers from the home
-  request, but only for the local motorcycle and scooter wizard. Car requests
-  still go only to `GuidedCarFlow` and the Guided Decision API.
+- **Home requests:** `wizard-input` infers only the vehicle type from the home
+  request. Car requests go to `GuidedCarFlow` and the Guided Decision API;
+  motorcycle and scooter requests open the catalogue.
 - **Contact:** the split layout with reason-specific fields, a live ticket,
   FAQ suggestions and a receipt. Lovable saved requests to Supabase through a
   server function. Here `src/lib/contact-demo.ts` validates the form and shows

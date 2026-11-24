@@ -1,14 +1,31 @@
 import type { components } from './schema.gen'
 
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000'
+// Only a build without VITE_API_BASE_URL talks to a separate local API. Vite inlines the
+// variable, so a build with VITE_API_BASE_URL=/api drops this fallback from its code.
+const PUBLIC_API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+
+export type ApiBaseInput = { ssr: boolean; internalUrl?: string | undefined; publicUrl?: string | undefined }
+
+/**
+ * The browser uses the public base (for one origin, "/api"). The server cannot
+ * fetch a relative base, so server rendering needs API_INTERNAL_URL, which
+ * Vercel injects for the API service and a local run sets by hand.
+ */
+export function resolveApiBaseUrl({ ssr, internalUrl, publicUrl }: ApiBaseInput): string {
+  if (ssr && internalUrl) return internalUrl.replace(/\/$/, '')
+  const base = (publicUrl || PUBLIC_API_BASE_URL).replace(/\/$/, '')
+  if (ssr && base.startsWith('/')) {
+    throw new Error(`API_INTERNAL_URL is required for server rendering when VITE_API_BASE_URL is "${base}".`)
+  }
+  return base
+}
 
 function getApiBaseUrl() {
-  // The server cannot fetch a relative base such as "/api", so server rendering
-  // uses the absolute URL Vercel injects for the API service at runtime.
-  if (import.meta.env.SSR && process.env.API_INTERNAL_URL) {
-    return process.env.API_INTERNAL_URL.replace(/\/$/, '')
-  }
-  return import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
+  return resolveApiBaseUrl({
+    ssr: Boolean(import.meta.env.SSR),
+    internalUrl: import.meta.env.SSR ? process.env.API_INTERNAL_URL : undefined,
+    publicUrl: import.meta.env.VITE_API_BASE_URL,
+  })
 }
 
 // Response and request shapes come from the API's OpenAPI schema.
