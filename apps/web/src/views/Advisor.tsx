@@ -7,6 +7,7 @@ import {
   type AdvisorFactor,
   type AdvisorFuelType,
   type AdvisorMetricProvenance,
+  type AdvisorOffer,
   type AdvisorPriority,
   type AdvisorPrimaryUse,
   type AdvisorRecommendationGroup,
@@ -14,7 +15,9 @@ import {
   type AdvisorRecommendationResponse,
   type AdvisorScoreComponent,
   fetchAdvisorRecommendations,
+  type ListPrice,
 } from '../api/drivewise'
+import { ListPriceFacts, ListPriceNotes, SourceCredits, type ScalarBasis, withBasis } from './sourceFacts'
 
 const primaryUseOptions: Array<{ value: AdvisorPrimaryUse; label: string }> = [
   { value: 'city', label: 'Citta' },
@@ -461,7 +464,10 @@ function RecommendationGroup({ group }: { group: AdvisorRecommendationGroup }) {
       ) : (
         <div className="result-list">
           {group.items.slice(0, 5).map((item) => (
-            <RecommendationCard item={item} key={item.offer.id} />
+            <RecommendationCard
+              item={item}
+              key={item.offer ? item.offer.id : `list-price-${item.selected_spec.id}`}
+            />
           ))}
         </div>
       )}
@@ -499,7 +505,11 @@ function RecommendationCard({ item }: { item: AdvisorRecommendationItem }) {
         </p>
       ) : null}
 
-      <OfferFacts item={item} />
+      {item.offer ? (
+        <OfferFacts offer={item.offer} />
+      ) : item.list_price ? (
+        <ListPriceSummary price={item.list_price} />
+      ) : null}
       <ComponentScores scores={item.component_scores} />
       <FactorSection
         className="positive-factors"
@@ -511,14 +521,19 @@ function RecommendationCard({ item }: { item: AdvisorRecommendationItem }) {
         factors={item.tradeoffs}
         title="Compromessi"
       />
-      <EvidenceFacts evidence={item.evidence} />
+      <EvidenceFacts
+        bases={{
+          consumption_l_100km: item.selected_spec.consumption_l_100km_basis,
+          energy_consumption_kwh_100km: item.selected_spec.energy_consumption_kwh_100km_basis,
+        }}
+        evidence={item.evidence}
+      />
       <ProvenanceList provenance={item.provenance} />
     </article>
   )
 }
 
-function OfferFacts({ item }: { item: AdvisorRecommendationItem }) {
-  const { offer } = item
+function OfferFacts({ offer }: { offer: AdvisorOffer }) {
   const freshness = offer.last_seen_at ?? offer.listed_at
 
   return (
@@ -549,6 +564,18 @@ function OfferFacts({ item }: { item: AdvisorRecommendationItem }) {
       ) : (
         <p className="source-unavailable">URL fonte non disponibile</p>
       )}
+    </section>
+  )
+}
+
+function ListPriceSummary({ price }: { price: ListPrice }) {
+  return (
+    <section className="offer-summary" aria-label="Prezzo di listino">
+      <dl className="listing-facts">
+        <ListPriceFacts price={price} />
+        <Fact label="Condizione" value="Nuovo" />
+      </dl>
+      <ListPriceNotes price={price} />
     </section>
   )
 }
@@ -622,7 +649,13 @@ function FactorDetails({ factor }: { factor: AdvisorFactor }) {
   return <small>{details.join(' · ')}</small>
 }
 
-function EvidenceFacts({ evidence }: { evidence: Record<string, unknown> }) {
+function EvidenceFacts({
+  bases,
+  evidence,
+}: {
+  bases: Record<string, ScalarBasis>
+  evidence: Record<string, unknown>
+}) {
   const facts = Object.entries(evidence)
     .filter((entry): entry is [string, string | number | boolean] =>
       ['boolean', 'number', 'string'].includes(typeof entry[1]),
@@ -630,7 +663,7 @@ function EvidenceFacts({ evidence }: { evidence: Record<string, unknown> }) {
     .map(([key, value]) => ({
       key,
       label: evidenceLabels[key] ?? humanizeKey(key),
-      value: formatEvidence(key, value),
+      value: withBasis(formatEvidence(key, value), bases[key]),
     }))
 
   if (facts.length === 0) {
@@ -681,6 +714,12 @@ function ProvenanceList({
           </li>
         ))}
       </ul>
+      <SourceCredits
+        credits={provenance.map((source) => ({
+          name: source.source_name,
+          license: source.source_license,
+        }))}
+      />
     </section>
   )
 }

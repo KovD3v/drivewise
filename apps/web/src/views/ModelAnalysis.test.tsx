@@ -128,3 +128,51 @@ test('shows an error when model analysis fails', async () => {
 
   expect(await screen.findByText('Database connection failed.')).toBeVisible()
 })
+
+test('credits the price list when the reference price is a list price', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...analysisResponse,
+        assumptions: [
+          'No eligible offer was found, so the reference price is the list price of the selected variant.',
+        ],
+        estimated_costs: {
+          ...analysisResponse.estimated_costs,
+          market_reference_price_eur: 30500,
+          market_reference_list_price: {
+            price_eur: 30500,
+            computed_from_excl_vat: false,
+            derivation: 'printed',
+            printed_amount_eur: 30500,
+            printed_basis: 'incl_vat',
+            trim_label: 'Synthetic row',
+            price_list_valid_from: '2026-09-01',
+            source_name: 'Lumen registry (synthetic)',
+            source_url: 'https://lumen-registry.example.com/export',
+            source_license: 'Synthetic fixture only',
+            observed_at: '2026-10-01T08:00:00Z',
+            decision_id: '30000000-0000-4000-8000-000000000001',
+            observation_id: '30000000-0000-4000-8000-000000000002',
+          },
+        },
+      }),
+    }),
+  )
+
+  renderWithRouter(<ModelAnalysisPage />)
+  fireEvent.change(screen.getByLabelText('Modello'), { target: { value: 'zephra tavo' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Analizza modello' }))
+
+  expect(await screen.findByText('30.500 €')).toBeVisible()
+  expect(screen.getByText('Crediti delle fonti')).toBeVisible()
+  expect(screen.getByText('Lumen registry (synthetic)')).toBeVisible()
+  expect(screen.getByText('Synthetic fixture only')).toBeVisible()
+  expect(
+    screen.getByText(
+      'Non ci sono offerte valide. Il prezzo di riferimento è il prezzo di listino di questa versione.',
+    ),
+  ).toBeVisible()
+})

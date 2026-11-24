@@ -384,62 +384,6 @@ export interface components {
             /** Useful Width Mm */
             useful_width_mm: number;
         };
-        /**
-         * AdvisorListPrice
-         * @description The public list price that stands in for an offer (ADR-013, ADR-015).
-         */
-        AdvisorListPrice: {
-            /** Computed From Excl Vat */
-            computed_from_excl_vat: boolean;
-            /**
-             * Decision Id
-             * Format: uuid
-             */
-            decision_id: string;
-            /**
-             * Derivation
-             * @enum {string}
-             */
-            derivation: "printed" | "computed_from_excl_vat" | "computed_from_turnkey";
-            /**
-             * Observation Id
-             * Format: uuid
-             */
-            observation_id: string;
-            /**
-             * Observed At
-             * Format: date-time
-             */
-            observed_at: string;
-            /** On Road Charge Eur */
-            on_road_charge_eur: number | null;
-            /** On Road Charge Includes Vat */
-            on_road_charge_includes_vat: boolean | null;
-            /** Price Eur */
-            price_eur: number;
-            /**
-             * Price List Valid From
-             * Format: date
-             */
-            price_list_valid_from: string;
-            /** Printed Amount Eur */
-            printed_amount_eur: number;
-            /**
-             * Printed Basis
-             * @enum {string}
-             */
-            printed_basis: "incl_vat" | "excl_vat" | "turnkey";
-            /** Source Name */
-            source_name: string;
-            /** Source Url */
-            source_url: string;
-            /** Substitute Note */
-            substitute_note: string | null;
-            /** Trim Label */
-            trim_label: string;
-            /** Vat Rate Percent */
-            vat_rate_percent: number | null;
-        };
         /** AdvisorMetricProvenance */
         AdvisorMetricProvenance: {
             /** Decision Id */
@@ -450,6 +394,8 @@ export interface components {
             observation_id: string | null;
             /** Observed At */
             observed_at: string;
+            /** Source License */
+            source_license: string | null;
             /** Source Name */
             source_name: string;
             /** Source Url */
@@ -538,7 +484,7 @@ export interface components {
             evidence: {
                 [key: string]: unknown;
             };
-            list_price: components["schemas"]["AdvisorListPrice"] | null;
+            list_price: components["schemas"]["ListPrice"] | null;
             /** Missing Factors */
             missing_factors: string[];
             /** Module Versions */
@@ -802,6 +748,8 @@ export interface components {
             selected_observation_id: string | null;
             /** Source Key */
             source_key: string | null;
+            /** Source License */
+            source_license: string | null;
             /** Source Name */
             source_name: string | null;
             /** Source Url */
@@ -1275,6 +1223,66 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * ListPrice
+         * @description The public list price of a variant, with its price-list terms (ADR-015).
+         *
+         *     The Advisor uses it in place of an offer (ADR-013); vehicle detail shows it.
+         */
+        ListPrice: {
+            /** Computed From Excl Vat */
+            computed_from_excl_vat: boolean;
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /**
+             * Derivation
+             * @enum {string}
+             */
+            derivation: "printed" | "computed_from_excl_vat" | "computed_from_turnkey";
+            /**
+             * Observation Id
+             * Format: uuid
+             */
+            observation_id: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** On Road Charge Eur */
+            on_road_charge_eur: number | null;
+            /** On Road Charge Includes Vat */
+            on_road_charge_includes_vat: boolean | null;
+            /** Price Eur */
+            price_eur: number;
+            /**
+             * Price List Valid From
+             * Format: date
+             */
+            price_list_valid_from: string;
+            /** Printed Amount Eur */
+            printed_amount_eur: number;
+            /**
+             * Printed Basis
+             * @enum {string}
+             */
+            printed_basis: "incl_vat" | "excl_vat" | "turnkey";
+            /** Source License */
+            source_license: string | null;
+            /** Source Name */
+            source_name: string;
+            /** Source Url */
+            source_url: string;
+            /** Substitute Note */
+            substitute_note: string | null;
+            /** Trim Label */
+            trim_label: string;
+            /** Vat Rate Percent */
+            vat_rate_percent: number | null;
+        };
         /** ListingWithVehicle */
         ListingWithVehicle: {
             /** Condition */
@@ -1374,6 +1382,7 @@ export interface components {
             estimated_depreciation_3y_eur: number | null;
             /** Estimated Monthly Energy Eur */
             estimated_monthly_energy_eur: number | null;
+            market_reference_list_price: components["schemas"]["ListPrice"] | null;
             /** Market Reference Price Eur */
             market_reference_price_eur: number | null;
             /** Notes */
@@ -1944,6 +1953,7 @@ export interface components {
              * @default false
              */
             is_default: boolean;
+            list_price: components["schemas"]["ListPrice"] | null;
             /** List Price Eur */
             list_price_eur: number | null;
             /** Maintenance Schedule */

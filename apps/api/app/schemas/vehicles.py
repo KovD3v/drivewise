@@ -203,6 +203,42 @@ class VehicleSpec(ApiModel):
     provenance: list[VehicleProvenance] = Field(default_factory=list)
 
 
+class ListPrice(ApiModel):
+    """The public list price of a variant, with its price-list terms (ADR-015).
+
+    The Advisor uses it in place of an offer (ADR-013); vehicle detail shows it.
+    """
+
+    price_eur: float
+    computed_from_excl_vat: bool
+    # How price_eur was obtained: as printed, from an ex-VAT figure, or from a
+    # turnkey price minus its stated on-road charge (ADR-015).
+    derivation: Literal["printed", "computed_from_excl_vat", "computed_from_turnkey"]
+    printed_amount_eur: float
+    printed_basis: Literal["incl_vat", "excl_vat", "turnkey"]
+    vat_rate_percent: float | None = None
+    on_road_charge_eur: float | None = None
+    on_road_charge_includes_vat: bool | None = None
+    trim_label: str
+    price_list_valid_from: date
+    substitute_note: str | None = None
+    source_name: str
+    source_url: str
+    # Licence or attribution text the product shows next to the source name.
+    source_license: str | None = None
+    # When the price-list document was retrieved.
+    observed_at: datetime
+    decision_id: UUID
+    observation_id: UUID
+
+    @field_validator("source_url")
+    @classmethod
+    def require_https_source_url(cls, value: str) -> str:
+        if not value.strip().startswith("https://"):
+            raise ValueError("source_url must use https")
+        return value
+
+
 class VehicleSpecDetail(VehicleSpec):
     identity: VehicleIdentity = Field(default_factory=VehicleIdentity)
     dimensions: VehicleDimensions = Field(default_factory=VehicleDimensions)
@@ -219,6 +255,9 @@ class VehicleSpecDetail(VehicleSpec):
     technology_comfort: list[VehicleFeature] = Field(default_factory=list)
     media: list[VehicleMediaAsset] = Field(default_factory=list)
     two_wheel: VehicleTwoWheelSpecs = Field(default_factory=VehicleTwoWheelSpecs)
+    # The terms and source behind list_price_eur; null for v1 specs, for no
+    # eligible list-price fact, and for a price-list URL that is not HTTPS.
+    list_price: ListPrice | None = None
 
 
 class VehicleDetail(VehicleSummary):
@@ -290,6 +329,7 @@ class CatalogFact(ApiModel):
     source_key: str | None
     source_name: str | None
     source_url: str | None
+    source_license: str | None = None
     retrieved_at: datetime | None
     content_sha256: str | None
     evidence_excerpt: str | None

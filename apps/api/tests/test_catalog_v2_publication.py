@@ -176,6 +176,11 @@ def add_fact(data, metric, value, context=None, variant="metro-g1-ice"):
         "cargo_volume_liters": "l",
         "liquid_consumption_l_100km": "l/100km",
         "mass_kg": "kg",
+        "length_mm": "mm",
+        "body_width_mm": "mm",
+        "height_mm": "mm",
+        "engine_power_kw": "kW",
+        "system_power_kw": "kW",
     }
     observation["unit"] = observation["raw_unit"] = units.get(metric, "count")
     decision = {
@@ -652,6 +657,47 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
         assert codes and all(row["engine_code"] == "reviewed-code" for row in codes)
 
 
+def test_detail_reads_same_meaning_fields_from_reviewed_facts(conn, tmp_path):
+    data = bundle(tmp_path)
+    # Simulated permitted source, not real vehicle data.
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    for metric, value in (
+        ("length_mm", 4010),
+        ("body_width_mm", 1750),
+        ("height_mm", 1480.5),
+        ("engine_power_kw", 74),
+    ):
+        add_fact(data, metric, value)
+    add_fact(data, "mass_kg", 1180, {"market": "IT", "method": "mass_in_running_order"})
+    # A hybrid's engine is not its whole power; its system power is.
+    add_fact(data, "engine_power_kw", 68, variant="metro-g2-hev")
+    add_fact(data, "engine_power_kw", 100, variant="metro-g2-phev")
+    add_fact(data, "system_power_kw", 180, variant="metro-g2-phev")
+    publish(conn, data, tmp_path)
+    repo = VehiclesRepository(conn)
+    def spec(canonical_key, variant_key):
+        detail = repo.get_vehicle(vehicle_id(conn, canonical_key))
+        VehicleDetail.model_validate(detail)
+        return next(s for s in detail["specs"] if s["variant_key"] == variant_key)
+
+    petrol = spec("metro-g1-2026", "metro-g1-ice")
+    assert petrol["dimensions"]["length_mm"] == 4010
+    assert petrol["dimensions"]["width_mm"] == 1750
+    assert petrol["dimensions"]["height_mm"] is None  # not a whole number
+    assert petrol["dimensions"]["curb_weight_kg"] is None
+    assert petrol["powertrain"]["power_kw"] == 74
+    assert spec("metro-g2-2026", "metro-g2-hev")["powertrain"]["power_kw"] is None
+    assert spec("metro-g2-2026", "metro-g2-phev")["powertrain"]["power_kw"] == 180
+    conn.execute(
+        "UPDATE sources SET ranking_permission = 'manual_validation_only' "
+        "WHERE source_key = 'synthetic-v2'"
+    )
+    unreviewed = spec("metro-g1-2026", "metro-g1-ice")
+    assert unreviewed["dimensions"]["length_mm"] is None
+    assert unreviewed["powertrain"]["power_kw"] is None
+
+
 RIDGE = "it-acme-ridge-2026"
 GLIDE = "it-acme-glide-2026"
 
@@ -672,6 +718,7 @@ def test_two_wheelers_are_listed_typed_and_detailed(conn, tmp_path):
     app.dependency_overrides[get_vehicles_repository] = lambda: repo
     try:
         with TestClient(app) as client:
+
             def listed(**params):
                 response = client.get("/vehicles", params={"limit": 100, **params})
                 assert response.status_code == 200

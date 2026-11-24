@@ -11,7 +11,7 @@ from pydantic import (
 )
 
 from app.schemas.base import ApiModel
-from app.schemas.vehicles import VehicleSpec, VehicleSummary
+from app.schemas.vehicles import ListPrice, VehicleSpec, VehicleSummary
 
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
 ConstraintMode = Literal["hard", "soft"]
@@ -202,6 +202,9 @@ class ModelAnalysisRequest(ApiModel):
 
 class ModelAnalysisCostSummary(ApiModel):
     market_reference_price_eur: float | None = None
+    # The list price and its source when market_reference_price_eur is the
+    # variant's list price; null for any other reference.
+    market_reference_list_price: ListPrice | None = None
     estimated_annual_maintenance_eur: float | None = None
     estimated_monthly_energy_eur: float | None = None
     estimated_depreciation_3y_eur: float | None = None
@@ -249,34 +252,8 @@ class AdvisorOffer(ApiModel):
         return value
 
 
-class AdvisorListPrice(ApiModel):
-    """The public list price that stands in for an offer (ADR-013, ADR-015)."""
-
-    price_eur: float
-    computed_from_excl_vat: bool
-    # How price_eur was obtained: as printed, from an ex-VAT figure, or from a
-    # turnkey price minus its stated on-road charge (ADR-015).
-    derivation: Literal["printed", "computed_from_excl_vat", "computed_from_turnkey"]
-    printed_amount_eur: float
-    printed_basis: Literal["incl_vat", "excl_vat", "turnkey"]
-    vat_rate_percent: float | None = None
-    on_road_charge_eur: float | None = None
-    on_road_charge_includes_vat: bool | None = None
-    trim_label: str
-    price_list_valid_from: date
-    substitute_note: str | None = None
-    source_name: str
-    source_url: str
-    observed_at: datetime
-    decision_id: UUID
-    observation_id: UUID
-
-    @field_validator("source_url")
-    @classmethod
-    def require_https_source_url(cls, value: str) -> str:
-        if not value.strip().startswith("https://"):
-            raise ValueError("source_url must use https")
-        return value
+# The list-price block is shared with vehicle detail (ADR-013, ADR-015).
+AdvisorListPrice = ListPrice
 
 
 class AdvisorSelectedSpec(VehicleSpec):
@@ -305,6 +282,8 @@ class AdvisorMetricProvenance(ApiModel):
     metric: str
     source_name: str
     source_url: str
+    # Licence or attribution text the product shows next to the source name.
+    source_license: str | None = None
     observed_at: date | datetime
 
     @field_validator("source_url")

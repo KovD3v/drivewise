@@ -228,13 +228,29 @@ the value is its upper end (ADR-018), so the product must say "upper value". The
 basis is `null` for v1 specs and when there is no value. Only these two
 consumptions are published from an interval; every other interval stays `null`
 here. Each fact in `GET /vehicles/{vehicle_id}/facts` keeps `value_min` and
-`value_max` and adds `published_value` and `published_basis`: the exact scalar
-the read catalogue and the Advisor use, or `null` when the fact is not
-published as a scalar.
+`value_max` and adds `published_value` and `published_basis`: the scalar the
+catalogue derives from that fact (`exact` for a point value, `interval_upper`
+for the upper end of a published consumption interval). Both are `null`
+whenever the fact has no row in `catalog_scalar_facts`, even when `eligible` is
+`true`; for example an interval that is not one of the two consumptions, or a
+non-whole value where the scalar needs a whole number. A read that needs a whole number leaves
+out a non-whole value: a displacement fact of 1399.5 cc has
+`published_value` 1399.5 here, while `powertrain.displacement_cc` in vehicle
+detail stays `null`. The same holds for `dimensions.length_mm`, `width_mm` and
+`height_mm`. For `seats`, `electric_range_km` and `co2_g_km` the scalar view
+itself needs a whole number, so a non-whole value has no `published_value`,
+although the fact can still be `eligible`.
+Each fact also names its source with `source_name`,
+`source_url` (the document), `retrieved_at`, and `source_license`, the licence
+or attribution text to show with it.
 
-For catalog v2 specs, `powertrain.displacement_cc` comes from an eligible,
-exact, whole-number `engine_displacement_cc` fact; other v2 profile fields
-stay `null` until a reviewed projection exists.
+For catalog v2 specs, these fields come from eligible, exact facts:
+`powertrain.displacement_cc`, `dimensions.length_mm`, `dimensions.width_mm`
+(body width) and `dimensions.height_mm`, as whole numbers, and
+`powertrain.power_kw` (system power, or engine power when the powertrain is
+`ICE`). A value published as a range, a value from a source that is not
+reviewed, and every other v2 profile field (curb weight included) stay `null`;
+ranges are in `GET /vehicles/{vehicle_id}/facts`.
 
 `maintenance_schedule` items contain `id`, `operation_code`, `title`,
 `interval_km`, `interval_months`, `notes`, and `provenance`. Safety ratings
@@ -254,6 +270,24 @@ Vehicle and flat-spec `provenance` arrays use record-level claims with
 `supported_metrics`. Each profile child has its own `provenance` object with
 `source_id`, `source_key`, `source_name`, `source_url`, `source_license`, and
 `observed_at`; this is the source that supplied that particular child record.
+
+Catalog v2 publication writes no record-level claims, so for v2 rows these
+arrays are built from the evidence behind what the response shows. A v2 spec
+gets one entry per source snapshot behind its published facts and its identity:
+`observed_at` and `record_observed_at` are the snapshot retrieval time,
+`content_hash` its SHA-256, and `supported_metrics` lists the catalogue metrics
+it backs (legacy names where they exist, such as `list_price_eur`,
+`consumption_l_100km`, `body_style`). A v2 vehicle gets one entry per snapshot
+of its identity evidence, with empty `supported_metrics`. A source cited over
+plain `http://` keeps its URL here. `source_license` is the licence or
+attribution text the product must show with the source name (ADR-015; the EEA
+dataset, for example, requires a visible credit).
+
+Each detail spec also has `list_price`: the terms and source behind
+`list_price_eur`, in the same shape as the Advisor `list_price` block below
+(`ListPrice`). It is `null` for v1 specs, when the list price is not an eligible
+catalog v2 fact, and when its price-list URL is not HTTPS (the Advisor URL
+rule); `list_price_eur` itself is unchanged in those cases.
 
 The profile deliberately excludes contextual or time-series domains: insurance,
 vehicle tax, real-world consumption, reliability scores or defect probabilities,
@@ -798,6 +832,7 @@ that stands in for it:
     "substitute_note": null,
     "source_name": "Synthetic manufacturer list",
     "source_url": "https://example.test/price-list",
+    "source_license": "Synthetic fixture only",
     "observed_at": "2026-07-15T00:00:00Z",
     "decision_id": "...",
     "observation_id": "..."
@@ -821,6 +856,18 @@ For `turnkey`, `printed_amount_eur` is the turnkey price as printed and
 `vat_rate_percent`. `computed_from_excl_vat` stays for older clients and is true
 only for `excl_vat`. `substitute_note` is set when the registered version is no
 longer listed and the nearest current version supplies the price.
+`source_url` is the price-list document, `observed_at` when it was retrieved,
+and `source_license` the licence or attribution text to show with
+`source_name`. `price_list_valid_from` is the date the price list applies from.
+
+Every `provenance` entry of an item also has `source_license` (null when no
+licence is stored, as for the MIMIT and ARERA energy prices). Entries whose
+`source_url` is not HTTPS are left out: the gates already require HTTPS evidence
+for every required metric, so only extra evidence is dropped. An optional fact
+(`consumption_l_100km`, `energy_consumption_kwh_100km`, `wltp_range_km`) left
+with no HTTPS evidence is dropped with it: `selected_spec` returns it as null,
+with its `_basis`, and `evidence` and the factors omit it, so every value shown
+keeps a credit.
 
 Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,
@@ -929,6 +976,7 @@ Response:
   "price_assessment": "in_range",
   "estimated_costs": {
     "market_reference_price_eur": 14200.0,
+    "market_reference_list_price": null,
     "estimated_annual_maintenance_eur": 576.0,
     "estimated_monthly_energy_eur": 92.5,
     "estimated_depreciation_3y_eur": 4060.0,
@@ -962,7 +1010,8 @@ Model analysis rules:
 - returns only estimates selected by `analysis_scope`; `tco` includes the price reference, energy/fuel cost, maintenance, and depreciation estimates
 - requires asking price only for price or red-flag analysis, and current kilometres only for maintenance or red-flag analysis
 - returns `requested_spec_not_found` instead of silently substituting another trim when an explicit `spec_id` is unknown
-- compares asking price against available listing prices, then base price fallback
+- takes the reference price from the first available of: the mean price of eligible, fresh offers for the selected variant (or, when no offer names a variant, of the model's offers); the selected variant's list price; the model's base price; otherwise no reference price (`market_reference_price_eur: null`). `assumptions[1]` names the basis used
+- returns `estimated_costs.market_reference_list_price` only when the reference price is the variant's list price: the same block as vehicle detail's `list_price` (price-list terms, `source_name`, `source_url`, `source_license`, `observed_at`), so the amount keeps its source credit; null for any other reference and for a list price with no catalog v2 fact or no HTTPS price-list URL
 - estimates maintenance, monthly energy/fuel cost, and 3-year depreciation with deterministic MVP assumptions
 - emits rule-based red flags for above-reference asking price and high mileage for age
 - returns assumptions, warnings, missing data, and next actions for frontend display

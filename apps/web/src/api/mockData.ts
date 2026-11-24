@@ -23,6 +23,8 @@ type SpecDefaults =
   | 'fuel_type'
   | 'list_price_eur'
   | 'energy_consumption_kwh_100km'
+  | 'consumption_l_100km_basis'
+  | 'energy_consumption_kwh_100km_basis'
   | 'provenance'
 type ListingDefaults =
   | 'spec_id'
@@ -67,6 +69,8 @@ export function mockSpec(
     fuel_type: null,
     list_price_eur: null,
     energy_consumption_kwh_100km: null,
+    consumption_l_100km_basis: null,
+    energy_consumption_kwh_100km_basis: null,
     provenance: [],
     ...spec,
   }
@@ -157,6 +161,8 @@ export function mockSpecDetail(
       fuel_tank_capacity_liters: null,
       underseat_storage_liters: null,
     },
+    // v1 fixtures have no catalogue list-price terms.
+    list_price: null,
   }
 }
 
