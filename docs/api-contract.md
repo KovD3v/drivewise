@@ -230,7 +230,9 @@ consumptions are published from an interval; every other interval stays `null`
 here. Each fact in `GET /vehicles/{vehicle_id}/facts` keeps `value_min` and
 `value_max` and adds `published_value` and `published_basis`: the exact scalar
 the read catalogue and the Advisor use, or `null` when the fact is not
-published as a scalar.
+published as a scalar. Each fact also names its source with `source_name`,
+`source_url` (the document), `retrieved_at`, and `source_license`, the licence
+or attribution text to show with it.
 
 For catalog v2 specs, these fields come from eligible, exact facts:
 `powertrain.displacement_cc`, `dimensions.length_mm`, `dimensions.width_mm`
@@ -258,6 +260,24 @@ Vehicle and flat-spec `provenance` arrays use record-level claims with
 `supported_metrics`. Each profile child has its own `provenance` object with
 `source_id`, `source_key`, `source_name`, `source_url`, `source_license`, and
 `observed_at`; this is the source that supplied that particular child record.
+
+Catalog v2 publication writes no record-level claims, so for v2 rows these
+arrays are built from the evidence behind what the response shows. A v2 spec
+gets one entry per source snapshot behind its published facts and its identity:
+`observed_at` and `record_observed_at` are the snapshot retrieval time,
+`content_hash` its SHA-256, and `supported_metrics` lists the catalogue metrics
+it backs (legacy names where they exist, such as `list_price_eur`,
+`consumption_l_100km`, `body_style`). A v2 vehicle gets one entry per snapshot
+of its identity evidence, with empty `supported_metrics`. A source cited over
+plain `http://` keeps its URL here. `source_license` is the licence or
+attribution text the product must show with the source name (ADR-015; the EEA
+dataset, for example, requires a visible credit).
+
+Each detail spec also has `list_price`: the terms and source behind
+`list_price_eur`, in the same shape as the Advisor `list_price` block below
+(`ListPrice`). It is `null` for v1 specs, when the list price is not an eligible
+catalog v2 fact, and when its price-list URL is not HTTPS (the Advisor URL
+rule); `list_price_eur` itself is unchanged in those cases.
 
 The profile deliberately excludes contextual or time-series domains: insurance,
 vehicle tax, real-world consumption, reliability scores or defect probabilities,
@@ -802,6 +822,7 @@ that stands in for it:
     "substitute_note": null,
     "source_name": "Synthetic manufacturer list",
     "source_url": "https://example.test/price-list",
+    "source_license": "Synthetic fixture only",
     "observed_at": "2026-07-15T00:00:00Z",
     "decision_id": "...",
     "observation_id": "..."
@@ -825,6 +846,14 @@ For `turnkey`, `printed_amount_eur` is the turnkey price as printed and
 `vat_rate_percent`. `computed_from_excl_vat` stays for older clients and is true
 only for `excl_vat`. `substitute_note` is set when the registered version is no
 longer listed and the nearest current version supplies the price.
+`source_url` is the price-list document, `observed_at` when it was retrieved,
+and `source_license` the licence or attribution text to show with
+`source_name`. `price_list_valid_from` is the date the price list applies from.
+
+Every `provenance` entry of an item also has `source_license` (null when no
+licence is stored, as for the MIMIT and ARERA energy prices). Entries whose
+`source_url` is not HTTPS are left out: the gates already require HTTPS evidence
+for every required metric, so only extra evidence is dropped.
 
 Eligibility is strict. Offers must be Italian, active, unexpired, observed in
 the last 30 days, attached to a completed reviewed import and an exact spec,

@@ -220,6 +220,15 @@ ambiguous:
 - `insufficient_inventory`: the profile is rankable, but no variant has an
   eligible reviewed offer or list price.
 
+`previewRanking.groups` uses the Advisor recommendation item shape unchanged,
+with its snake_case field names (`docs/api-contract.md`). A list-price item has
+`price_basis: "list_price"`, `offer: null`, and a `list_price` block with the
+amount, derivation, trim label, `price_list_valid_from`, optional
+`substitute_note`, and the source name, URL, retrieval time and
+`source_license`. Every `provenance` entry also carries `source_license`, so
+the UI can credit each source; `selected_spec.consumption_l_100km_basis` is
+`interval_upper` when the consumption is the upper value of an interval.
+
 The preview reuses `advisor-v3.0` without persisting a formal recommendation
 run. Its assumptions remain visible, including a default annual distance when
 `annual_km` is still unknown.

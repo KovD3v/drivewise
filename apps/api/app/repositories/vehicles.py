@@ -2,6 +2,11 @@ from typing import Any
 from uuid import UUID
 
 from app.repositories.filters import EFFECTIVE_VEHICLE_TYPE_SQL, VehicleFilters
+from app.repositories.list_price import (
+    LIST_PRICE_COLUMNS,
+    LIST_PRICE_FACT_JOIN,
+    list_price_block,
+)
 
 
 PROFILE_PROVENANCE_FIELDS = (
@@ -376,6 +381,30 @@ class VehiclesRepository:
             """,
             (vehicle_id,),
         ).fetchall()
+        # A v2 vehicle is credited with the snapshots that establish its identity
+        # (make, model, body style); v2 publication writes no vehicle_provenance.
+        vehicle_provenance = [*vehicle_provenance, *self.conn.execute(
+            """
+            SELECT
+              snapshot.source_id,
+              source.source_key,
+              source.name AS source_name,
+              snapshot.source_url,
+              source.license AS source_license,
+              snapshot.retrieved_at AS observed_at,
+              snapshot.retrieved_at AS record_observed_at,
+              snapshot.content_sha256 AS content_hash,
+              true AS is_current,
+              '[]'::jsonb AS supported_metrics
+            FROM vehicles vehicle
+            CROSS JOIN unnest(vehicle.identity_evidence) AS evidence(snapshot_id)
+            JOIN source_snapshots snapshot ON snapshot.id = evidence.snapshot_id
+            JOIN sources source ON source.id = snapshot.source_id
+            WHERE vehicle.id = %s AND vehicle.catalog_version = 2
+            ORDER BY snapshot.retrieved_at DESC, source.source_key
+            """,
+            (vehicle_id,),
+        ).fetchall()]
 
         spec_provenance_rows = self.conn.execute(
             """
@@ -402,6 +431,66 @@ class VehiclesRepository:
             """,
             (vehicle_id,),
         ).fetchall()
+        # v2 publication writes no vehicle_spec_provenance: a v2 spec is credited
+        # with the snapshots behind its published facts and its identity, so every
+        # value shown can name its source, licence and document.
+        spec_provenance_rows = [*spec_provenance_rows, *self.conn.execute(
+            """
+            WITH evidence AS (
+              SELECT fact.spec_id, observation.snapshot_id, fact.legacy_metric AS metric
+              FROM catalog_scalar_facts fact
+              JOIN spec_observations observation
+                ON observation.id = fact.selected_observation_id
+              UNION ALL
+              SELECT spec.id, spec.identity_evidence[1], identity_metric
+              FROM vehicle_specs spec
+              JOIN catalog_identity_eligibility identity
+                ON identity.spec_id = spec.id AND identity.eligible
+              CROSS JOIN unnest(ARRAY['body_style', 'fuel_type']) AS identity_metric
+            )
+            SELECT
+              evidence.spec_id,
+              snapshot.source_id,
+              source.source_key,
+              source.name AS source_name,
+              snapshot.source_url,
+              source.license AS source_license,
+              snapshot.retrieved_at AS observed_at,
+              snapshot.retrieved_at AS record_observed_at,
+              snapshot.content_sha256 AS content_hash,
+              true AS is_current,
+              jsonb_agg(DISTINCT evidence.metric) AS supported_metrics
+            FROM evidence
+            JOIN vehicle_specs spec
+              ON spec.id = evidence.spec_id AND spec.catalog_version = 2
+            JOIN source_snapshots snapshot ON snapshot.id = evidence.snapshot_id
+            JOIN sources source ON source.id = snapshot.source_id
+            WHERE spec.vehicle_id = %s
+            GROUP BY evidence.spec_id, snapshot.id, source.id
+            ORDER BY snapshot.retrieved_at DESC, source.source_key
+            """,
+            (vehicle_id,),
+        ).fetchall()]
+        # The terms behind each v2 list price, under the Advisor URL rule.
+        list_price_by_spec = {
+            row["spec_id"]: list_price_block(row)
+            for row in self.conn.execute(
+                """
+                SELECT s.id AS spec_id,
+"""
+                + LIST_PRICE_COLUMNS
+                + """              s.list_price_eur
+                FROM catalog_read_specs s
+"""
+                + LIST_PRICE_FACT_JOIN
+                + """                WHERE s.vehicle_id = %s
+                  AND s.list_price_eur IS NOT NULL
+                  AND list_price.decision_id IS NOT NULL
+                  AND list_price.source_url LIKE 'https://%%'
+                """,
+                (vehicle_id,),
+            ).fetchall()
+        }
         provenance_by_spec: dict[UUID, list[dict[str, Any]]] = {}
         for row in spec_provenance_rows:
             provenance_by_spec.setdefault(row["spec_id"], []).append(
@@ -547,6 +636,7 @@ class VehiclesRepository:
                     for row in media
                 ],
                 "two_wheel": two_wheel_by_spec.get(spec["id"], {}),
+                "list_price": list_price_by_spec.get(spec["id"]),
             }
             for field in (
                 "generation_name",
@@ -586,10 +676,12 @@ class VehiclesRepository:
         return list(self.conn.execute(
             """SELECT f.*, s.variant_key,
                       published.scalar_value AS published_value,
-                      published.scalar_basis AS published_basis
+                      published.scalar_basis AS published_basis,
+                      source.license AS source_license
                FROM catalog_current_facts f
                JOIN vehicle_specs s ON s.id = f.spec_id
                LEFT JOIN catalog_scalar_facts published ON published.id = f.id
+               LEFT JOIN sources source ON source.source_key = f.source_key
                WHERE s.vehicle_id = %s ORDER BY s.variant_key, f.metric, f.id""",
             (vehicle_id,),
         ).fetchall())

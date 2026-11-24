@@ -7,6 +7,11 @@ from uuid import UUID, uuid4
 from psycopg.types.json import Jsonb
 
 from app.repositories.filters import CAR_ONLY_SQL
+from app.repositories.list_price import (
+    LIST_PRICE_COLUMNS,
+    LIST_PRICE_FACT_JOIN,
+    list_price_block,
+)
 from app.schemas.advisor import AdvisorRecommendationGroup, AdvisorRecommendationItem
 from app.services.advisor.scoring import FRESHNESS_DAYS, SCORING_VERSION
 
@@ -92,6 +97,7 @@ _CANDIDATE_CHILDREN = """              COALESCE(
                     jsonb_build_object(
                       'source_name', provenance_source.name,
                       'source_url', provenance.source_url,
+                      'source_license', provenance_source.license,
                       'observed_at', provenance.observed_at,
                       'metadata', provenance.metadata
                     )
@@ -233,31 +239,6 @@ _NO_ELIGIBLE_OFFER = """              AND NOT EXISTS (
                 WHERE l.spec_id = s.id
                   AND l.vehicle_id = s.vehicle_id
 """ + _ELIGIBLE_OFFER_GATES + """              )
-"""
-
-# The current list-price fact, already limited by catalog_scalar_facts to eligible
-# evidence from permitted, sourced and licensed sources, with its price-list terms.
-_LIST_PRICE_FACT_JOIN = """LEFT JOIN LATERAL (
-              SELECT fact.id AS decision_id,
-                     fact.selected_observation_id AS observation_id,
-                     fact.source_name,
-                     fact.source_url,
-                     fact.retrieved_at,
-                     observation.list_price AS terms
-              FROM catalog_scalar_facts AS fact
-              JOIN spec_observations AS observation
-                ON observation.id = fact.selected_observation_id
-              WHERE fact.spec_id = s.id
-                AND fact.legacy_metric = 'list_price_eur'
-            ) AS list_price ON true
-"""
-
-_LIST_PRICE_COLUMNS = """              list_price.decision_id AS list_price_decision_id,
-              list_price.observation_id AS list_price_observation_id,
-              list_price.source_name AS list_price_source_name,
-              list_price.source_url AS list_price_source_url,
-              list_price.retrieved_at AS list_price_observed_at,
-              list_price.terms AS list_price_terms,
 """
 
 # Spec exclusion reasons shared by offers and list-price variants, in scoring order.
@@ -548,13 +529,13 @@ class AdvisorRepository:
         candidates = [_candidate_from_row(row) for row in rows]
         list_price_rows = self.conn.execute(
             _CANDIDATE_SPEC_COLUMNS
-            + _LIST_PRICE_COLUMNS
+            + LIST_PRICE_COLUMNS
             + _CANDIDATE_CHILDREN
             + """            FROM vehicles AS v
             JOIN catalog_read_specs AS s
               ON s.vehicle_id = v.id
             """
-            + _LIST_PRICE_FACT_JOIN
+            + LIST_PRICE_FACT_JOIN
             + """            WHERE upper(v.market) = 'IT'
               AND s.catalog_version = 2
               AND """
@@ -669,7 +650,7 @@ class AdvisorRepository:
               JOIN catalog_read_specs AS s
                 ON s.vehicle_id = v.id
               """
-            + _LIST_PRICE_FACT_JOIN
+            + LIST_PRICE_FACT_JOIN
             + """              WHERE upper(v.market) = 'IT'
                 AND s.catalog_version = 2
                 AND """
@@ -1136,47 +1117,23 @@ _LISTING_ROW_KEYS = (
 )
 
 
-_LIST_PRICE_DERIVATIONS = {
-    "incl_vat": "printed",
-    "excl_vat": "computed_from_excl_vat",
-    "turnkey": "computed_from_turnkey",
-}
-
-
 def _list_price_candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
     """A variant with no eligible offer, evaluated as new at its list price (ADR-013)."""
     # The list-price query has no listing columns; the shared mapper sees them as empty.
     candidate = _candidate_from_row({**dict.fromkeys(_LISTING_ROW_KEYS), **row})
-    terms = row.get("list_price_terms") or {}
     candidate.update(
         offer=None,
         source=None,
         import_status=None,
         price_basis="list_price",
-        list_price={
-            "price_eur": row["list_price_eur"],
-            "computed_from_excl_vat": terms.get("printed_basis") == "excl_vat",
-            "derivation": _LIST_PRICE_DERIVATIONS.get(terms.get("printed_basis")),
-            "printed_amount_eur": terms.get("printed_amount_eur"),
-            "printed_basis": terms.get("printed_basis"),
-            "vat_rate_percent": terms.get("vat_rate_percent"),
-            "on_road_charge_eur": terms.get("on_road_charge_eur"),
-            "on_road_charge_includes_vat": terms.get("on_road_charge_includes_vat"),
-            "trim_label": terms.get("trim_label"),
-            "price_list_valid_from": terms.get("price_list_valid_from"),
-            "substitute_note": terms.get("substitute_note"),
-            "source_name": row.get("list_price_source_name"),
-            "source_url": row.get("list_price_source_url"),
-            "observed_at": row.get("list_price_observed_at"),
-            "decision_id": row.get("list_price_decision_id"),
-            "observation_id": row.get("list_price_observation_id"),
-        },
+        list_price=list_price_block(row),
     )
     candidate["provenance"] = [
         {
             "metric": "list_price_eur",
             "source_name": row.get("list_price_source_name"),
             "source_url": row.get("list_price_source_url"),
+            "source_license": row.get("list_price_source_license"),
             "observed_at": row.get("list_price_observed_at"),
             "decision_id": row.get("list_price_decision_id"),
             "observation_id": row.get("list_price_observation_id"),
@@ -1195,6 +1152,7 @@ def _offer_provenance(
             "metric": "price_eur",
             "source_name": row["listing_source_name"],
             "source_url": offer["source_url"],
+            "source_license": row["listing_source_license"],
             "observed_at": offer["last_seen_at"],
         }
     ]
@@ -1204,6 +1162,7 @@ def _offer_provenance(
                 "metric": "mileage",
                 "source_name": row["listing_source_name"],
                 "source_url": offer["source_url"],
+                "source_license": row["listing_source_license"],
                 "observed_at": offer["last_seen_at"],
             }
         )
@@ -1243,6 +1202,7 @@ def _metric_provenance(
                     "metric": metric,
                     "source_name": source["source_name"],
                     "source_url": source["source_url"],
+                    "source_license": source.get("source_license"),
                     "observed_at": source["observed_at"],
                     "decision_id": metadata.get("decision_id"),
                     "observation_id": metadata.get("observation_id"),

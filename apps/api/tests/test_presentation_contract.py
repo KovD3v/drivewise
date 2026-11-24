@@ -1,0 +1,151 @@
+"""What the web needs to show a list-price item and credit every source.
+
+Synthetic bundle only (ADR-011): invented makes, example.com URLs.
+"""
+
+import hashlib
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.api.dependencies import get_connection
+from app.main import app
+from tests.test_catalog_storage_readiness import (
+    WLTP,
+    _fact,
+    publish,
+    readiness_bundle,
+)
+from tests.test_catalog_v2_publication import conn  # noqa: F401  (fixture)
+
+LICENCE = "Synthetic fixture only"
+MIRROR = "00000000-0000-4000-8000-0000000000a3"
+
+
+def _with_http_mirror(data, tmp_path):
+    """An ICE car's optional electric range, cited by a plain-HTTP page."""
+    content = b"Synthetic plain-http mirror"
+    (tmp_path / "readiness" / "mirror.html").write_bytes(content)
+    data["sources"].append(
+        {
+            "source_key": "plain-mirror",
+            "name": "Plain mirror (synthetic)",
+            "source_type": "public_dataset",
+            "market": "IT",
+            "ranking_permission": "manual_validation_only",
+            "url": "http://plain-mirror.example.com/",
+            "license": "Synthetic mirror licence",
+        }
+    )
+    data["snapshots"].append(
+        {
+            "id": MIRROR,
+            "source_key": "plain-mirror",
+            "url": "http://plain-mirror.example.com/export",
+            "retrieved_at": "2026-10-01T08:00:00Z",
+            "content_sha256": hashlib.sha256(content).hexdigest(),
+            "artifact_path": "readiness/mirror.html",
+            "media_type": "text/html",
+            "evidence_kind": "sourced",
+        }
+    )
+    _fact(data, "tavo-petrol", "electric_range_km", 40, context=WLTP)
+    data["observations"][-1]["snapshot_id"] = MIRROR
+    return data
+
+
+@pytest.fixture
+def client(conn, tmp_path):  # noqa: F811
+    data = _with_http_mirror(readiness_bundle(tmp_path), tmp_path)
+    assert publish(conn, data, tmp_path) == "published"
+    conn.execute("UPDATE sources SET ranking_permission = 'permitted'")
+    app.dependency_overrides[get_connection] = lambda: conn
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
+
+
+def _car(conn):  # noqa: F811
+    return conn.execute(
+        "SELECT id FROM vehicles WHERE make = %s AND model = %s", ("Zephra", "Tavo")
+    ).fetchone()["id"]
+
+
+def test_vehicle_detail_carries_list_price_terms_basis_and_credits(client, conn):  # noqa: F811
+    response = client.get(f"/vehicles/{_car(conn)}")
+    assert response.status_code == 200
+    specs = {spec["variant_key"]: spec for spec in response.json()["specs"]}
+    petrol, electric = specs["tavo-petrol"], specs["tavo-electric"]
+
+    assert petrol["consumption_l_100km_basis"] == "interval_upper"
+    price = electric["list_price"]
+    assert {
+        key: price[key]
+        for key in (
+            "price_eur", "derivation", "printed_basis", "printed_amount_eur",
+            "trim_label", "price_list_valid_from", "substitute_note",
+            "source_name", "source_url", "source_license",
+        )
+    } == {
+        "price_eur": 30500.0,
+        "derivation": "computed_from_turnkey",
+        "printed_basis": "turnkey",
+        "printed_amount_eur": 31720.0,
+        "trim_label": "Synthetic row",
+        "price_list_valid_from": "2026-09-01",
+        "substitute_note": None,
+        "source_name": "Lumen open vehicle registry (synthetic)",
+        "source_url": "https://lumen-registry.example.com/export",
+        "source_license": LICENCE,
+    }
+    assert price["observed_at"].startswith("2026-10-01")
+    assert price["price_eur"] == electric["list_price_eur"]
+
+    # A v2 spec is credited with every source behind the values it shows.
+    credits = {entry["source_key"]: entry for entry in petrol["provenance"]}
+    assert set(credits) == {"lumen-registry", "plain-mirror"}
+    registry = credits["lumen-registry"]
+    assert registry["source_license"] == LICENCE
+    assert registry["source_url"] == "https://lumen-registry.example.com/export"
+    assert {"list_price_eur", "consumption_l_100km", "seats"} <= set(
+        registry["supported_metrics"]
+    )
+    assert {"body_style", "fuel_type"} <= set(registry["supported_metrics"])
+    assert credits["plain-mirror"]["source_url"].startswith("http://")
+    # The vehicle's identity, body style included, credits both of its sources.
+    vehicle_credits = {e["source_key"]: e for e in response.json()["provenance"]}
+    assert set(vehicle_credits) == {"lumen-registry", "coachwork-notes"}
+    assert vehicle_credits["coachwork-notes"]["source_license"] == LICENCE
+
+
+def test_facts_name_the_licence_of_their_source(client, conn):  # noqa: F811
+    response = client.get(f"/vehicles/{_car(conn)}/facts")
+    assert response.status_code == 200
+    licences = {
+        (fact["variant_key"], fact["metric"]): fact["source_license"]
+        for fact in response.json()
+    }
+    assert licences[("tavo-petrol", "list_price_eur")] == LICENCE
+    assert licences[("tavo-petrol", "electric_range_km")] == "Synthetic mirror licence"
+
+
+def test_recommendations_carry_list_price_credits_and_skip_http_evidence(
+    client, conn  # noqa: F811
+):
+    response = client.post(
+        "/advisor/recommendations",
+        json={"budget_max_eur": 35000, "primary_use": "family"},
+    )
+    # The petrol variant's optional electric range cites an http:// page.
+    assert response.status_code == 200, response.text
+    items = [item for group in response.json()["groups"] for item in group["items"]]
+    assert items
+    for item in items:
+        assert (item["price_basis"], item["offer"]) == ("list_price", None)
+        assert item["list_price"]["source_license"] == LICENCE
+        assert item["list_price"]["price_list_valid_from"] == "2026-09-01"
+        assert all(p["source_url"].startswith("https://") for p in item["provenance"])
+        catalogue = [p for p in item["provenance"] if "example.com" in p["source_url"]]
+        assert catalogue and all(p["source_license"] == LICENCE for p in catalogue)
+        assert "of offer price" not in " ".join(item["evidence"]["assessments"]["tco"]["assumptions"])
