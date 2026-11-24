@@ -35,6 +35,19 @@ TWO_WHEEL_METRICS = {
 }
 
 
+# Catalog v2 metric -> legacy detail field with the same meaning, as whole numbers.
+# Mass is absent on purpose: mass in running order is not curb weight.
+DETAIL_METRICS = {
+    "engine_displacement_cc": "displacement_cc",
+    "length_mm": "length_mm",
+    "body_width_mm": "width_mm",
+    "height_mm": "height_mm",
+}
+# power_kw is the power of the whole vehicle. An engine's power says that only
+# when the engine is the one motor.
+POWER_METRICS = ("system_power_kw", "engine_power_kw")
+
+
 def _feature_response(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row["id"],
@@ -199,9 +212,10 @@ class VehiclesRepository:
 
         spec_ids = [spec["id"] for spec in specs]
         two_wheel_by_spec: dict[UUID, dict[str, Any]] = {}
-        displacement_by_spec: dict[UUID, Any] = {}
-        # Displacement means the same for every type; v2 rows expose it from facts.
-        fact_metrics = ["engine_displacement_cc"]
+        # v2 rows have no legacy columns: these fields come from their facts.
+        facts_by_spec: dict[UUID, dict[str, Any]] = {}
+        powertrains = {spec["id"]: spec["powertrain_type"] for spec in specs}
+        fact_metrics = [*DETAIL_METRICS, *POWER_METRICS]
         if vehicle["vehicle_type"] in TWO_WHEEL_TYPES:
             fact_metrics += list(TWO_WHEEL_METRICS)
         # The scalar view already keeps only eligible, single-context point values.
@@ -211,17 +225,22 @@ class VehiclesRepository:
             FROM catalog_scalar_facts
             WHERE spec_id = ANY(%s) AND metric = ANY(%s)
               AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
-              AND (metric <> 'engine_displacement_cc'
-                   OR value_min = trunc(value_min))
+              AND (metric <> ALL(%s) OR value_min = trunc(value_min))
             """,
-            (spec_ids, fact_metrics),
+            (spec_ids, fact_metrics, list(DETAIL_METRICS)),
         ).fetchall():
-            if row["metric"] == "engine_displacement_cc":
-                displacement_by_spec[row["spec_id"]] = int(row["value_min"])
-                continue
-            two_wheel_by_spec.setdefault(row["spec_id"], {})[
-                TWO_WHEEL_METRICS[row["metric"]]
-            ] = row["value_min"]
+            metric, facts = row["metric"], facts_by_spec.setdefault(row["spec_id"], {})
+            if metric in DETAIL_METRICS:
+                facts[DETAIL_METRICS[metric]] = int(row["value_min"])
+            elif metric == "system_power_kw":
+                facts["power_kw"] = row["value_min"]
+            elif metric == "engine_power_kw":
+                if powertrains[row["spec_id"]] == "ICE":
+                    facts.setdefault("power_kw", row["value_min"])
+            else:
+                two_wheel_by_spec.setdefault(row["spec_id"], {})[
+                    TWO_WHEEL_METRICS[metric]
+                ] = row["value_min"]
         maintenance_by_spec = _group_by_spec_id(
             list(
                 self.conn.execute(
@@ -395,6 +414,11 @@ class VehiclesRepository:
 
         specs_with_provenance = []
         for spec in specs:
+            facts = facts_by_spec.get(spec["id"], {})
+
+            def from_fact(field: str, spec=spec, facts=facts):
+                return spec[field] if spec[field] is not None else facts.get(field)
+
             maintenance = maintenance_by_spec.get(spec["id"], [])
             ratings = safety_ratings_by_spec.get(spec["id"], [])
             features = features_by_spec.get(spec["id"], [])
@@ -425,9 +449,9 @@ class VehiclesRepository:
                     "doors": spec["doors"],
                 },
                 "dimensions": {
-                    "length_mm": spec["length_mm"],
-                    "width_mm": spec["width_mm"],
-                    "height_mm": spec["height_mm"],
+                    "length_mm": from_fact("length_mm"),
+                    "width_mm": from_fact("width_mm"),
+                    "height_mm": from_fact("height_mm"),
                     "wheelbase_mm": spec["wheelbase_mm"],
                     "curb_weight_kg": spec["curb_weight_kg"],
                     "gross_weight_kg": spec["gross_weight_kg"],
@@ -438,14 +462,10 @@ class VehiclesRepository:
                 "powertrain": {
                     "engine_description": spec["engine"],
                     "engine_code": spec["engine_code"],
-                    "displacement_cc": (
-                        spec["displacement_cc"]
-                        if spec["displacement_cc"] is not None
-                        else displacement_by_spec.get(spec["id"])
-                    ),
+                    "displacement_cc": from_fact("displacement_cc"),
                     "cylinders": spec["cylinders"],
                     "horsepower": spec["horsepower"],
-                    "power_kw": spec["power_kw"],
+                    "power_kw": from_fact("power_kw"),
                     "torque_nm": spec["torque_nm"],
                     "fuel_type": spec["fuel_type"],
                     "battery_total_kwh": spec["battery_kwh"],
