@@ -247,8 +247,13 @@ needed. After publication, catalog v2 treats three kinds of data differently:
   published nothing; a plain `UPDATE` was rejected by the trigger; one transaction
   that sets `drivewise.catalog_writer` to `v2` and updates `powertrain_type` and
   the derived `fuel_type` succeeded; the bundle with the same edit then published
-  and a repeat returned `unchanged`. The stored bundle must carry the same edit,
-  or the next import is rejected again.
+  and a repeat returned `unchanged`. The same held for an empty generation and
+  model year filled later on `vehicles`. The bundle must carry every edit made by
+  hand: a bundle that still said `MHEV` was rejected with
+  `Published identity differs at powertrain_type`. Not tried: splitting one
+  vehicle into two generations, which moves variants instead of editing a column.
+  Evidence rows are different: a `DELETE` on `fact_decisions` was rejected even
+  by hand, so what is stored as evidence stays.
 - **Evidence** (stored responses, observations, decisions) is append-only.
   Database triggers reject updates and deletions. A wrong value is retracted by a
   superseding decision. A wrong vehicle or variant row needs a reviewed migration
