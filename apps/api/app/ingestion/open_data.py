@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
-from app.ingestion.catalog_v2 import METRIC_UNITS, CatalogV2
+from app.ingestion.catalog_v2 import METRIC_UNITS, CatalogV2, SourceSnapshot
 
 VERSION = "open-data-v1"
 EEA_YEAR = 2024
@@ -958,11 +958,23 @@ def _plain(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
 
+def _acquisition(snapshot: dict) -> tuple:
+    return tuple(
+        snapshot[k] for k in ("source_key", "url", "retrieved_at", "content_sha256")
+    )
+
+
 class _Bundle:
-    def __init__(self, run: Run):
+    def __init__(self, run: Run, previous: dict | None = None):
         if not run.manifest:
             raise OpenDataError("The run directory holds no responses; fetch first.")
         self.run = run
+        # A run folder may start as a copy of the published one. A copied response is
+        # the same acquisition, so it keeps the snapshot (ID and path) it was published
+        # with; catalog v2 refuses one acquisition under two snapshots.
+        self.earlier = {
+            _acquisition(s): s for s in (previous or {}).get("snapshots", [])
+        }
         self.vehicles, self.variants = [], []
         self.snapshots: dict[str, dict] = {}
         self.observations, self.decisions = [], []
@@ -972,7 +984,7 @@ class _Bundle:
         entry = self.run.manifest[request.artifact_path]
         path = self.run.evidence_path(request)
         snapshot_id = _uuid("snapshot", path, entry["sha256"])
-        self.snapshots[snapshot_id] = {
+        snapshot = {
             "id": snapshot_id,
             "source_key": source_key,
             "url": request.url,
@@ -982,7 +994,11 @@ class _Bundle:
             "media_type": "application/json",
             "evidence_kind": "sourced",
         }
-        return snapshot_id
+        # Compared as the contract writes them (URL and time formats).
+        written = SourceSnapshot.model_validate(snapshot).model_dump(mode="json")
+        snapshot = self.earlier.get(_acquisition(written), snapshot)
+        self.snapshots[snapshot["id"]] = snapshot
+        return snapshot["id"]
 
     def observe(
         self,
@@ -1224,8 +1240,11 @@ def _shown(counts: dict[Decimal, int]) -> dict[str, int]:
     return {_plain(value): counts[value] for value in sorted(counts)}
 
 
-def build_cars(run: Run, name_map: dict) -> tuple[dict | None, dict]:
-    bundle = _Bundle(run)
+def build_cars(
+    run: Run, name_map: dict, previous: dict | None = None
+) -> tuple[dict | None, dict]:
+    """The car bundle of a run; `previous` is the published bundle it continues."""
+    bundle = _Bundle(run, previous)
     families, unmapped = _families(run, name_map)
     report = {"families": [], "unmapped_names": unmapped}
     for family in families:
@@ -1499,8 +1518,10 @@ def _car_variant(
     }
 
 
-def build_two_wheelers(run: Run, two_wheelers: dict) -> tuple[dict | None, dict]:
-    bundle = _Bundle(run)
+def build_two_wheelers(
+    run: Run, two_wheelers: dict, previous: dict | None = None
+) -> tuple[dict | None, dict]:
+    bundle = _Bundle(run, previous)
     report = {"models": []}
     bikes = run.read(motospecdb_request())["bikes"]
     for entry in two_wheelers["models"]:

@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import shutil
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -1090,10 +1091,27 @@ ORBA_NAMES = {
 
 
 class OrbaRegistries(FakeRegistries):
-    """An EEA that answers from invented records, applying the query's filter."""
+    """An EEA that answers from invented records, applying the query's filter, and an
+    RDW that knows the invented approvals."""
+
+    def __init__(self, docs=None, bodies=None):
+        super().__init__()
+        self.docs = ORBA_DOCS if docs is None else docs
+        self.bodies = bodies or {}
+
+    def rdw(self, url: str, query: dict) -> list:
+        where = query["$where"][0]
+        tan = next((d["TAN"] for d in self.docs if d["TAN"].lower() in where), None)
+        if tan is None or "kenteken" in query["$select"][0]:
+            return super().rdw(url, query)
+        if "inrichting" in query["$select"][0]:
+            body = self.bodies.get(tan, "hatchback")
+            return [{"merk": "ORBA", "inrichting": body, "n": "20"}]
+        size = {"lengte": "420", "breedte": "180", "hoogte_voertuig": "150"}
+        return [{"merk": "ORBA", **size, "aantal_zitplaatsen": "5", "n": "20"}]
 
     def eea(self, source: dict) -> dict:
-        docs = [d for d in ORBA_DOCS if matches(d, source["query"])]
+        docs = [d for d in self.docs if matches(d, source["query"])]
         answer = {
             "hits": {"total": {"value": sum(d["n"] for d in docs), "relation": "eq"}}
         }
@@ -1263,3 +1281,70 @@ def test_a_fetch_never_replaces_evidence_of_the_run_s_own_bundle(run, tmp_path, 
     assert script.main([*argv, "--previous", f"{run.root}/../{run.root.name}"]) == 1
     assert "same run folder" in capsys.readouterr().err
     assert sorted(p.name for p in run.root.iterdir()) == before
+
+
+# --- A later run that splits a name -----------------------------------------------
+
+UNSPLIT = {"families": [ORBA_NAMES["families"][0], ORBA_NAMES["families"][2]]}
+# Before the split, the best-selling Vela version is a Vela Cross.
+CROSS_ON_TOP = [
+    orba("VELA", VELA, "petrol", "M", 10),
+    orba("VELA", VELA_CROSS, "petrol", "M", 40),
+    orba("NOVA", "E9*2018/858*00720*02", "petrol", "M", 30),
+]
+
+
+def copy_run(earlier: open_data.Run, folder: str) -> open_data.Run:
+    """A new run folder that starts as a copy of the earlier one's responses."""
+    later = earlier.root.parent / folder
+    shutil.copytree(earlier.artifacts, later / "artifacts")
+    shutil.copy(earlier.manifest_path, later / "manifest.json")
+    return open_data.Run(later)
+
+
+def cli_build(tmp_path, run_dir, names, previous=None) -> int:
+    paths = {"names": tmp_path / "n.json", "two-wheelers": tmp_path / "t.json"}
+    paths["names"].write_text(json.dumps(names))
+    paths["two-wheelers"].write_text(json.dumps(TWO_WHEELERS))
+    argv = ["build", "--run-dir", str(run_dir)]
+    for key, path in paths.items():
+        argv += [f"--{key}", str(path)]
+    if previous:
+        argv += ["--previous", str(previous)]
+    return load_script().main(argv)
+
+
+def test_a_copied_run_reuses_the_snapshots_of_the_responses_it_copied(tmp_path, capsys):
+    first = open_data.Run(tmp_path / "run")
+    open_data.fetch(
+        first,
+        UNSPLIT,
+        TWO_WHEELERS,
+        OrbaRegistries(CROSS_ON_TOP),
+        now=lambda: datetime(2026, 11, 23, tzinfo=UTC),
+    )
+    assert cli_build(tmp_path, first.root, UNSPLIT) == 0
+    earlier = json.loads((first.root / "cars.catalog-v2.json").read_text())
+    later = copy_run(first, "run-later")
+    open_data.fetch(
+        later,
+        ORBA_NAMES,
+        TWO_WHEELERS,
+        OrbaRegistries(CROSS_ON_TOP),
+        now=lambda: datetime(2026, 11, 24, tzinfo=UTC),
+    )
+
+    assert cli_build(tmp_path, later.root, ORBA_NAMES, previous=first.root) == 0, (
+        capsys.readouterr().err
+    )
+
+    fresh, _ = open_data.build_cars(later, ORBA_NAMES, previous=earlier)
+    paths = {s["id"]: s["artifact_path"] for s in fresh["snapshots"]}
+    cross = open_data.rdw_car_request(VELA_CROSS, "OV1", "A").artifact_path
+    # The copied response keeps its earlier snapshot; a response fetched later is new.
+    assert f"run/artifacts/{cross}" in paths.values()
+    assert f"run-later/artifacts/{cross}" not in paths.values()
+    assert "run-later/artifacts/eea/family-orba-vela-cross.json" in paths.values()
+    earlier_ids = {s["id"] for s in earlier["snapshots"]}
+    reused = {i for i, p in paths.items() if p.startswith("run/")}
+    assert reused and reused <= earlier_ids

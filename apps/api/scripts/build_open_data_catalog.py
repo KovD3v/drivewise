@@ -83,24 +83,29 @@ def main(argv=None) -> int:
             fetched = open_data.fetch(run, name_map, two_wheelers, http_get)
             print(f"Fetched {fetched} responses; the run holds {len(run.manifest)}.")
             return 0
-        cars, car_report = open_data.build_cars(run, name_map)
-        bikes, bike_report = open_data.build_two_wheelers(run, two_wheelers)
-        report = {"cars": car_report, "two_wheelers": bike_report}
+        earlier = {CARS: None, TWO_WHEELERS: None}
         if args.previous:
             if args.previous.resolve().parent != run.artifact_root:
                 raise open_data.OpenDataError(
                     "Keep the previous run next to the new one: evidence paths are "
                     "relative to their common folder."
                 )
+            for name in earlier:
+                if (args.previous / name).exists():
+                    earlier[name] = json.loads((args.previous / name).read_text())
+        # The previous bundles go in first: a copied response keeps its snapshot.
+        cars, car_report = open_data.build_cars(run, name_map, earlier[CARS])
+        bikes, bike_report = open_data.build_two_wheelers(
+            run, two_wheelers, earlier[TWO_WHEELERS]
+        )
+        report = {"cars": car_report, "two_wheelers": bike_report}
+        if args.previous:
             report["update"] = {}
             for label, name in (("cars", CARS), ("two_wheelers", TWO_WHEELERS)):
-                earlier = args.previous / name
-                if not earlier.exists():
+                if earlier[name] is None:
                     continue
                 fresh = cars if label == "cars" else bikes
-                merged, update = open_data.continue_bundle(
-                    json.loads(earlier.read_text()), fresh
-                )
+                merged, update = open_data.continue_bundle(earlier[name], fresh)
                 report["update"][label] = update
                 if label == "cars":
                     cars = merged

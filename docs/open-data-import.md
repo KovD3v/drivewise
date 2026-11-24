@@ -471,6 +471,9 @@ The new bundles then contain the whole history:
 - **An unchanged value** adds nothing.
 - **A value the new run cannot decide** keeps its published decision.
 - **New models and new versions** are added next to the published ones.
+- **A response copied from the published run** (same URL, retrieval time and
+  hash) keeps the snapshot it was published with, also when a new model cites
+  it; only responses fetched again get new snapshots.
 
 `report.json` lists all of this under `update`. An entry under `identity_differs`
 means the new run would describe a published vehicle or variant differently (for
