@@ -229,14 +229,17 @@ basis is `null` for v1 specs and when there is no value. Only these two
 consumptions are published from an interval; every other interval stays `null`
 here. Each fact in `GET /vehicles/{vehicle_id}/facts` keeps `value_min` and
 `value_max` and adds `published_value` and `published_basis`: the scalar the
-catalogue derives from that fact when the fact is eligible (`exact` for a point
-value, `interval_upper` for the upper end of a published consumption
-interval), or `null` when it is not. A read that needs a whole number leaves
+catalogue derives from that fact (`exact` for a point value, `interval_upper`
+for the upper end of a published consumption interval). Both are `null`
+whenever the fact has no row in `catalog_scalar_facts`, even when `eligible` is
+`true`; for example an interval that is not one of the two consumptions, or a
+non-whole value where the scalar needs a whole number. A read that needs a whole number leaves
 out a non-whole value: a displacement fact of 1399.5 cc has
 `published_value` 1399.5 here, while `powertrain.displacement_cc` in vehicle
 detail stays `null`. The same holds for `dimensions.length_mm`, `width_mm` and
-`height_mm`. For `seats`, `electric_range_km` and `co2_g_km` the whole-number
-rule is part of eligibility, so a non-whole value has no `published_value`.
+`height_mm`. For `seats`, `electric_range_km` and `co2_g_km` the scalar view
+itself needs a whole number, so a non-whole value has no `published_value`,
+although the fact can still be `eligible`.
 Each fact also names its source with `source_name`,
 `source_url` (the document), `retrieved_at`, and `source_license`, the licence
 or attribution text to show with it.
@@ -1007,7 +1010,7 @@ Model analysis rules:
 - returns only estimates selected by `analysis_scope`; `tco` includes the price reference, energy/fuel cost, maintenance, and depreciation estimates
 - requires asking price only for price or red-flag analysis, and current kilometres only for maintenance or red-flag analysis
 - returns `requested_spec_not_found` instead of silently substituting another trim when an explicit `spec_id` is unknown
-- compares asking price against available listing prices, then base price fallback
+- takes the reference price from the first available of: the mean price of eligible, fresh offers for the selected variant (or, when no offer names a variant, of the model's offers); the selected variant's list price; the model's base price; otherwise no reference price (`market_reference_price_eur: null`). `assumptions[1]` names the basis used
 - returns `estimated_costs.market_reference_list_price` only when the reference price is the variant's list price: the same block as vehicle detail's `list_price` (price-list terms, `source_name`, `source_url`, `source_license`, `observed_at`), so the amount keeps its source credit; null for any other reference and for a list price with no catalog v2 fact or no HTTPS price-list URL
 - estimates maintenance, monthly energy/fuel cost, and 3-year depreciation with deterministic MVP assumptions
 - emits rule-based red flags for above-reference asking price and high mileage for age
