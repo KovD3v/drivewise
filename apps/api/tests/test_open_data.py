@@ -209,6 +209,8 @@ class FakeRegistries:
         return json.dumps(self.rdw(url, query)).encode()
 
     def eea(self, source: dict) -> dict:
+        if "aggs" not in source:  # a split name's count; OrbaRegistries applies filters
+            return {"hits": {"total": {"value": 0, "relation": "eq"}}}
         if "Cn" in json.dumps(source["aggs"]):
             buckets = [
                 {"key": ["FIAT", "PANDA"], "doc_count": 1510},
@@ -1025,65 +1027,165 @@ def test_a_motospecdb_entry_must_fit_one_model(found, link, reason):
 # --- One EEA name shared by two models ---------------------------------------------
 
 
-def test_a_name_shared_by_two_models_is_split_by_type_approval(run):
-    split = {
-        "families": [
-            *NAMES["families"],
-            {
-                "make": "Fiat",
-                "model": "Panda Gas",
-                "eea": [
-                    {
-                        "mk": "FIAT",
-                        "names": ["PANDA"],
-                        "type_approvals": ["E3*2007/46*0064*70"],
-                    }
-                ],
-            },
-        ]
-    }
-    names = run.read(open_data.names_request())
-    before = {f["key"]: f for f in open_data.resolve_families(NAMES, names)[0]}
-    after = {f["key"]: f for f in open_data.resolve_families(split, names)[0]}
-    # Each part ranks at the name's total: the names list does not count approvals.
-    assert after["fiat-panda-gas"]["registrations"] == 1510
-    assert after["fiat-panda"]["approvals"] == {
-        ("FIAT", "PANDA"): ("except", ["E3*2007/46*0064*70"])
-    }
-    assert after["fiat-panda-gas"]["approvals"] == {
-        ("FIAT", "PANDA"): ("only", ["E3*2007/46*0064*70"])
-    }
-    # A family without a split asks EEA exactly what it asked before.
-    assert open_data.family_request(after["bmw-x1"]) == open_data.family_request(
-        before["bmw-x1"]
-    )
-    query = json.loads(
-        parse_qs(urlsplit(open_data.family_request(after["fiat-panda"]).url).query)[
-            "source"
-        ][0]
-    )["query"]
-    (clause,) = query["bool"]["filter"][-1]["bool"]["should"]
-    assert clause["bool"]["must_not"] == [{"prefix": {"TAN": "E3*2007/46*0064*70*"}}]
-    gas = json.dumps(open_data.family_request(after["fiat-panda-gas"]).url)
-    assert "prefix" in gas and "must_not" not in gas
-    # Inside a split family, shares use the exact total of its own response.
-    response = {
-        "aggregations": {
-            "g": values({})
-            | {
-                "buckets": [
-                    {
-                        "key": ["lpg", "B"],
-                        "doc_count": 300,
-                        "v": {"buckets": [{**PANDA_LPG, "key": PANDA_LPG["key"][2:]}]},
-                    }
-                ]
-            }
+def matches(doc: dict, query: dict) -> bool:
+    """The few Elasticsearch filters the builder sends, applied to one record."""
+    if "bool" in query:
+        clause = query["bool"]
+        should = clause.get("should", [])
+        return (
+            all(matches(doc, q) for q in clause.get("filter", []))
+            and not any(matches(doc, q) for q in clause.get("must_not", []))
+            and (
+                not should
+                or sum(matches(doc, q) for q in should)
+                >= clause.get("minimum_should_match", 1)
+            )
+        )
+    ((kind, body),) = query.items()
+    ((field, wanted),) = body.items()
+    value = doc.get(field)
+    if kind == "term":
+        return value == wanted
+    if kind == "terms":
+        return value in wanted
+    assert kind == "prefix"
+    return value is not None and value.startswith(wanted)
+
+
+def orba(name, tan, fuel, mode, n):
+    """Invented registrations: n Italian cars of one version, mode None when unset."""
+    doc = {"MS": "IT", "year": open_data.EEA_YEAR, "Status": open_data.EEA_STATUS}
+    doc |= {"Mk": "ORBA", "Cn": name, "TAN": tan, "Va": "OV1", "Ve": "A"}
+    doc |= {"Ft": fuel, "n": n, "m__kg_": 1300}
+    return doc | ({"Fm": mode} if mode else {})
+
+
+VELA = "E9*2018/858*00700*03"
+VELA_CROSS = "E9*2018/858*00710*01"
+ORBA_DOCS = [
+    orba("VELA", VELA, "petrol", "M", 47),
+    orba("VELA", VELA, "diesel", "M", 3),
+    # Registrations without a fuel mode belong to the model but to no powertrain.
+    orba("VELA", VELA, "petrol", None, 50),
+    orba("VELA", VELA_CROSS, "petrol", "M", 1),
+    orba("NOVA", "E9*2018/858*00720*02", "petrol", "M", 90),
+]
+ORBA_NAMES = {
+    "families": [
+        {"make": "Orba", "model": "Vela", "eea": [{"mk": "ORBA", "names": ["VELA"]}]},
+        {
+            "make": "Orba",
+            "model": "Vela Cross",
+            "eea": [
+                {
+                    "mk": "ORBA",
+                    "names": ["VELA"],
+                    "type_approvals": ["E9*2018/858*00710"],
+                }
+            ],
+        },
+        {"make": "Orba", "model": "Nova", "eea": [{"mk": "ORBA", "names": ["NOVA"]}]},
+    ]
+}
+
+
+class OrbaRegistries(FakeRegistries):
+    """An EEA that answers from invented records, applying the query's filter."""
+
+    def eea(self, source: dict) -> dict:
+        docs = [d for d in ORBA_DOCS if matches(d, source["query"])]
+        answer = {
+            "hits": {"total": {"value": sum(d["n"] for d in docs), "relation": "eq"}}
         }
-    }
-    family = after["fiat-panda-gas"]
-    kept, _ = open_data.powertrain_groups(family, response)
-    assert family["registrations"] == 300 and len(kept) == 1
+        aggs = source.get("aggs", {})
+
+        def buckets(fields, rows):
+            grouped: dict[tuple, list] = {}
+            for d in rows:
+                if all(d.get(f) is not None for f in fields):
+                    grouped.setdefault(tuple(d[f] for f in fields), []).append(d)
+            return grouped
+
+        if "v" in aggs:
+            answer["aggregations"] = {
+                "v": {
+                    "buckets": [
+                        {"key": list(k), "doc_count": sum(d["n"] for d in rows)}
+                        for k, rows in buckets(("Mk", "Cn"), docs).items()
+                    ]
+                }
+            }
+        elif "g" in aggs:
+            groups = []
+            for key, rows in buckets(("Ft", "Fm"), docs).items():
+                versions = [
+                    version(
+                        list(v),
+                        sum(d["n"] for d in vrows),
+                        mass=values({1300: sum(d["n"] for d in vrows)}),
+                    )
+                    for v, vrows in buckets(("TAN", "Va", "Ve"), rows).items()
+                ]
+                groups.append(
+                    {
+                        "key": list(key),
+                        "doc_count": sum(d["n"] for d in rows),
+                        "v": {"buckets": versions},
+                    }
+                )
+            answer["aggregations"] = {"g": values({}) | {"buckets": groups}}
+        return answer
+
+
+def test_a_name_shared_by_two_models_is_split_by_type_approval(tmp_path, monkeypatch):
+    monkeypatch.setattr(open_data, "TOP_FAMILIES", 2)
+    run = open_data.Run(tmp_path / "run")
+    open_data.fetch(run, ORBA_NAMES, TWO_WHEELERS, OrbaRegistries())
+    bundle, report = open_data.build_cars(run, ORBA_NAMES)
+    # Each part is ranked at its own exact count, so the one-car Vela Cross does not
+    # push the 90-car Nova out of the list.
+    registrations = {f["key"]: f["registrations"] for f in report["families"]}
+    assert registrations == {"it-orba-vela": 100, "it-orba-nova": 90}
+    (vela,) = [f for f in report["families"] if f["key"] == "it-orba-vela"]
+    # The share counts registrations without a fuel mode: diesel is 3 of 100.
+    assert [
+        (v["fuel"], v["registrations_of_powertrain"]) for v in vela["variants"]
+    ] == [("petrol", 47)]
+    assert vela["skipped_powertrains"] == [
+        {
+            "fuel": "diesel",
+            "mode": "M",
+            "registrations": 3,
+            "reason": "below_share_threshold",
+        }
+    ]
+    # Only the Vela approval is in the Vela model.
+    (variant,) = [v for v in bundle["variants"] if v["vehicle_key"] == "it-orba-vela"]
+    assert variant["external_references"][0]["value"] == VELA
+
+    monkeypatch.setattr(open_data, "TOP_FAMILIES", 3)
+    open_data.fetch(run, ORBA_NAMES, TWO_WHEELERS, OrbaRegistries())
+    bundle, report = open_data.build_cars(run, ORBA_NAMES)
+    (cross,) = [f for f in report["families"] if f["key"] == "it-orba-vela-cross"]
+    assert cross["registrations"] == 1
+    (variant,) = [
+        v for v in bundle["variants"] if v["vehicle_key"] == "it-orba-vela-cross"
+    ]
+    assert variant["external_references"][0]["value"] == VELA_CROSS
+
+    # A family without a split asks EEA exactly what it asked before.
+    names = run.read(open_data.names_request())
+    plain = {"families": [ORBA_NAMES["families"][2]]}
+    (nova,) = open_data.resolve_families(plain, names)[0]
+    assert open_data.family_request(nova) == open_data.family_request(
+        next(
+            f
+            for f in open_data.resolve_families(
+                ORBA_NAMES, names, open_data.partition_counter(run)
+            )[0]
+            if f["key"] == "orba-nova"
+        )
+    )
     with pytest.raises(open_data.OpenDataError, match="exact names only"):
         open_data.resolve_families(
             {
@@ -1098,6 +1200,11 @@ def test_a_name_shared_by_two_models_is_split_by_type_approval(run):
                 ]
             },
             names,
+        )
+    # An approximate count is never used as a total.
+    with pytest.raises(open_data.OpenDataError, match="exact"):
+        open_data.partition_total(
+            {"hits": {"total": {"value": 10000, "relation": "gte"}}}
         )
 
 

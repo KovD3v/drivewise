@@ -258,6 +258,47 @@ def _approval_prefixes(approvals: list[str]) -> list[dict]:
     return [{"prefix": {"TAN": f"{approval}*"}} for approval in sorted(approvals)]
 
 
+def _name_part(make: str, name: str, part: tuple) -> dict:
+    """The registrations of one commercial name that belong to one model of a split."""
+    kind, approvals = part
+    clause = {"filter": [{"term": {"Mk": make}}, {"term": {"Cn": name}}]}
+    if kind == "only":
+        clause["filter"].append(
+            {
+                "bool": {
+                    "should": _approval_prefixes(approvals),
+                    "minimum_should_match": 1,
+                }
+            }
+        )
+    else:
+        clause["must_not"] = _approval_prefixes(approvals)
+    return {"bool": clause}
+
+
+def partition_request(make: str, name: str, part: tuple) -> Request:
+    """The exact number of registrations of one part of a split name.
+
+    The names list counts the whole name, so each part is counted before ranking."""
+    kind, approvals = part
+    source = {
+        "size": 0,
+        "track_total_hits": True,
+        "query": {"bool": {"filter": [*_eea_filter(), _name_part(make, name, part)]}},
+    }
+    label = slug(f"{make}-{name}-{kind}")
+    return Request(
+        f"eea/partition-{label}-{_short('|'.join(approvals))}.json", _eea_url(source)
+    )
+
+
+def partition_total(response: dict) -> int:
+    total = response["hits"]["total"]
+    if total["relation"] != "eq":
+        raise OpenDataError("EEA did not return an exact registration count.")
+    return int(total["value"])
+
+
 def family_request(family: dict) -> Request:
     by_make: dict[str, list[str]] = {}
     split = family.get("approvals", {})
@@ -269,20 +310,8 @@ def family_request(family: dict) -> Request:
         for make, names in sorted(by_make.items())
     ]
     # A name shared by two models is split by type approval (see resolve_families).
-    for (make, name), (kind, approvals) in sorted(split.items()):
-        clause = {"filter": [{"term": {"Mk": make}}, {"term": {"Cn": name}}]}
-        if kind == "only":
-            clause["filter"].append(
-                {
-                    "bool": {
-                        "should": _approval_prefixes(approvals),
-                        "minimum_should_match": 1,
-                    }
-                }
-            )
-        else:
-            clause["must_not"] = _approval_prefixes(approvals)
-        should.append({"bool": clause})
+    for (make, name), part in sorted(split.items()):
+        should.append(_name_part(make, name, part))
     source = {
         "size": 0,
         "query": {
@@ -604,15 +633,17 @@ class Run:
 
 
 def resolve_families(
-    name_map: dict, names_response: dict
+    name_map: dict,
+    names_response: dict,
+    count: Callable[[Request], int | None] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Map EEA (make, commercial name) pairs to hand-reviewed families.
 
     A rule with `type_approvals` takes only the registrations under those approval
     numbers: EEA and RDW both call the Corolla Cross "TOYOTA COROLLA". The family
     holding the same name without that list then takes the other approvals. The
-    names list does not count approvals, so each part of a split name is ranked at
-    the name's total; powertrain_groups uses the exact total of its own response.
+    names list does not count approvals, so `count` gives the exact registrations
+    of each part of a split name (see partition_request) before ranking.
 
     Returns the top families by registrations and every unmapped name."""
     exact: dict[tuple, dict] = {}
@@ -658,6 +689,14 @@ def resolve_families(
             )
             continue
         for target, approvals in parts:
+            registrations = bucket["doc_count"]
+            if approvals:
+                request = partition_request(make, name, approvals)
+                registrations = count(request) if count else None
+                if registrations is None:
+                    raise OpenDataError(
+                        f"Missing count {request.artifact_path}; fetch first."
+                    )
             key = slug(f"{target['make']}-{target['model']}")
             total = totals.setdefault(
                 key,
@@ -669,12 +708,31 @@ def resolve_families(
                     "names": [],
                 },
             )
-            total["registrations"] += bucket["doc_count"]
+            total["registrations"] += registrations
             total["names"].append((make, name))
             if approvals:
                 total.setdefault("approvals", {})[(make, name)] = approvals
     ranked = sorted(totals.values(), key=lambda f: (-f["registrations"], f["key"]))
     return ranked[:TOP_FAMILIES], unmapped
+
+
+def partition_counter(run: "Run") -> Callable[[Request], int | None]:
+    """Counts of split names from the run's stored responses; None when not stored."""
+    return lambda request: (
+        partition_total(run.read(request)) if run.has(request) else None
+    )
+
+
+def missing_partitions(run: "Run", name_map: dict) -> list[Request]:
+    missing = []
+
+    def count(request: Request) -> int:
+        if not run.has(request):
+            missing.append(request)
+        return 0
+
+    resolve_families(name_map, run.read(names_request()), count)
+    return missing
 
 
 FUELS = {
@@ -695,9 +753,6 @@ def powertrain_groups(family: dict, response: dict) -> tuple[list[dict], list[di
     groups = response["aggregations"]["g"]
     if groups["sum_other_doc_count"] or groups["doc_count_error_upper_bound"]:
         raise OpenDataError(f"EEA lists too many powertrains for {family['key']}.")
-    if family.get("approvals"):
-        # A split name: its ranking total covers both models, this response one.
-        family["registrations"] = sum(group["doc_count"] for group in groups["buckets"])
     skipped, kept = [], []
     for group in groups["buckets"]:
         fuel, mode = group["key"]
@@ -832,13 +887,19 @@ def plan_two_wheeler(run: Run, entry: dict) -> tuple[dict | None, list[Request]]
     return {"version": top, "requests": requests}, missing
 
 
+def _families(run: Run, name_map: dict) -> tuple[list[dict], list[dict]]:
+    return resolve_families(name_map, run.read(names_request()), partition_counter(run))
+
+
 def plan(run: Run, name_map: dict, two_wheelers: dict) -> Iterator[Request]:
     """Yield every request still missing, given what the run already holds."""
     names = names_request()
     if not run.has(names):
         yield names
     else:
-        families, _ = resolve_families(name_map, run.read(names))
+        missing = missing_partitions(run, name_map)
+        yield from missing
+        families, _ = ([], []) if missing else _families(run, name_map)
         for family in families:
             request = family_request(family)
             if not run.has(request):
@@ -1165,7 +1226,7 @@ def _shown(counts: dict[Decimal, int]) -> dict[str, int]:
 
 def build_cars(run: Run, name_map: dict) -> tuple[dict | None, dict]:
     bundle = _Bundle(run)
-    families, unmapped = resolve_families(name_map, run.read(names_request()))
+    families, unmapped = _families(run, name_map)
     report = {"families": [], "unmapped_names": unmapped}
     for family in families:
         request = family_request(family)

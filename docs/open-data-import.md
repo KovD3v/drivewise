@@ -113,8 +113,12 @@ continues the earlier bundle.
    A rule may then list `type_approvals` (approval numbers without the revision,
    for example `E6*2018/858*00186`, the Corolla Cross). That model takes only
    those approvals; the rule without the list keeps the rest. The names list
-   does not count approvals, so each part enters the top 100 at the name's
-   total, and its powertrain shares use the exact total of its own response.
+   does not count approvals, so before ranking the builder asks EEA for the
+   exact number of registrations of each part (`eea/partition-*.json`, an exact
+   document count; an approximate count stops the build). That number ranks the
+   part and is the denominator of its powertrain shares, so registrations
+   without a fuel or fuel mode still count. A model without a split is asked
+   exactly what it was asked before.
 2. **Top 100.** Models are ranked by 2024 Italian registrations after the mapping.
    The first 100 are imported (1,345,260 registrations, 86% of the year).
 3. **Powertrains.** Inside a model, EEA counts the registrations per fuel and fuel
@@ -418,17 +422,19 @@ body style is credited to the RDW body-style response.
 The first run's `Toyota Corolla` is a Corolla Cross: its best-selling version
 (approval `E6*2018/858*00186`, ZVG13, 4,460 mm) belongs to the Corolla Cross,
 because Italy and RDW both register it as `TOYOTA COROLLA`. The name table now
-splits the name by approval (see "How cars are chosen"). The split needs two new
-EEA family responses (`eea/family-toyota-corolla.json` and
-`eea/family-toyota-corolla-cross.json`), so it waits for the EEA API, and the
-second run was built with the earlier table. When it is applied:
+splits the name by approval (see "How cars are chosen"). The split needs two
+partition counts and two new EEA family responses
+(`eea/family-toyota-corolla.json` and `eea/family-toyota-corolla-cross.json`), so
+it waits for the EEA API, and the second run was built with the earlier table.
+When it is applied:
 
 - the Corolla Cross becomes a new vehicle, and the published `it-toyota-corolla`
   keeps its Corolla Cross identity and values: `--previous` keeps a published
   identity and lists the difference under `identity_differs`, so retiring or
   correcting it needs a reviewed decision;
-- each model enters the ranking at the name's 8,591 registrations, so EVO 5
-  (the 100th model today) leaves the top 100 and DS 7 becomes the 100th;
+- each model enters the ranking at its own exact count, which is not known yet
+  (the name has 8,591 registrations in all), so which model becomes the 100th is
+  decided only by the run that fetches the counts;
 - fetch into a new run folder: a run that holds the unsplit Corolla response
   refuses to build (`Missing or outdated artifact eea/family-toyota-corolla.json;
   fetch first.`) until both new responses are stored.
