@@ -97,3 +97,50 @@ The product must label them as mock data until reviewed sources replace them.
 The retired `decision_engine/` package is not a compatibility runtime. Its
 reports are historical snapshots and its calibration JSON is non-runtime
 dataset material. API and Guided Decision use `advisor-v3.0`.
+
+## ADR-013: The Advisor evaluates models and offers
+
+**Status:** Accepted (2026-11-24)
+
+The Advisor ranks exact vehicle variants. A variant with no eligible offer is
+evaluated as a new vehicle at its list price. An eligible offer adds its own
+price, mileage, condition, and freshness to the same evaluation. Offers still
+enter ranking only from sources with written authorization, so the product
+must recommend models while no such source exists.
+
+## ADR-014: Each vehicle type has its own Advisor module
+
+**Status:** Accepted (2026-11-24)
+
+Cars, motorcycles, and scooters are evaluated by separate Advisor modules,
+each with its own questions, required facts, and formulas, behind the same API
+boundary. A vehicle type without a module is shown as a catalogue without a
+score.
+
+## ADR-015: Manufacturer documents supply list price and cargo volume
+
+**Status:** Accepted (2026-11-24)
+
+No open source publishes Italian list prices or cargo volumes. These values
+come from the manufacturers' public price lists and technical sheets. Each
+value keeps the link to its document, and the source passes the source review
+before it affects ranking. The first group is the twelve cars of the current
+public site.
+
+## ADR-016: Two-wheel modules score measurable facts only
+
+**Status:** Accepted (2026-11-24)
+
+The motorcycle and scooter modules score facts that a source measures or
+states, such as price, seat height, weight, under-seat storage, displacement,
+and power. Hand-written 0–100 indices do not enter ranking until a reviewed
+source measures them. The car module already follows this rule.
+
+## ADR-017: The public domain moves when the car module recommends cars
+
+**Status:** Accepted (2026-11-24)
+
+The public domain moves to this build when the car module recommends the
+first twelve cars in production. Until their modules exist, motorcycles and
+scooters are shown without a score. The web app gets no local scoring bridge,
+because ADR-008 keeps ranking in the API.
