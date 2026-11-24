@@ -11,6 +11,9 @@ RENAMED_MIGRATIONS = {
     "0006_catalog_publication.sql": "0009_catalog_publication.sql",
     "0005_catalog_evidence.sql": "0008_catalog_evidence.sql",
 }
+# Serialises concurrent runners (two deploys at once). Any fixed bigint works, as
+# long as nothing else in the database takes the same advisory lock.
+MIGRATION_LOCK_KEY = 0x44726976_65576973  # "DriveWis"
 
 
 @dataclass(frozen=True)
@@ -57,6 +60,10 @@ def run_migrations(database_url: str | None = None) -> MigrationRun:
     already_applied: list[str] = []
 
     with psycopg.connect(database_url or settings.database_url) as conn:
+        # The whole run is one transaction (each migration is a savepoint inside it),
+        # so this lock holds until the final commit. A second runner waits here and
+        # then reads the ledger the first one committed: no migration runs twice.
+        conn.execute("SELECT pg_advisory_xact_lock(%s)", (MIGRATION_LOCK_KEY,))
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS drivewise_schema_migrations (

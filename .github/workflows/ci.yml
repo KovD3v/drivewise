@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+# The jobs only read the repository; no step needs to write to it.
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Backend
@@ -68,6 +72,9 @@ jobs:
         run: bun run typecheck:web
 
       - name: Build
+        # The production browser bundle calls the API on the same origin (vercel.json).
+        env:
+          VITE_API_BASE_URL: /api
         run: bun run build:web
 
       - name: Set up uv

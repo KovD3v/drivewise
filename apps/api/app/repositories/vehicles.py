@@ -19,6 +19,16 @@ PROFILE_PROVENANCE_FIELDS = (
 )
 
 
+# User text is matched literally: a "%" or "_" it contains is not a wildcard.
+LIKE_ESCAPE = "ESCAPE '\\'"
+
+
+def contains_pattern(text: str) -> str:
+    """An ILIKE pattern matching `text` anywhere, used with LIKE_ESCAPE."""
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 def _profile_provenance(row: dict[str, Any]) -> dict[str, Any]:
     return {field: row[field] for field in PROFILE_PROVENANCE_FIELDS}
 
@@ -39,18 +49,6 @@ TWO_WHEEL_METRICS = {
     "underseat_storage_liters": "underseat_storage_liters",
 }
 
-
-# Catalog v2 metric -> legacy detail field with the same meaning, as whole numbers.
-# Mass is absent on purpose: mass in running order is not curb weight.
-DETAIL_METRICS = {
-    "engine_displacement_cc": "displacement_cc",
-    "length_mm": "length_mm",
-    "body_width_mm": "width_mm",
-    "height_mm": "height_mm",
-}
-# power_kw is the power of the whole vehicle. An engine's power says that only
-# when the engine is the one motor.
-POWER_METRICS = ("system_power_kw", "engine_power_kw")
 
 
 def _feature_response(row: dict[str, Any]) -> dict[str, Any]:
@@ -75,11 +73,11 @@ class VehiclesRepository:
         params: list[object] = []
 
         if filters.make:
-            where_clauses.append("v.make ILIKE %s")
-            params.append(f"%{filters.make}%")
+            where_clauses.append(f"v.make ILIKE %s {LIKE_ESCAPE}")
+            params.append(contains_pattern(filters.make))
         if filters.model:
-            where_clauses.append("v.model ILIKE %s")
-            params.append(f"%{filters.model}%")
+            where_clauses.append(f"v.model ILIKE %s {LIKE_ESCAPE}")
+            params.append(contains_pattern(filters.model))
         if filters.fuel_type:
             variant_clauses.append("candidate.fuel_type = %s")
             params.append(filters.fuel_type)
@@ -195,7 +193,6 @@ class VehiclesRepository:
               curb_weight_kg,
               gross_weight_kg,
               payload_kg,
-              engine_code,
               displacement_cc,
               cylinders,
               power_kw,
@@ -216,35 +213,23 @@ class VehiclesRepository:
         ).fetchall()
 
         spec_ids = [spec["id"] for spec in specs]
+        # v2 dimensions, displacement and power come from catalog_read_specs
+        # (migration 0015), the same view the Advisor reads. Two-wheel fields are
+        # read here because only the detail page shows them.
         two_wheel_by_spec: dict[UUID, dict[str, Any]] = {}
-        # v2 rows have no legacy columns: these fields come from their facts.
-        facts_by_spec: dict[UUID, dict[str, Any]] = {}
-        powertrains = {spec["id"]: spec["powertrain_type"] for spec in specs}
-        fact_metrics = [*DETAIL_METRICS, *POWER_METRICS]
         if vehicle["vehicle_type"] in TWO_WHEEL_TYPES:
-            fact_metrics += list(TWO_WHEEL_METRICS)
-        # The scalar view already keeps only eligible, single-context point values.
-        for row in self.conn.execute(
-            """
-            SELECT spec_id, metric, value_min
-            FROM catalog_scalar_facts
-            WHERE spec_id = ANY(%s) AND metric = ANY(%s)
-              AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
-              AND (metric <> ALL(%s) OR value_min = trunc(value_min))
-            """,
-            (spec_ids, fact_metrics, list(DETAIL_METRICS)),
-        ).fetchall():
-            metric, facts = row["metric"], facts_by_spec.setdefault(row["spec_id"], {})
-            if metric in DETAIL_METRICS:
-                facts[DETAIL_METRICS[metric]] = int(row["value_min"])
-            elif metric == "system_power_kw":
-                facts["power_kw"] = row["value_min"]
-            elif metric == "engine_power_kw":
-                if powertrains[row["spec_id"]] == "ICE":
-                    facts.setdefault("power_kw", row["value_min"])
-            else:
+            # The scalar view keeps only eligible, single-context point values.
+            for row in self.conn.execute(
+                """
+                SELECT spec_id, metric, value_min
+                FROM catalog_scalar_facts
+                WHERE spec_id = ANY(%s) AND metric = ANY(%s)
+                  AND (metric <> 'mass_kg' OR context->>'method' = 'wet')
+                """,
+                (spec_ids, list(TWO_WHEEL_METRICS)),
+            ).fetchall():
                 two_wheel_by_spec.setdefault(row["spec_id"], {})[
-                    TWO_WHEEL_METRICS[metric]
+                    TWO_WHEEL_METRICS[row["metric"]]
                 ] = row["value_min"]
         maintenance_by_spec = _group_by_spec_id(
             list(
@@ -512,11 +497,6 @@ class VehiclesRepository:
 
         specs_with_provenance = []
         for spec in specs:
-            facts = facts_by_spec.get(spec["id"], {})
-
-            def from_fact(field: str, spec=spec, facts=facts):
-                return spec[field] if spec[field] is not None else facts.get(field)
-
             maintenance = maintenance_by_spec.get(spec["id"], [])
             ratings = safety_ratings_by_spec.get(spec["id"], [])
             features = features_by_spec.get(spec["id"], [])
@@ -547,9 +527,9 @@ class VehiclesRepository:
                     "doors": spec["doors"],
                 },
                 "dimensions": {
-                    "length_mm": from_fact("length_mm"),
-                    "width_mm": from_fact("width_mm"),
-                    "height_mm": from_fact("height_mm"),
+                    "length_mm": spec["length_mm"],
+                    "width_mm": spec["width_mm"],
+                    "height_mm": spec["height_mm"],
                     "wheelbase_mm": spec["wheelbase_mm"],
                     "curb_weight_kg": spec["curb_weight_kg"],
                     "gross_weight_kg": spec["gross_weight_kg"],
@@ -560,10 +540,10 @@ class VehiclesRepository:
                 "powertrain": {
                     "engine_description": spec["engine"],
                     "engine_code": spec["engine_code"],
-                    "displacement_cc": from_fact("displacement_cc"),
+                    "displacement_cc": spec["displacement_cc"],
                     "cylinders": spec["cylinders"],
                     "horsepower": spec["horsepower"],
-                    "power_kw": from_fact("power_kw"),
+                    "power_kw": spec["power_kw"],
                     "torque_nm": spec["torque_nm"],
                     "fuel_type": spec["fuel_type"],
                     "battery_total_kwh": spec["battery_kwh"],
@@ -681,6 +661,14 @@ class VehiclesRepository:
             "provenance": list(vehicle_provenance),
         }
 
+    def vehicle_exists(self, vehicle_id: UUID) -> bool:
+        return (
+            self.conn.execute(
+                "SELECT 1 FROM vehicles WHERE id = %s", (vehicle_id,)
+            ).fetchone()
+            is not None
+        )
+
     def list_facts(self, vehicle_id: UUID) -> list[dict[str, Any]]:
         return list(self.conn.execute(
             """SELECT f.*, s.variant_key,
@@ -732,6 +720,8 @@ class VehiclesRepository:
                   s.battery_kwh,
                   s.energy_consumption_kwh_100km,
                   s.consumption_l_100km,
+                  s.consumption_l_100km_basis,
+                  s.energy_consumption_kwh_100km_basis,
                   s.wltp_range_km,
                   s.co2_g_km,
                   s.euro_emission_standard,
