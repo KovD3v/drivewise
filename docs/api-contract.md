@@ -829,7 +829,15 @@ candidate only when it is a catalog v2 car spec and its list price is a
 current fact whose evidence and identity come from permitted, sourced and
 licensed sources; otherwise it is counted under `missing_list_price`, or under
 `source_not_permitted` when a list price exists but its source is not
-permitted. Price, model-family identity, body, fuel, seats,
+permitted.
+
+`excluded_counts_by_reason` counts rejected alternatives, not distinct
+vehicles. Each offer is one alternative, and each Italian catalog v2 car variant without an
+eligible offer is one more: its list price. A variant whose only offer is stale
+and that has no list price therefore adds one to `stale_offer` and one to
+`missing_list_price`. Do not add the counts up as a number of vehicles.
+
+Price, model-family identity, body, fuel, seats,
 cargo, and powertrain consumption evidence are required. Used/certified offers
 also require mileage. Recognized powertrains are assessed or marked
 `insufficient_data`; PHEVs and highway EVs are not blanket exclusions. The

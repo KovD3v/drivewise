@@ -1045,3 +1045,25 @@ def test_plug_in_fuel_migration_lets_a_later_bundle_match(conn, tmp_path):
     ).fetchone()["writer"] != "v2"
     publish(conn, later, tmp_path)
 
+
+def test_exclusion_counts_count_alternatives_not_vehicles(conn, tmp_path):
+    """One variant with only a stale offer and no list price lands in two reasons."""
+    data = bundle(tmp_path)
+    data["sources"][0]["ranking_permission"] = "permitted"
+    data["snapshots"][0]["evidence_kind"] = "sourced"
+    publish(conn, data, tmp_path)
+    spec = conn.execute(
+        "SELECT * FROM vehicle_specs WHERE variant_key = 'metro-g1-ice'"
+    ).fetchone()
+    repo = AdvisorRepository(conn)
+    before = repo.count_excluded_candidates()
+    insert_offer(conn, spec, age_days=40)
+    after = repo.count_excluded_candidates()
+    assert after.get("stale_offer", 0) == before.get("stale_offer", 0) + 1
+    # The same variant still counts once for its missing list price: every v2 car
+    # variant of the fixture lacks one, this one included.
+    v2_cars = conn.execute(
+        """SELECT count(*) AS n FROM vehicle_specs s JOIN vehicles v ON v.id = s.vehicle_id
+           WHERE s.catalog_version = 2 AND v.vehicle_type = 'car'"""
+    ).fetchone()["n"]
+    assert after["missing_list_price"] == before["missing_list_price"] == v2_cars
