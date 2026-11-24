@@ -18,7 +18,7 @@ from app.ingestion.catalog_v2_writer import publish_catalog_v2, stage_catalog_v2
 from app.repositories.advisor import AdvisorRepository
 from app.repositories.vehicles import VehiclesRepository
 from app.schemas.advisor import AdvisorRecommendationRequest
-from app.schemas.vehicles import VehicleDetail
+from app.schemas.vehicles import CatalogFact, VehicleDetail
 from app.services.advisor.scoring import build_recommendations
 from tests.test_catalog_v2_publication import conn  # noqa: F401  (fixture)
 
@@ -205,19 +205,19 @@ def readiness_bundle(tmp_path, *, body_style="hatchback"):
         list_price=_terms(printed_amount_eur="23450.00", printed_basis="incl_vat"),
     )
     _fact(
-        data, "tavo-electric", "list_price_eur", "30500.00",  # 25,000.00 x 1.22
+        data, "tavo-electric", "list_price_eur", "30500.00",  # 31,720.00 - 1,000.00 x 1.22
         list_price=_terms(
-            printed_amount_eur="25000.00", printed_basis="excl_vat", vat_rate_percent="22"
+            printed_amount_eur="31720.00",
+            printed_basis="turnkey",
+            on_road_charge_eur="1000.00",
+            on_road_charge_includes_vat=False,
+            vat_rate_percent="22",
         ),
     )
     _fact(
-        data, "strada-700", "list_price_eur", "9150.00",  # 9,760.00 - 500.00 x 1.22
+        data, "strada-700", "list_price_eur", "9150.00",  # 7,500.00 x 1.22
         list_price=_terms(
-            printed_amount_eur="9760.00",
-            printed_basis="turnkey",
-            on_road_charge_eur="500.00",
-            on_road_charge_includes_vat=False,
-            vat_rate_percent="22",
+            printed_amount_eur="7500.00", printed_basis="excl_vat", vat_rate_percent="22"
         ),
     )
     _fact(
@@ -363,6 +363,12 @@ def test_a_synthetic_bundle_is_published_only_once_its_sources_are_permitted(
         petrol["consumption_l_100km"],
         "interval_upper",
     )
+    # The facts response model carries the same pair.
+    published = CatalogFact.model_validate(consumption)
+    assert (published.published_value, published.published_basis) == (
+        5.9,
+        "interval_upper",
+    )
     assert facts[("tavo-petrol", "co2_g_km")]["published_value"] is None
     assert facts[("tavo-petrol", "seats")]["published_basis"] == "exact"
 
@@ -374,9 +380,6 @@ def test_a_synthetic_bundle_is_published_only_once_its_sources_are_permitted(
     assert (
         by_variant["tavo-petrol"]["spec"]["consumption_l_100km_basis"]
         == "interval_upper"
-    )
-    assert by_variant["tavo-electric"]["list_price"]["derivation"] == (
-        "computed_from_excl_vat"
     )
     # Ranking keeps one variant per model family, so each is scored on its own.
     request = AdvisorRecommendationRequest(budget_max_eur=35000, primary_use="family")
@@ -391,6 +394,18 @@ def test_a_synthetic_bundle_is_published_only_once_its_sources_are_permitted(
     petrol_item = items["tavo-petrol"][0]
     assert petrol_item.selected_spec.consumption_l_100km_basis == "interval_upper"
     assert petrol_item.list_price.derivation == "printed"
+    # A turnkey-only row reaches the response model with its printed terms.
+    turnkey = items["tavo-electric"][0].list_price
+    assert (
+        turnkey.price_eur,
+        turnkey.derivation,
+        turnkey.printed_basis,
+        turnkey.printed_amount_eur,
+        turnkey.on_road_charge_eur,
+        turnkey.on_road_charge_includes_vat,
+        turnkey.vat_rate_percent,
+        turnkey.computed_from_excl_vat,
+    ) == (30500.0, "computed_from_turnkey", "turnkey", 31720.0, 1000.0, False, 22.0, False)
 
 
 def test_a_later_bundle_fills_an_unknown_body_style_with_its_evidence(
