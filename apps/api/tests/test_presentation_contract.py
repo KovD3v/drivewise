@@ -217,6 +217,22 @@ def test_vehicle_detail_credits_identity_before_ranking_permission(conn, tmp_pat
         }
 
 
+def test_vehicle_detail_gives_no_credit_for_an_unknown_fuel(conn, tmp_path):  # noqa: F811
+    data = readiness_bundle(tmp_path)
+    petrol = next(v for v in data["variants"] if v["variant_key"] == "tavo-petrol")
+    petrol["fuel"] = None
+    assert publish(conn, data, tmp_path) == "published"
+    app.dependency_overrides[get_connection] = lambda: conn
+    try:
+        response = TestClient(app).get(f"/vehicles/{_car(conn)}")
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200, response.text
+    spec = next(s for s in response.json()["specs"] if s["variant_key"] == "tavo-petrol")
+    assert spec["fuel_type"] is None
+    assert {m for e in spec["provenance"] for m in e["supported_metrics"]} == {"body_style"}
+
+
 def test_model_analysis_leaves_out_a_list_price_it_cannot_cite(conn, tmp_path):  # noqa: F811
     data = _with_http_mirror(readiness_bundle(tmp_path), tmp_path)
     for observation in data["observations"]:

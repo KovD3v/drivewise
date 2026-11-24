@@ -446,6 +446,7 @@ class VehiclesRepository:
               -- their credit is too.
               SELECT spec.id, spec.identity_evidence[1], 'fuel_type'
               FROM vehicle_specs spec
+              WHERE spec.fuel_type IS NOT NULL
               UNION ALL
               -- Body style belongs to the vehicle: the snapshot that states it is
               -- the last of the vehicle's identity evidence (migration 0014).
