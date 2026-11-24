@@ -55,6 +55,13 @@ _BROKEN_SQL_TERMS = [
     {**LIST_PRICE_TERMS, "printed_basis": "turnkey"},
     {**TURNKEY_TERMS, "on_road_charge_includes_vat": "yes"},
     {**TURNKEY_TERMS, "vat_rate_percent": None},
+    # Half of the on-road pair on a price that is not turnkey.
+    {**LIST_PRICE_TERMS, "on_road_charge_eur": "10.00"},
+    {**LIST_PRICE_TERMS, "on_road_charge_includes_vat": True},
+    # PostgreSQL reads 0x64 as 100; the API cannot parse it.
+    {**LIST_PRICE_TERMS, "printed_amount_eur": "0x64"},
+    {**TURNKEY_TERMS, "vat_rate_percent": "0x16"},
+    {**TURNKEY_TERMS, "on_road_charge_eur": "0x3E8"},
     ["not", "an", "object"],
 ]
 # (terms, VAT-inclusive value) pairs a direct INSERT accepts.

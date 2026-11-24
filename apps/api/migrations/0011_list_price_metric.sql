@@ -65,7 +65,11 @@ BEGIN
      OR jsonb_typeof(terms->'printed_amount_eur') NOT IN ('string', 'number')
      OR coalesce(jsonb_typeof(terms->'vat_rate_percent'), 'null') NOT IN ('string', 'number', 'null')
      OR coalesce(jsonb_typeof(terms->'on_road_charge_eur'), 'null') NOT IN ('string', 'number', 'null')
-     OR coalesce(jsonb_typeof(terms->'on_road_charge_includes_vat'), 'null') NOT IN ('boolean', 'null') THEN
+     OR coalesce(jsonb_typeof(terms->'on_road_charge_includes_vat'), 'null') NOT IN ('boolean', 'null')
+     -- Plain decimals only: PostgreSQL would also read 0x64, which the API cannot parse.
+     OR terms->>'printed_amount_eur' !~ '^[0-9]+(\.[0-9]+)?$'
+     OR coalesce(terms->>'vat_rate_percent', '0') !~ '^[0-9]+(\.[0-9]+)?$'
+     OR coalesce(terms->>'on_road_charge_eur', '0') !~ '^[0-9]+(\.[0-9]+)?$' THEN
     RETURN false;
   END IF;
   -- A calendar date: 2026-02-30 raises here and returns false below.
@@ -76,7 +80,8 @@ BEGIN
   charge_with_vat := (terms->>'on_road_charge_includes_vat')::boolean;
   -- NaN sorts above every number and Infinity is not below the limit.
   IF NOT (printed > 0 AND printed < 1e10 AND printed = round(printed, 2))
-     OR (basis = 'turnkey') <> (charge IS NOT NULL AND charge_with_vat IS NOT NULL)
+     OR (basis = 'turnkey') <> (charge IS NOT NULL)
+     OR (basis = 'turnkey') <> (charge_with_vat IS NOT NULL)
      OR (charge IS NOT NULL AND NOT (charge > 0 AND charge < 1e10 AND charge = round(charge, 2)))
      OR (basis = 'excl_vat' OR (basis = 'turnkey' AND NOT charge_with_vat)) <> (rate IS NOT NULL)
      OR (rate IS NOT NULL AND NOT (rate > 0 AND rate < 100 AND rate = round(rate, 2))) THEN
