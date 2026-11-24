@@ -635,20 +635,24 @@ def test_import_catalog_v1_check_still_works_in_production(monkeypatch, capsys):
 # --- vercel.json ------------------------------------------------------------
 
 
-def test_vercel_sets_security_headers():
+def test_vercel_sets_security_headers_on_every_service():
     config = json.loads((ROOT / "vercel.json").read_text())
-    headers = {
-        item["key"]: item["value"]
-        for rule in config["headers"]
-        if rule["source"] == "/(.*)"
-        for item in rule["headers"]
-    }
-    assert headers == {
+    # Vercel documents headers inside each service; top-level rules own routing.
+    assert "headers" not in config
+    expected = {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     }
+    for name, service in config["services"].items():
+        headers = {
+            item["key"]: item["value"]
+            for rule in service["headers"]
+            if rule["source"] == "/(.*)"
+            for item in rule["headers"]
+        }
+        assert headers == expected, name
 
 
 def test_app_pool_uses_the_app_settings_not_global_ones():
