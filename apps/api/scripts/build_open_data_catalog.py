@@ -67,6 +67,14 @@ def main(argv=None) -> int:
         "then keep its vehicles, variants and history, and add only what changed.",
     )
     args = parser.parse_args(argv)
+    if args.previous and args.previous.resolve() == args.run_dir.resolve():
+        # Building into the published run would rewrite its bundles and report.
+        print(
+            "Open-data build failed: --previous and --run-dir are the same run folder; "
+            "fetch into a new run folder.",
+            file=sys.stderr,
+        )
+        return 1
     name_map = json.loads(args.names.read_text())
     two_wheelers = json.loads(args.two_wheelers.read_text())
     run = open_data.Run(args.run_dir)

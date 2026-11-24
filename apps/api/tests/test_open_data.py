@@ -685,11 +685,16 @@ def test_a_continued_bundle_publishes_over_the_earlier_one(conn, run, later):  #
     assert publish_catalog_v2(conn, batch, artifact_root=root) == "unchanged"
 
 
-def test_cli_builds_bundles_and_the_register_from_a_stored_run(run, tmp_path, capsys):
+def load_script():
     path = Path(__file__).resolve().parents[1] / "scripts/build_open_data_catalog.py"
     spec = importlib.util.spec_from_file_location("build_open_data_catalog", path)
     script = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(script)
+    return script
+
+
+def test_cli_builds_bundles_and_the_register_from_a_stored_run(run, tmp_path, capsys):
+    script = load_script()
     names, two_wheelers = tmp_path / "names.json", tmp_path / "two-wheelers.json"
     names.write_text(json.dumps(NAMES))
     two_wheelers.write_text(json.dumps(TWO_WHEELERS))
@@ -1113,3 +1118,41 @@ def test_the_register_dates_every_response_and_counts_the_values(run):
     markdown = open_data.gap_register_markdown(register)
     assert "| motospecdb.com | 2026-11-23 | 1 |" in markdown
     assert "| seat_height_mm | 1 |" in markdown
+
+
+# --- Stored evidence is never replaced -------------------------------------------
+
+
+def test_a_fetch_never_replaces_evidence_of_the_run_s_own_bundle(run, tmp_path, capsys):
+    bundle, _ = open_data.build_cars(run, NAMES)
+    (run.root / "cars.catalog-v2.json").write_text(json.dumps(bundle))
+    family = open_data.family_request(
+        open_data.resolve_families(NAMES, run.read(open_data.names_request()))[0][0]
+    )
+    stored = (run.artifacts / family.artifact_path).read_bytes()
+    # A changed name table asks EEA another question under the same artifact path.
+    split = {
+        "families": [
+            *NAMES["families"],
+            {
+                "make": "Fiat",
+                "model": "Panda Gas",
+                "eea": [{"mk": "FIAT", "names": ["PANDA"], "type_approvals": ["E3*9"]}],
+            },
+        ]
+    }
+    with pytest.raises(open_data.OpenDataError, match="new run folder"):
+        open_data.fetch(open_data.Run(run.root), split, TWO_WHEELERS, FakeRegistries())
+    assert (run.artifacts / family.artifact_path).read_bytes() == stored
+    verify_artifacts(CatalogV2.model_validate(bundle), run.artifact_root)
+
+    script = load_script()
+    names, two_wheelers = tmp_path / "names.json", tmp_path / "two-wheelers.json"
+    names.write_text(json.dumps(NAMES))
+    two_wheelers.write_text(json.dumps(TWO_WHEELERS))
+    before = sorted(p.name for p in run.root.iterdir())
+    argv = ["build", "--run-dir", str(run.root), "--names", str(names)]
+    argv += ["--two-wheelers", str(two_wheelers)]
+    assert script.main([*argv, "--previous", f"{run.root}/../{run.root.name}"]) == 1
+    assert "same run folder" in capsys.readouterr().err
+    assert sorted(p.name for p in run.root.iterdir()) == before

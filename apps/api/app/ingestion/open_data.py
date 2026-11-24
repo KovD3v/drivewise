@@ -572,8 +572,24 @@ class Run:
     def evidence_path(self, request: Request) -> str:
         return f"{self.root.resolve().name}/artifacts/{request.artifact_path}"
 
+    def _cited(self, request: Request) -> bool:
+        """True when a bundle built in this run folder rests on the stored response."""
+        path = self.evidence_path(request)
+        return any(
+            snapshot["artifact_path"] == path
+            for bundle in self.root.glob("*.catalog-v2.json")
+            for snapshot in json.loads(bundle.read_text())["snapshots"]
+        )
+
     def store(self, request: Request, data: bytes, retrieved_at: datetime) -> None:
         json.loads(data)  # a non-JSON error page must never become evidence
+        earlier = self.manifest.get(request.artifact_path)
+        if earlier and earlier["url"] != request.url and self._cited(request):
+            # A changed question under the same path would break that bundle's hashes.
+            raise OpenDataError(
+                f"{request.artifact_path} is evidence of a bundle in {self.root}; "
+                "fetch into a new run folder."
+            )
         path = self.artifacts / request.artifact_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
