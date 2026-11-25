@@ -143,3 +143,42 @@ def test_catalog_status_reads_repository_at_pinned_time(
     assert calls == [("candidates", AS_OF), ("exclusions", AS_OF)]
     assert "Listings: total=1, rankable=0" in captured.out
     assert "Zero-coverage body styles: city_car" in captured.out
+
+
+def test_catalog_status_reports_list_price_candidates_apart_from_listings():
+    module = load_catalog_status_script()
+    candidates = [
+        {
+            "spec": {"body_style": "city_car", "fuel_type": "petrol"},
+            "offer": {"condition": "used", "price_eur": 10_000},
+            "price_basis": "offer",
+        },
+        # A variant with no eligible offer, ranked as new at its list price.
+        {
+            "spec": {"body_style": "suv", "fuel_type": "plug_in_hybrid_petrol"},
+            "offer": None,
+            "price_basis": "list_price",
+            "list_price": {"price_eur": 25_000},
+        },
+    ]
+
+    report = module.format_report(candidates, {"inactive_offer": 1}, as_of=AS_OF)
+
+    assert "Listings: total=2, rankable=1" in report
+    assert "Rankable candidates: 2 (offers=1, list_price=1)" in report
+    assert "plug_in_hybrid_petrol: 1" in report
+    assert "new: 1" in report
+    assert "used: 1" in report
+    assert "min=10000.00, max=25000.00" in report
+    assert "plug_in_hybrid_petrol" not in report.split("Zero-coverage fuel types:")[1]
+
+
+def test_catalog_status_follows_advisor_supported_fuels():
+    from typing import get_args
+
+    from app.schemas.advisor import AdvisorFuelType
+
+    module = load_catalog_status_script()
+    assert set(module.FUEL_TYPES) == set(get_args(AdvisorFuelType))
+    report = module.format_report([], {}, as_of=AS_OF)
+    assert "plug_in_hybrid_petrol" in report.split("Zero-coverage fuel types:")[1]

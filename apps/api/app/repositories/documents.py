@@ -3,6 +3,7 @@ from uuid import UUID
 
 from app.repositories.document_vector_search import search_document_vector_candidates
 from app.repositories.filters import DocumentFilters
+from app.repositories.vehicles import LIKE_ESCAPE, contains_pattern
 
 
 class DocumentsRepository:
@@ -26,8 +27,10 @@ class DocumentsRepository:
             where_clauses.append("document_type = %s")
             params.append(filters.document_type)
         if filters.q:
-            where_clauses.append("(title ILIKE %s OR content ILIKE %s)")
-            q_pattern = f"%{filters.q}%"
+            where_clauses.append(
+                f"(title ILIKE %s {LIKE_ESCAPE} OR content ILIKE %s {LIKE_ESCAPE})"
+            )
+            q_pattern = contains_pattern(filters.q)
             params.extend([q_pattern, q_pattern])
 
         where_sql = ""
@@ -90,9 +93,11 @@ class DocumentsRepository:
             params.append(document_type)
 
         text_clauses: list[str] = []
-        patterns = [f"%{query}%", *(f"%{token}%" for token in tokens)]
+        patterns = [contains_pattern(query), *map(contains_pattern, tokens)]
         for pattern in patterns:
-            text_clauses.append("(title ILIKE %s OR content ILIKE %s)")
+            text_clauses.append(
+                f"(title ILIKE %s {LIKE_ESCAPE} OR content ILIKE %s {LIKE_ESCAPE})"
+            )
             params.extend([pattern, pattern])
 
         where_clauses.append("(" + " OR ".join(text_clauses) + ")")

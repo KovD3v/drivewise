@@ -25,7 +25,7 @@ export function Footer() {
             </Link>
           ))}
           <a
-            href="#faq"
+            href="/#faq"
             className="inline-flex min-h-11 items-center py-3 text-[0.8125rem] text-muted-foreground transition-colors duration-300 hover:text-foreground sm:min-h-[1.5rem] sm:py-1"
           >
             FAQ

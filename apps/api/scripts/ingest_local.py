@@ -8,7 +8,11 @@ from psycopg.rows import dict_row
 
 from app.core.config import PROJECT_ROOT, load_env_file
 from app.core.database_url import contains_placeholder_database_url
-from app.ingestion.local import IngestionResult, ingest_local_documents
+from app.ingestion.local import (
+    IngestionResult,
+    UnsafeIngestionPathError,
+    ingest_local_documents,
+)
 
 
 DEFAULT_FIXTURE_PATH = PROJECT_ROOT / "data/fixtures/ingestion"
@@ -43,7 +47,7 @@ def main(argv: list[str] | None = None, env_path: Path = PROJECT_ROOT / ".env") 
                 source_name=args.source_name,
                 source_type=args.source_type,
             )
-    except FileNotFoundError as error:
+    except (FileNotFoundError, UnsafeIngestionPathError) as error:
         print(str(error), file=sys.stderr)
         return 1
     except psycopg.OperationalError:

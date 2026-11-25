@@ -1,13 +1,28 @@
 # Synthetic catalog fixtures use variant keys such as "it-acme-metro-2026-petrol".
 # The default generic-api-key rule flags them because the field is named *_key.
+# The allowlist holds only where those fixtures live: the same string anywhere else
+# in the repository is still flagged. It sits on the rule, not at top level,
+# because gitleaks 8.30 lets a top-level allowlist skip a matching path outright
+# and ignores condition = "AND" there.
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Catalog keys in test fixtures"
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Synthetic catalog keys in fixtures and tests"
+condition = "AND"
+paths = [
+  '''(^|/)data/fixtures/''',
+  '''(^|/)apps/api/tests/''',
+  '''(^|/)apps/web/src/test/''',
+]
 regexes = [
   '''it-acme-[a-z0-9-]+''',
   '''metro-g[0-9]+-[a-z0-9-]+''',
+  # Invented brands of catalog-v1.synthetic.json.
+  '''it-(lumen|orion|vento)-[a-z0-9-]+''',
   # Public catalog key of a real model, used as a scraping fixture.
   '''toyota-yaris-xp210-[a-z0-9-]+''',
   # Invented demo vehicles in catalog-v2.demo.synthetic.json (ADR-011).

@@ -271,11 +271,12 @@ def test_assumptions_disclose_annual_km_source_and_energy_only_scope():
         annual_km=12_345,
     )
 
-    assert "14000 km (default for primary_use=family)" in build_assumptions(
-        defaulted
-    )[0]
-    assert "12345 km (provided by the request)" in build_assumptions(provided)[0]
-    assert "energy only" in build_assumptions(provided)[1]
+    assert (
+        "14.000 km (valore predefinito per l'uso principale «famiglia»)"
+        in build_assumptions(defaulted)[0]
+    )
+    assert "12.345 km (indicata nella richiesta)" in build_assumptions(provided)[0]
+    assert "solo l'energia" in build_assumptions(provided)[1]
 
 
 def test_gold_06_selected_priorities_scale_and_renormalize_exactly():

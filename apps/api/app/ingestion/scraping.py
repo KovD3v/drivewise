@@ -4,7 +4,9 @@ import fcntl
 import hashlib
 import json
 import math
+import os
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid4, uuid5
@@ -63,9 +65,14 @@ context.method. Raw values may be decimal or Italian dot-grouped scalars/ranges;
 conversions include CV/PS to kW (0.73549875), km/l to l/100km (100/x), Wh to kWh,
 Wh/km to kWh/100km, cc/l to cm3, m/cm to mm and dm3 to litres. Do not round converted
 values beyond 1e-5 relative tolerance. A single dotted group in units other
-than cc/cm3, mm or kg is ambiguous; retain a gap. A single comma followed by
+than cc/cm3, mm, kg or EUR/€ is ambiguous; retain a gap. A single comma followed by
 exactly three digits after one to three leading digits is also ambiguous;
 retain a gap rather than choosing a decimal or thousands interpretation.
+Cite each raw value next to its unit (or, for seats and cylinders, its label),
+and cite a range in full. A list_price_eur observation needs list_price terms:
+printed_amount_eur equals the raw printed amount, printed_basis is incl_vat,
+excl_vat or turnkey, with the VAT rate or on-road charge the document states;
+value_min and value_max are the VAT-inclusive amount.
 Keep combustion/system/continuous power, gross/usable battery,
 width with/without mirrors, mass definitions, luggage seating/method, measurement
 procedures, cycles, configuration and intervals separate. Do not add motor powers.
@@ -110,9 +117,79 @@ def digest(value) -> str:
 
 def write_json(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".tmp")
-    temporary.write_bytes(encoded(value))
-    temporary.replace(path)
+    # An exclusively created temporary file: a planted .tmp symlink is never followed.
+    with tempfile.NamedTemporaryFile(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
+    ) as temporary:
+        try:
+            temporary.write(encoded(value))
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        except BaseException:
+            os.unlink(temporary.name)
+            raise
+    try:
+        os.replace(temporary.name, path)
+    except BaseException:
+        os.unlink(temporary.name)
+        raise
+
+
+_NUMBER = r"(?:\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)"
+# A whole value or range: never part of a longer number or of a range.
+_VALUE_TOKEN = re.compile(
+    rf"(?<!\d)(?<!\d[.,]){_NUMBER}(?:\s*[-–]\s*{_NUMBER})?(?!\d|[.,]\d)"
+)
+# A colon or one markdown table cell border may separate a label from its value.
+_GAP = r"\s*[:|]?\s*"
+_COUNT_LABELS = {
+    "seats": r"posti(?: a sedere)?|posto|sedili|seats?|seating",
+    "cylinders": r"cilindri|cilindro|cylinders?",
+}
+
+
+def _range_text(value: str) -> str:
+    return re.sub(r"\s*[-–]\s*", "-", value)
+
+
+def _labels_value(label: str, before: str, after: str, *, unit: bool) -> bool:
+    """True when `label` sits right before or right after the cited value."""
+    bare = rf"(?<![^\W\d_])(?<!/)(?:{label})"
+    if re.search(rf"(?:\(\s*(?:{label})\s*\)|{bare}){_GAP}\Z", before):
+        return True
+    # A unit may not continue into a longer unit; a count label after the value
+    # must not instead label the next number ("Euro 5 posti 4").
+    tail = r"(?![\w/])" if unit else rf"(?![^\W\d_])(?!{_GAP}\d)"
+    return bool(re.match(rf"{_GAP}(?:\(\s*(?:{label})\s*\)|(?:{label}){tail})", after))
+
+
+def check_citation(proposal: ObservationProposal) -> None:
+    """The raw value, its unit or count label must be cited together, verbatim."""
+    excerpt = re.sub(r"\s+", " ", proposal.evidence_excerpt).casefold()
+    # Keep compound-unit boundaries even with spaces around a slash.
+    excerpt = re.sub(r"\s*/\s*", "/", excerpt)
+    raw = _range_text(proposal.raw_value.strip())
+    matches = [
+        m for m in _VALUE_TOKEN.finditer(excerpt) if _range_text(m.group()) == raw
+    ]
+    if not matches:
+        raise ValueError(
+            "raw value must occur in the cited excerpt as a whole value or range"
+        )
+    if proposal.raw_unit:
+        unit = re.sub(r"\s+", "", proposal.raw_unit).casefold()
+        label, unit_like = r"\s*".join(map(re.escape, unit)), True
+    elif proposal.metric in _COUNT_LABELS:
+        label, unit_like = _COUNT_LABELS[proposal.metric], False
+    else:
+        raise ValueError("raw unit must occur in the cited excerpt")
+    for match in matches:
+        before, after = excerpt[: match.start()], excerpt[match.end() :]
+        if _labels_value(label, before, after, unit=unit_like):
+            return
+    if unit_like:
+        raise ValueError("raw unit must occur next to the raw value in the cited excerpt")
+    raise ValueError("a count needs its seats or cylinders label next to the value")
 
 
 def proposal_observation(proposal: ObservationProposal) -> SpecObservation:
@@ -144,7 +221,11 @@ class Collector:
     def run(self) -> dict:
         self.root.mkdir(parents=True, exist_ok=True)
         # ponytail: one process per run directory; separate directories for more jobs.
-        with (self.root / ".lock").open("w") as lock:
+        # Never truncate or follow a planted .lock symlink.
+        descriptor = os.open(
+            self.root / ".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
+        )
+        with os.fdopen(descriptor, "r+b") as lock:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
@@ -256,8 +337,9 @@ class Collector:
             reviewing = self.state["phase"] == "investigate"
             request = {"scope": self.config.model_dump(mode="json")}
             if reviewing:
+                # Only structured identities and observations: free-text gaps can
+                # carry page text that would steer the independent review.
                 request["extraction"] = self.state["bundle"]
-                request["extraction_gaps"] = self.state["gaps"]
             messages.extend(
                 [
                     {
@@ -582,23 +664,7 @@ class Collector:
             text = texts.get(str(proposal.snapshot_id), "")
             if proposal.evidence_excerpt not in text:
                 raise ValueError("evidence excerpt is not verbatim in its snapshot")
-            if not re.search(
-                r"(?<![\d.,])" + re.escape(proposal.raw_value) + r"(?![\d.,])",
-                proposal.evidence_excerpt,
-            ):
-                raise ValueError("raw value must occur in the cited excerpt")
-            if proposal.raw_unit:
-                raw_unit = re.sub(r"\s+", "", proposal.raw_unit).casefold()
-                unit_pattern = r"\s*".join(map(re.escape, raw_unit))
-                excerpt = re.sub(r"\s+", " ", proposal.evidence_excerpt).casefold()
-                # Keep compound-unit boundaries even with spaces around a slash.
-                excerpt = re.sub(r"\s*/\s*", "/", excerpt)
-                # Digits may precede a unit; letters and slashes may not.
-                if not re.search(
-                    r"(?<![^\W\d_])(?<!/)" + unit_pattern + r"(?![\w/])",
-                    excerpt,
-                ):
-                    raise ValueError("raw unit must occur in the cited excerpt")
+            check_citation(proposal)
             if proposal.metric not in self.config.target.metrics:
                 raise ValueError("metric is outside requested scope")
             start = text[: text.index(proposal.evidence_excerpt)].count("\n") + 1

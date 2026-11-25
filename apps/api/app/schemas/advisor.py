@@ -13,6 +13,13 @@ from pydantic import (
 from app.schemas.base import ApiModel
 from app.schemas.vehicles import ListPrice, VehicleSpec, VehicleSummary
 
+# Realistic upper bounds: larger integers fail with 422 instead of overflowing
+# float arithmetic in scoring and Model Analysis.
+MAX_PRICE_EUR = 10_000_000
+MAX_ANNUAL_KM = 500_000
+MAX_ODOMETER_KM = 5_000_000
+MAX_PEOPLE = 20
+
 PrimaryUse = Literal["city", "highway", "family", "work", "new_driver"]
 ConstraintMode = Literal["hard", "soft"]
 AdvisorPriority = Literal[
@@ -97,24 +104,24 @@ class AdvisorGarageDimensions(ApiModel):
 class AdvisorRecommendationRequest(ApiModel):
     _annual_km_was_defaulted: bool = PrivateAttr(default=False)
 
-    budget_min_eur: float | None = Field(default=None, ge=0)
-    budget_max_eur: float = Field(gt=0)
+    budget_min_eur: float | None = Field(default=None, ge=0, le=MAX_PRICE_EUR)
+    budget_max_eur: float = Field(gt=0, le=MAX_PRICE_EUR)
     primary_use: PrimaryUse
     usage: list[PrimaryUse] | None = None
-    children_count: int | None = Field(default=None, ge=0)
-    passengers_usual: int | None = Field(default=None, ge=1)
+    children_count: int | None = Field(default=None, ge=0, le=MAX_PEOPLE)
+    passengers_usual: int | None = Field(default=None, ge=1, le=MAX_PEOPLE)
     garage: AdvisorGarageDimensions | None = None
     automatic_required: bool | None = None
     constraint_modes: AdvisorConstraintModes = Field(
         default_factory=AdvisorConstraintModes
     )
     condition: AdvisorCondition = "any"
-    annual_km: int | None = Field(default=None, gt=0)
+    annual_km: int | None = Field(default=None, gt=0, le=MAX_ANNUAL_KM)
     # Reliable charging access: True, no reliable access: False, unknown: None.
     charging_context: bool | None = None
     preferred_fuel_type: AdvisorFuelType | None = None
     preferred_body_style: AdvisorBodyStyle | None = None
-    max_mileage: int | None = Field(default=None, ge=0)
+    max_mileage: int | None = Field(default=None, ge=0, le=MAX_ODOMETER_KM)
     priorities: list[AdvisorPriority] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -170,8 +177,8 @@ class ModelAnalysisRequest(ApiModel):
     model_year: int | None = Field(default=None, ge=1980, le=2100)
     fuel_type: str | None = None
     body_style: str | None = None
-    asking_price_eur: float | None = Field(default=None, ge=0)
-    current_km: int | None = Field(default=None, ge=0)
+    asking_price_eur: float | None = Field(default=None, ge=0, le=MAX_PRICE_EUR)
+    current_km: int | None = Field(default=None, ge=0, le=MAX_ODOMETER_KM)
     usage_profile: list[UsageProfile] = Field(default_factory=list)
     analysis_scope: list[AnalysisScope] = Field(
         default_factory=lambda: ["price", "maintenance", "red_flags", "tco"],

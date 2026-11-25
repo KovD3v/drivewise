@@ -1,0 +1,8 @@
+Inter (inter-*.woff2): Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter).
+Manrope (manrope-*.woff2): Copyright 2018 The Manrope Project Authors (https://github.com/sharanda/manrope).
+
+Both fonts are licensed under the SIL Open Font License, Version 1.1:
+https://openfontlicense.org/open-font-license-official-text/
+
+The files are the Latin and Latin Extended variable subsets served by Google Fonts,
+hosted here so that pages make no request to a third-party font service.

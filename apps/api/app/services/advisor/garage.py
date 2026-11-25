@@ -67,23 +67,39 @@ def garage_fit(
             "width_mirrors_folded_mm"
         ),
     }
-    missing = tuple(key for key, value in required.items() if _number(value) is None)
+    values = {key: _number(value) for key, value in required.items()}
+    missing = tuple(key for key, value in values.items() if value is None)
+    pairs = {
+        "length_mm": ("garage.useful_length_mm", "vehicle.length_mm"),
+        "width_mm": ("garage.useful_width_mm", "vehicle.body_width_mm"),
+        "height_mm": ("garage.useful_height_mm", "vehicle.height_mm"),
+        "door_width_mm": ("garage.door_width_mm", "vehicle.width_mirrors_folded_mm"),
+        "door_height_mm": ("garage.door_height_mm", "vehicle.height_mm"),
+    }
+    # Subtract the raw values, as before, so integer inputs keep integer margins.
+    margins = {
+        name: required[garage_key] - required[vehicle_key]
+        for name, (garage_key, vehicle_key) in pairs.items()
+        if values[garage_key] is not None and values[vehicle_key] is not None
+    }
+    # A single negative margin proves the vehicle does not fit, even when
+    # another dimension is unknown; a fit needs every dimension.
+    if any(margin < 0 for margin in margins.values()):
+        return ModuleAssessment(
+            status="available",
+            version=GARAGE_FIT_VERSION,
+            value=0.0,
+            details={"margins": margins},
+            missing_data=missing,
+        )
     if missing:
         return ModuleAssessment(
             status="insufficient_data", version=GARAGE_FIT_VERSION, missing_data=missing
         )
-    margins = {
-        "length_mm": required["garage.useful_length_mm"] - required["vehicle.length_mm"],
-        "width_mm": required["garage.useful_width_mm"] - required["vehicle.body_width_mm"],
-        "height_mm": required["garage.useful_height_mm"] - required["vehicle.height_mm"],
-        "door_width_mm": required["garage.door_width_mm"]
-        - required["vehicle.width_mirrors_folded_mm"],
-        "door_height_mm": required["garage.door_height_mm"] - required["vehicle.height_mm"],
-    }
     return ModuleAssessment(
         status="available",
         version=GARAGE_FIT_VERSION,
-        value=100.0 if min(margins.values()) >= 0 else 0.0,
+        value=100.0,
         details={"margins": margins},
     )
 

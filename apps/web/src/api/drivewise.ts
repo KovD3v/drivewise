@@ -1,19 +1,31 @@
 import type { components } from './schema.gen'
 
-// Only a build without VITE_API_BASE_URL talks to a separate local API. Vite inlines the
-// variable, so a build with VITE_API_BASE_URL=/api drops this fallback from its code.
-const PUBLIC_API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+/**
+ * The public base when VITE_API_BASE_URL is unset. A production build serves the API on the
+ * same origin under /api; only a local dev run talks to a separate API on 127.0.0.1:8000.
+ */
+export function defaultPublicApiBaseUrl(prod: boolean): string {
+  if (prod) return '/api'
+  // Vite folds import.meta.env.DEV to false in a production build, which drops the local URL from its code.
+  return import.meta.env.DEV ? 'http://127.0.0.1:8000' : '/api'
+}
 
-export type ApiBaseInput = { ssr: boolean; internalUrl?: string | undefined; publicUrl?: string | undefined }
+export type ApiBaseInput = {
+  ssr: boolean
+  internalUrl?: string | undefined
+  publicUrl?: string | undefined
+  /** Defaults to the build mode, `import.meta.env.PROD`. */
+  prod?: boolean | undefined
+}
 
 /**
  * The browser uses the public base (for one origin, "/api"). The server cannot
  * fetch a relative base, so server rendering needs API_INTERNAL_URL, which
  * Vercel injects for the API service and a local run sets by hand.
  */
-export function resolveApiBaseUrl({ ssr, internalUrl, publicUrl }: ApiBaseInput): string {
+export function resolveApiBaseUrl({ ssr, internalUrl, publicUrl, prod = Boolean(import.meta.env.PROD) }: ApiBaseInput): string {
   if (ssr && internalUrl) return internalUrl.replace(/\/$/, '')
-  const base = (publicUrl || PUBLIC_API_BASE_URL).replace(/\/$/, '')
+  const base = (publicUrl || defaultPublicApiBaseUrl(prod)).replace(/\/$/, '')
   if (ssr && base.startsWith('/')) {
     throw new Error(`API_INTERNAL_URL is required for server rendering when VITE_API_BASE_URL is "${base}".`)
   }
@@ -65,16 +77,28 @@ export async function analyzeModel(request: ModelAnalysisRequest): Promise<Model
   return postJson('/advisor/model-analysis', normalizeModelAnalysisRequest(request))
 }
 
+/** Server rendering waits at most this long for the API, so a slow API cannot hang a page. */
+export const SSR_FETCH_TIMEOUT_MS = 8000
+
+/** An abort signal for a server-rendering fetch; the browser keeps its own timeouts. */
+export function ssrFetchSignal(ssr: boolean, timeoutMs = SSR_FETCH_TIMEOUT_MS): AbortSignal | undefined {
+  return ssr ? AbortSignal.timeout(timeoutMs) : undefined
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
-  return readJson(await fetch(`${getApiBaseUrl()}${path}`))
+  const signal = ssrFetchSignal(Boolean(import.meta.env.SSR))
+  const url = `${getApiBaseUrl()}${path}`
+  return readJson(await (signal ? fetch(url, { signal }) : fetch(url)))
 }
 
 async function postJson<T>(path: string, body: object): Promise<T> {
+  const signal = ssrFetchSignal(Boolean(import.meta.env.SSR))
   return readJson(
     await fetch(`${getApiBaseUrl()}${path}`, {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
+      ...(signal ? { signal } : {}),
     }),
   )
 }
@@ -83,8 +107,9 @@ async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const detail = await readErrorDetail(response)
     throw new ApiResponseError(
-      detail || `API request failed with status ${response.status}`,
+      detail.message || `API request failed with status ${response.status}`,
       response.status,
+      detail.code,
     )
   }
   return response.json()
@@ -134,6 +159,8 @@ class ApiResponseError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** The machine-readable `detail.code` the API sends with some errors, e.g. `max_turns_reached`. */
+    readonly code: string | null = null,
   ) {
     super(message)
     this.name = 'ApiResponseError'
@@ -144,34 +171,26 @@ export function isApiNotFoundError(error: unknown) {
   return error instanceof ApiResponseError && error.status === 404
 }
 
-async function readErrorDetail(response: Response) {
+/** True when the API rejected the request with this `detail.code`. */
+export function isApiErrorCode(error: unknown, code: string) {
+  return error instanceof ApiResponseError && error.code === code
+}
+
+async function readErrorDetail(response: Response): Promise<{ message: string | null; code: string | null }> {
   try {
     const payload = await response.json()
-    if (payload && typeof payload.detail === 'string') {
-      return payload.detail
-    }
+    const detail = payload?.detail
+    if (typeof detail === 'string') return { message: detail, code: null }
+    if (detail && typeof detail === 'object' && typeof detail.code === 'string') return { message: null, code: detail.code }
   } catch {
-    return null
+    // A body that is not JSON carries no detail.
   }
-  return null
+  return { message: null, code: null }
 }
 
 // Guided Decision uses the existing persisted backend contract; errors never become mock rankings.
-export interface GuidedDecisionResponse {
-  contractVersion: 'guided-decision-v1'
-  decisionId: string
-  profileVersion: number
-  status: 'active' | 'completed' | 'abandoned'
-  message: string
-  decisionProfile: Record<string, { value: string | number | boolean | string[] } | Record<string, { value: number } | null> | null>
-  profileCompletion: number
-  decisionConfidence: number
-  missingInformation: { key: string; reason: string }[]
-  nextQuestion: { id: string; type: 'number' | 'boolean' | 'single_select' | 'multi_select' | 'text'; label: string; reason: string; constraints: { minimum: number | null; maximum: number | null; unit: string | null; options: string[] } | null } | null
-  previewRanking: { status: 'blocked' | 'provisional' | 'ready' | 'insufficient_inventory'; groups: AdvisorRecommendationGroup[]; assumptions: string[]; blockingReasons: string[] }
-  garageCompatibility: { vehicleId: string; specId: string; status: 'comfortable' | 'tight' | 'incompatible' | 'insufficient_data'; message: string }[]
-  warnings: string[]
-}
+export type GuidedDecisionResponse = Schemas['GuidedDecisionResponse']
+export type GarageCompatibility = Schemas['GarageCompatibility']
 export async function createGuidedDecision(message: string): Promise<GuidedDecisionResponse> {
   return postJson('/guided-decisions', { message, locale: 'it-IT', market: 'IT' })
 }

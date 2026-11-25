@@ -2,26 +2,29 @@
 
 The frontend copies the ZIP's landing, wizard components, report, vehicle detail,
 comparison preview, My DriveWise, legal pages, styles, animations and assets.
-Existing collection, search, Advisor and model-analysis routes remain available.
+The earlier MVP pages (`/vehicles`, `/listings`, `/documents`, `/search`,
+`/advisor`, `/model-analysis`) were removed from the site; the Decision Hub
+routes listed in [`architecture.md`](architecture.md) are the whole site.
 
-The Guided Decision backend is provided by PR #5
-(https://github.com/KovD3v/drivewise/pull/5), not by the base `main` branch.
-The car flow requires that backend before deployment; this design import does
-not include backend code or database migrations.
+The Guided Decision backend (PR #5) and the unified API-first build (PR #22)
+are on `main`. The car flow therefore runs against the deployed API, and the
+site and API ship together as one Vercel project (`vercel.json`).
 
 | Function | Implementation |
 | --- | --- |
-| Car catalog and details | Existing `/vehicles` API and canonical IDs |
+| Car catalog and details | `GET /vehicles` and `GET /vehicles/{id}` with canonical IDs; `?spec=` on the vehicle page keeps the chosen variant |
 | List price and sources | `list_price` and `provenance` of the API, labelled "Prezzo di listino" with date, notes, a link and source credits |
-| Car guided decision | Existing `/guided-decisions` create, versioned turns and reload |
+| Car guided decision | `/guided-decisions` create, versioned turns and reload |
+| Decision report | `/app/report?s=<decision id>` loads `GET /guided-decisions/{id}` directly, so a shared or reopened link works without `localStorage`; the API recomputes the ranking on every read, so it follows the current catalogue and source permissions |
 | Ranking and confidence | Backend response; no ZIP scoring engine for cars |
-| Vehicle questions | Existing `/advisor/model-analysis` API |
-| Documents / Advisor | Links to existing frontend routes |
+| Vehicle questions | `POST /advisor/model-analysis`, for the variant named by `?spec=` |
+| Report actions | Both report CTAs are enabled: one opens the winner's vehicle page with `spec` and `s`, the other restarts the guided choice; alternatives also link with `spec` and `s` |
 | Motorcycles and scooters | `/app/catalog?type=` from `GET /vehicles?vehicle_type=`, without a score |
 | Accounts, profiles, saved reports, preferences | Browser-local mocks; no Supabase, OAuth or email requests |
-| Comparison | `/app/compare?vehicle=&with=`: two vehicles of one type from the API |
+| Comparison | `/app/compare?vehicle=&with=` (with `spec` and `withSpec`): two vehicles of one type from the API |
 | Future personal-area features | Labelled previews; early-access action is simulated |
 | Contact and voice input | Explicit simulation, no outgoing message or recording |
+| Fonts | Inter and Manrope are self-hosted from `apps/web/public/fonts/` (SIL OFL 1.1); the site makes no request to Google Fonts |
 
 An unavailable existing API produces an error, not a fallback to the ZIP's car
 catalog. The site has no mock API: `VITE_API_BASE_URL` names the API, and Guided
@@ -36,11 +39,10 @@ engine is not imported. Initial intake indicators describe collected information
 only, as explained in the confidence tooltip. ZIP credentials, Supabase infrastructure and build configuration
 were not imported.
 
-Run with `bun run dev:web` and the existing FastAPI server. Verification:
-`bun run test:web`, `bun run typecheck:web`, `bun run build:web`.
-Browser smoke used the actual FastAPI routes and scoring engine with the existing
-test repositories, without a database connection. This does not verify production
-catalog contents or database persistence.
+Run with `bun run dev:web` and the FastAPI server. Verification:
+`bun run test:web`, `bun run typecheck:web`, `bun run build:web`; CI runs the
+same checks on Node 22 (`.nvmrc`). The web types come from the API's OpenAPI
+schema (`bun run gen:api-types`), and CI fails when they drift.
 
 ## November 2026 design update
 

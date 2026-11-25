@@ -1,5 +1,17 @@
 # Tommaso: attività backend MVP
 
+> **Documento storico, superato (aggiornato il 25/11/2026).** Descrive il piano
+> di agosto 2026, prima della build unificata API-first (PR #22). Non usarlo
+> come lista di lavoro: gli endpoint `/api/v1/health`, `/api/v1/version` e
+> `POST /api/v1/decisions` non esistono. Le API reali sono `GET /health`,
+> `GET /version` e le rotte `/guided-decisions`, servite sotto `/api` in
+> produzione (vedi [`architecture.md`](./architecture.md)). Lo stato e i
+> prossimi passi sono in:
+>
+> - [`CURRENT_STATUS.md`](./CURRENT_STATUS.md): stato attuale e gate prima del go-live;
+> - [`f1-twelve-cars-curation.md`](./f1-twelve-cars-curation.md): curatela delle prime 12 auto (ADR-017);
+> - [`snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md`](./snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md): finding aperti e roadmap.
+
 Il piano operativo completo è mantenuto in:
 
 **[`docs/TOMMASO_BACKLOG.md`](./TOMMASO_BACKLOG.md)**

@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_connection
-from app.main import app, settings
+from app.core.config import Settings
+from app.main import app, create_app
 
 
 def test_health_returns_ok_status():
@@ -14,9 +15,10 @@ def test_health_returns_ok_status():
 
 
 def test_preflight_allows_every_configured_frontend_origin():
-    client = TestClient(app)
+    local_settings = Settings(app_env="local")
+    client = TestClient(create_app(local_settings))
 
-    for origin in settings.api_cors_origins:
+    for origin in local_settings.api_cors_origins:
         response = client.options(
             "/advisor/recommendations",
             headers={
@@ -31,7 +33,7 @@ def test_preflight_allows_every_configured_frontend_origin():
 
 
 def test_health_response_includes_cors_header_for_allowed_origin():
-    client = TestClient(app)
+    client = TestClient(create_app(Settings(app_env="local")))
 
     response = client.get(
         "/health",

@@ -16,9 +16,9 @@ The initial product wedge and private-beta gates are defined in
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22 (pinned in `.nvmrc`; Vitest runs under Node, and Node 25 breaks the jsdom tests through its built-in `localStorage`, as found in PR #21)
 - Bun 1.3+
-- Python 3.11+
+- Python 3.12 (pinned in `apps/api/.python-version`)
 
 ## Local Setup
 
@@ -42,6 +42,40 @@ API_INTERNAL_URL=http://127.0.0.1:8047/api PORT=3047 bun .output/server/index.mj
 ```
 
 `VITE_SYNTHETIC_DATA=true` at build time shows a demo notice on every page; use it with the synthetic demo catalogue (see `docs/catalog-v2.md`).
+
+### Deployment (Vercel Services)
+
+The unified build deploys as one Vercel project that builds both apps from the root
+[`vercel.json`](vercel.json): the `web` service (`apps/web`, TanStack Start) and
+the `api` service (`apps/api`, FastAPI `app.main:app`), in region `fra1`.
+Requests to `/api/*` go to the API and everything else goes to the site, so the
+browser stays on one origin. Vercel injects the API's address into the site as
+`API_INTERNAL_URL` for server rendering. Both services send the same security
+headers (`X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+`Permissions-Policy`).
+
+The API needs `APP_ENV`, `DATABASE_URL` and `API_ROOT_PATH=/api` in the Vercel
+environment. CORS fails closed: outside `APP_ENV=local` the API allows only the
+origins listed in `API_CORS_ORIGINS`, and none when it is empty. Same-origin
+traffic through `/api` needs no CORS entry.
+
+### Public and internal API routes
+
+`ENABLE_INTERNAL_ROUTES` decides whether the development and debug surface is
+served. It defaults to on when `APP_ENV` is `local` or `test` and to off
+everywhere else; set it to `true` or `false` to override. When it is off, these
+return `404`: `/docs`, `/redoc`, `/openapi.json`, `/listings*`, `/documents*`,
+`POST /search/documents`, `POST /vehicles/resolve` and
+`POST /advisor/recommendations`. The public routes stay on:
+`/health`, `/ready`, `/version`, `GET /vehicles`, `GET /vehicles/{id}`,
+`GET /vehicles/{id}/facts`, `POST /advisor/model-analysis` and the
+`/guided-decisions` routes.
+
+`GET /version` reports the build: `service`, `api_version`, `git_commit` (from
+`VERCEL_GIT_COMMIT_SHA`), `scoring_version` and `schema_version`.
+`schema_version` is the newest migration file shipped with the build, not a
+read of the database, so it does not show which migrations the database has
+applied.
 
 Install frontend dependencies:
 
@@ -147,32 +181,36 @@ curl -X POST http://127.0.0.1:8000/search/documents \
   -d '{"query":"fiat panda","mode":"vector_fake","limit":10}'
 ```
 
-Verify the API against the configured database:
+Verify the public API against the configured database:
 
 ```bash
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
+curl http://127.0.0.1:8000/version
 curl http://127.0.0.1:8000/vehicles
-curl -X POST http://127.0.0.1:8000/vehicles/resolve \
+curl -X POST http://127.0.0.1:8000/advisor/model-analysis \
   -H "Content-Type: application/json" \
-  -d '{"query":"Fiat Panda 1.0 FireFly hybrid 2024","market":"IT"}'
+  -d '{"query":"fiat panda 1.0 firefly hybrid 2024","market":"IT","asking_price_eur":14500,"current_km":6400,"usage_profile":["city","mixed"],"analysis_scope":["price","maintenance","red_flags","tco"]}'
+```
+
+The internal routes answer only when `ENABLE_INTERNAL_ROUTES` is on, which is
+the default with `APP_ENV=local` or `test` (see "Public and internal API routes"):
+
+```bash
 curl http://127.0.0.1:8000/listings
 curl http://127.0.0.1:8000/documents
+curl -X POST http://127.0.0.1:8000/vehicles/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"query":"fiat panda 1.0 firefly hybrid 2024","market":"IT"}'
 curl -X POST http://127.0.0.1:8000/search/documents \
   -H "Content-Type: application/json" \
   -d '{"query":"fiat panda","limit":10}'
 curl -X POST http://127.0.0.1:8000/search/documents \
   -H "Content-Type: application/json" \
   -d '{"query":"fiat panda","mode":"vector_fake","limit":10}'
-curl -X POST http://127.0.0.1:8000/vehicles/resolve \
-  -H "Content-Type: application/json" \
-  -d '{"query":"fiat panda 1.0 firefly hybrid 2024","market":"IT"}'
 curl -X POST http://127.0.0.1:8000/advisor/recommendations \
   -H "Content-Type: application/json" \
   -d '{"budget_max_eur":25000,"primary_use":"city","priorities":["price"]}'
-curl -X POST http://127.0.0.1:8000/advisor/model-analysis \
-  -H "Content-Type: application/json" \
-  -d '{"query":"fiat panda 1.0 firefly hybrid 2024","market":"IT","asking_price_eur":14500,"current_km":6400,"usage_profile":["city","mixed"],"analysis_scope":["price","maintenance","red_flags","tco"]}'
 ```
 
 Run the frontend:
@@ -181,13 +219,23 @@ Run the frontend:
 bun run dev:web
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`. The site is the Decision Hub (see
+[`docs/design-integration.md`](docs/design-integration.md)); its routes are:
 
-The `/search` page exposes the same backend search modes as
-`POST /search/documents`: `text_only` by default and `vector_fake` for local
-dev/test after fake embeddings have been written with `embed_documents.py`.
-The `/model-analysis` page calls `POST /advisor/model-analysis` and shows the
-result contract fields returned by the deterministic model analysis flow.
+| Route | Page |
+| --- | --- |
+| `/` | Home and the first free-text request |
+| `/app/start` | Guided choice: cars through the Guided Decision API, motorcycles and scooters through the catalogue |
+| `/app/report?s=<decision id>` | Decision report, loaded from `GET /guided-decisions/{id}` |
+| `/app/vehicle/$id` | Vehicle page (`?spec=` keeps the chosen variant) |
+| `/app/compare?vehicle=&with=` | Two vehicles of one type side by side (`spec` and `withSpec` keep the variants) |
+| `/app/catalog?type=` | Motorcycle and scooter catalogue, without a score |
+| `/app/me` | Browser-local demo account |
+| `/contact`, `/privacy`, `/terms` | Contact (simulated, nothing is sent) and legal pages |
+
+The earlier MVP pages (`/vehicles`, `/listings`, `/documents`, `/search`,
+`/advisor`, `/model-analysis`) were removed; their API routes remain for
+development as listed above.
 
 ## Checks
 
@@ -211,7 +259,19 @@ The report shows rankable listings, exclusion reasons, price coverage, and
 body-style or fuel-type blind spots. Pass `--as-of <ISO8601>` to reproduce a
 historical readiness check.
 
-To run the optional database integration test, set `TEST_DATABASE_URL` to a disposable PostgreSQL database that supports pgvector, then run `pytest apps/api`. CI provides this with a local `pgvector/pgvector:pg16` service; no Neon database is required for CI.
+To run the optional database integration test, set `TEST_DATABASE_URL` to a disposable PostgreSQL database that supports pgvector, then run `pytest apps/api`. CI provides this with a local `pgvector/pgvector:pg18` service; no Neon database is required for CI.
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs with read-only
+repository permissions and pins every third-party action to a commit SHA. Besides
+the backend and frontend checks it runs two more jobs:
+
+- **Secret scan:** gitleaks 8.30.1, checksum-verified, with
+  [`.gitleaks.toml`](.gitleaks.toml), over the working tree and over the commits
+  the pull request or push adds. It blocks the merge on a finding.
+- **Dependency audit:** `bun audit --audit-level=high` on `bun.lock` and
+  `pip-audit` on the `apps/api/uv.lock` export. Both report in the job summary
+  without failing CI until the advisories already in the lockfiles are fixed;
+  then remove `continue-on-error` so new advisories block.
 
 Frontend:
 
@@ -223,4 +283,17 @@ bun run build:web
 
 ## Scope
 
-This repository currently contains the project base, backend health/readiness endpoints, read-only vehicle/listing/document APIs, deterministic vehicle resolution, document search with default `text_only` mode and explicit dev/test `vector_fake` mode, deterministic Advisor v3 recommendations over reviewed exact-variant catalog offers with metric-level provenance, a deterministic model analysis endpoint, frontend pages for `/vehicles`, `/listings`, `/documents`, `/search`, `/advisor`, and `/model-analysis`, the MVP database schema/seed, local fixture ingestion, a dry-run Firecrawl planning command, a dry-run embeddings planning command, and a fake-only embeddings write command for development. The vehicle, listing, and document collection routes validate filters from URL search parameters and load matching data through TanStack route loaders, making filtered views shareable and restorable through browser navigation. Their detail routes also load records through TanStack route loaders so direct detail URLs share a stable server/client payload and common pending/error states. Real Firecrawl crawling, real embedding providers, production hybrid/vector search, authentication, and Redis are intentionally deferred.
+This repository holds the Decision Hub site and the API behind it. The site is
+an API client (ADR-008): it computes no ranking, score or cost and holds no
+vehicle data. The API provides health, readiness and `/version`; the vehicle
+catalogue with Catalog v2 facts and provenance; the persisted Guided Decision
+flow, whose report is recomputed against the current catalogue on every read;
+deterministic Advisor v3 ranking over reviewed exact-variant offers and list
+prices; and the deterministic model analysis. Catalog v2 evidence storage,
+publication and read views come from migrations `0008` to `0016` (see
+[`docs/catalog-v2.md`](docs/catalog-v2.md)). The data tools are offline or
+explicitly started: local fixture ingestion, the open-data catalogue builder,
+the manufacturer collection agent, a dry-run Firecrawl planner and fake-only
+embeddings. Real embedding providers, production vector search, authentication
+and Redis are deferred. The current state and the next gates are in
+[`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md).

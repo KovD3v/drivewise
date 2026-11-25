@@ -6,7 +6,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import psycopg
 from psycopg.rows import dict_row
@@ -14,28 +14,13 @@ from psycopg.rows import dict_row
 from app.core.config import PROJECT_ROOT, load_env_file
 from app.core.database_url import contains_placeholder_database_url
 from app.repositories.advisor import AdvisorRepository
+from app.schemas.advisor import AdvisorBodyStyle, AdvisorFuelType
+from app.services.advisor.pricing import price_basis, priced_terms
 
 
-BODY_STYLES = (
-    "city_car",
-    "crossover",
-    "hatchback",
-    "mpv",
-    "sedan",
-    "small_hatchback",
-    "suv",
-    "van",
-    "wagon",
-)
-FUEL_TYPES = (
-    "diesel",
-    "electric",
-    "full_hybrid_petrol",
-    "hybrid_petrol",
-    "mild_hybrid_petrol",
-    "petrol",
-    "petrol_lpg",
-)
+# Advisor's own definitions, so a fuel or body style it adds is reported here too.
+BODY_STYLES = tuple(sorted(get_args(AdvisorBodyStyle)))
+FUEL_TYPES = tuple(sorted(get_args(AdvisorFuelType)))
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -75,17 +60,24 @@ def format_report(
     fuel_types = Counter(
         str(candidate["spec"]["fuel_type"]) for candidate in candidates
     )
+    # A list-price candidate has no offer: it is evaluated as new at its list price.
+    terms = [priced_terms(candidate) for candidate in candidates]
     conditions = Counter(
-        "new" if candidate["offer"]["condition"] == "new" else "used"
-        for candidate in candidates
+        "new" if term.get("condition") == "new" else "used" for term in terms
     )
-    prices = [float(candidate["offer"]["price_eur"]) for candidate in candidates]
-    total = len(candidates) + sum(excluded_counts.values())
+    prices = [
+        float(term["price_eur"]) for term in terms if term.get("price_eur") is not None
+    ]
+    bases = Counter(price_basis(candidate) for candidate in candidates)
+    # Exclusions count listings, so only offer candidates are listings.
+    total = bases["offer"] + sum(excluded_counts.values())
 
     lines = [
         f"Catalog readiness as of: {as_of.isoformat()}",
-        f"Listings: total={total}, rankable={len(candidates)}",
-        "Exclusions:",
+        f"Listings: total={total}, rankable={bases['offer']}",
+        f"Rankable candidates: {len(candidates)} "
+        f"(offers={bases['offer']}, list_price={bases['list_price']})",
+        "Listing exclusions:",
     ]
     if excluded_counts:
         lines.extend(

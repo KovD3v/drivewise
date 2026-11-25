@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from app.schemas.advisor import AdvisorConstraintModes
@@ -26,7 +26,14 @@ BODY_STYLE_TERMS = {
     "van": "van",
 }
 
+# Plug-in terms come first: "ibrida plug-in" must not stop at "ibrida".
 FUEL_TERMS = {
+    "plug-in": "plug_in_hybrid_petrol",
+    "plug in": "plug_in_hybrid_petrol",
+    "plugin": "plug_in_hybrid_petrol",
+    "phev": "plug_in_hybrid_petrol",
+    "ibrida ricaricabile": "plug_in_hybrid_petrol",
+    "ibrido ricaricabile": "plug_in_hybrid_petrol",
     "diesel": "diesel",
     "elettrica": "electric",
     "elettrico": "electric",
@@ -48,6 +55,26 @@ PRIORITY_TERMS = {
     "autonomia": "efficiency_range",
     "efficienza": "efficiency_range",
 }
+
+# Multi-select answers also accept the Italian words the free-text path knows.
+MULTI_SELECT_TERMS = {
+    "priorities": PRIORITY_TERMS,
+}
+
+# Units a contextual number may carry for each question; any other unit means
+# the answer is about something else ("12.000 km" is not a budget).
+CONTEXTUAL_NUMBER_UNITS = {
+    "budget_eur": {None, "euro", "eur"},
+    "annual_km": {None, "km", "chilometri"},
+}
+
+# Free-text counts and numeric answers outside these bounds are ignored instead
+# of reaching Advisor request validation ("0 passeggeri" or 50M EUR budget).
+MIN_PASSENGERS = 1
+MAX_PASSENGERS = 9
+MAX_CHILDREN = 10
+MAX_BUDGET_EUR = 10_000_000
+MAX_ANNUAL_KM = 500_000
 
 GARAGE_DIMENSION_FIELDS = {
     "garage.useful_length_mm": "useful_length_mm",
@@ -106,7 +133,7 @@ def extract_profile_updates(
         )
 
     budget = _extract_budget(normalized)
-    if budget is not None:
+    if budget is not None and 0 < budget <= MAX_BUDGET_EUR:
         _set_fact(
             updated_profile,
             "budget_eur",
@@ -117,7 +144,7 @@ def extract_profile_updates(
         )
 
     annual_km = _extract_annual_km(normalized)
-    if annual_km is not None:
+    if annual_km is not None and 0 < annual_km <= MAX_ANNUAL_KM:
         _set_fact(
             updated_profile,
             "annual_km",
@@ -131,7 +158,7 @@ def extract_profile_updates(
         re.search(r"\b(?:non ho|senza|nessun)\s+(?:figli|bambini|figlio)\b", normalized)
     )
     children_count = 0 if no_children else _extract_count(normalized, ("figli", "bambini"))
-    if children_count is not None:
+    if children_count is not None and 0 <= children_count <= MAX_CHILDREN:
         _set_fact(
             updated_profile,
             "children_count",
@@ -142,7 +169,10 @@ def extract_profile_updates(
         )
 
     passengers_usual = _extract_passengers(normalized)
-    if passengers_usual is not None:
+    if (
+        passengers_usual is not None
+        and MIN_PASSENGERS <= passengers_usual <= MAX_PASSENGERS
+    ):
         _set_fact(
             updated_profile,
             "passengers_usual",
@@ -332,7 +362,10 @@ def _extract_contextual_answer(
     constraints = question.constraints
     value = None
     if question.type == "number":
-        value = _standalone_number(normalized)
+        value, unit = _standalone_quantity(normalized)
+        allowed_units = CONTEXTUAL_NUMBER_UNITS.get(expected_question_id)
+        if allowed_units is not None and unit not in allowed_units:
+            value = None
         if expected_question_id in {"children_count", "passengers_usual"}:
             value = _count_value(normalized)
         if value is not None and constraints is not None:
@@ -340,6 +373,10 @@ def _extract_contextual_answer(
                 return
             if constraints.maximum is not None and value > constraints.maximum:
                 return
+        if expected_question_id == "budget_eur" and value is not None and value > MAX_BUDGET_EUR:
+            return
+        if expected_question_id == "annual_km" and value is not None and value > MAX_ANNUAL_KM:
+            return
     elif question.type == "boolean":
         value = _yes_no(normalized)
     elif constraints is not None and question.type == "single_select":
@@ -350,7 +387,14 @@ def _extract_contextual_answer(
             if yes_no is not None:
                 value = "garage" if yes_no else "none"
     elif constraints is not None and question.type == "multi_select":
-        options = [option for option in constraints.options if _contains_term(normalized, option)]
+        # Keep the order the user wrote, for option ids and Italian words alike.
+        terms = {option: option for option in constraints.options}
+        terms.update(MULTI_SELECT_TERMS.get(expected_question_id, {}))
+        options = [
+            option
+            for option in _matching_values(normalized, terms)
+            if option in constraints.options
+        ]
         if options:
             value = options
 
@@ -419,8 +463,13 @@ def _set_garage_fact(
     updated_fields.append(f"garage.{field_name}")
 
 
-_AMOUNT = r"([0-9][0-9\s.,']*(?:k(?![a-z])|mila)?)"
-_DISTANCE_AFTER = re.compile(r"\s*(?:km|chilometri)\b")
+# An amount is at most 25 characters of digits and separators, with single
+# spaces allowed only between digits. The bounds and the boundary lookarounds
+# keep matching linear on adversarial input and stop a long number from being
+# read as one of its slices.
+_NUMBER = r"(?<![0-9.,'])[0-9](?:[0-9.,']|\s(?=[0-9])){0,24}(?![0-9])"
+_AMOUNT = rf"({_NUMBER}(?:\s?(?:k(?![a-z])|mila))?)"
+_DISTANCE_AFTER = re.compile(r"\s?(?:km|chilometri)\b")
 
 
 def _extract_budget(normalized: str) -> int | None:
@@ -499,7 +548,10 @@ def _extract_passengers(normalized: str) -> int | None:
 
 
 def _count_value(value: str) -> int | None:
-    return int(value) if value.isdigit() else _ITALIAN_COUNTS.get(value)
+    # Counts are small: more than three digits is never a usable answer.
+    if value.isascii() and value.isdigit():
+        return int(value) if len(value) <= 3 else None
+    return _ITALIAN_COUNTS.get(value)
 
 
 def _extract_usage(normalized: str) -> list[str]:
@@ -636,20 +688,26 @@ def _yes_no(normalized: str) -> bool | None:
     return None
 
 
+_STANDALONE_QUANTITY = re.compile(
+    rf"(?:circa )?({_NUMBER}(?:\s?(?:k(?![a-z])|mila))?)"
+    r"\s?(mm|cm|m|km|chilometri|euro|eur)?"
+)
+_STANDALONE_MILLIMETRES = re.compile(rf"(?:circa )?({_NUMBER})\s?(mm|cm|m)?")
+
+
 def _standalone_number(normalized: str) -> int | None:
-    match = re.fullmatch(
-        r"\s*(?:circa\s+)?([0-9][0-9\s.,']*(?:k|mila)?)\s*"
-        r"(?:mm|cm|m|km|euro|eur)?\s*",
-        normalized,
-    )
-    return _parse_number(match.group(1)) if match else None
+    return _standalone_quantity(normalized)[0]
+
+
+def _standalone_quantity(normalized: str) -> tuple[int | None, str | None]:
+    match = _STANDALONE_QUANTITY.fullmatch(normalized)
+    if match is None:
+        return None, None
+    return _parse_number(match.group(1)), match.group(2)
 
 
 def _standalone_millimetres(normalized: str) -> int | None:
-    match = re.fullmatch(
-        r"\s*(?:circa\s+)?([0-9][0-9\s.,']*)\s*(mm|cm|m)?\s*",
-        normalized,
-    )
+    match = _STANDALONE_MILLIMETRES.fullmatch(normalized)
     if match is None:
         return None
 
@@ -669,10 +727,10 @@ def _standalone_millimetres(normalized: str) -> int | None:
             unit = "mm"
     if unit == "m":
         try:
-            metres = float(raw_value.replace(",", "."))
-        except ValueError:
+            metres = Decimal(raw_value.replace(",", "."))
+            return int((metres * 1_000).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        except InvalidOperation:
             return None
-        return round(metres * 1_000)
 
     number = _parse_number(raw_value)
     if number is None:
@@ -682,12 +740,7 @@ def _standalone_millimetres(normalized: str) -> int | None:
 
 def is_non_positive_garage_dimension(message: str) -> bool:
     normalized = _normalize(message)
-    return bool(
-        re.fullmatch(
-            r"\s*(?:circa\s+)?0+(?:[.,]0+)?\s*(?:mm|cm|m)?\s*",
-            normalized,
-        )
-    )
+    return bool(re.fullmatch(r"(?:circa )?0+(?:[.,]0+)?\s?(?:mm|cm|m)?", normalized))
 
 
 def _parse_number(raw_value: str) -> int | None:
@@ -704,12 +757,19 @@ def _parse_number(raw_value: str) -> int | None:
         value = value.replace(" ", "").replace("'", "").replace(",", ".")
         if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value):
             return None
-        return int(Decimal(value) * multiplier)
+        try:
+            return int((Decimal(value) * multiplier).quantize(Decimal(1)))
+        except InvalidOperation:
+            return None
 
     number = _parse_decimal(value)
     if number is None:
         return None
-    return int(number.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    try:
+        # Numbers beyond the 28-digit Decimal context cannot be quantized.
+        return int(number.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    except InvalidOperation:
+        return None
 
 
 def _parse_decimal(raw_value: str) -> Decimal | None:
@@ -748,7 +808,9 @@ def _normalize(value: str) -> str:
         character for character in decomposed if not unicodedata.combining(character)
     )
     normalized = re.sub(r"[€?!;:]", " ", without_accents).replace("’", "'")
-    return normalized.replace("'", " ").strip()
+    # Collapsing whitespace runs keeps every pattern that allows a single
+    # space linear on adversarial input.
+    return re.sub(r"\s+", " ", normalized.replace("'", " ")).strip()
 
 
 def _contains_any(value: str, terms: tuple[str, ...]) -> bool:

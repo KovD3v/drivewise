@@ -1,6 +1,6 @@
 # DriveWise project context
 
-_Last updated: 2026-08-25_
+_Last updated: 2026-11-25_
 
 ## Product vision
 DriveWise is a vehicle Decision Intelligence product. It helps a person choose the right vehicle for their real context rather than returning a generic recommendation or a list of listings. The initial MVP focuses on cars, with the architecture designed to extend later to motorcycles and scooters.
@@ -30,14 +30,14 @@ Decision Score and Decision Confidence are different concepts.
 - Data Quality uses source reliability, freshness, verification and per-domain confidence.
 
 ## Data
-The current dataset is synthetic/mock and exists to stabilize contracts and UI. It contains five differentiated vehicles and fields for technical data, Vehicle DNA, known issues, recalls, maintenance, TCO, depreciation, Garage Fit, strengths and trade-offs. It must not be presented as production-grade automotive truth.
+The catalogue lives in PostgreSQL (Neon in production). Catalog v2 stores sourced evidence and reviewed decisions and publishes them to the read views Advisor v3 uses (migrations `0008`–`0016`). No database holds reviewed real cars yet: the seed rows of migrations `0003`–`0004` and the synthetic demo catalogue (`data/fixtures/catalog/catalog-v2.demo.synthetic.json`, shown with a demo notice when the site is built with `VITE_SYNTHETIC_DATA=true`) are development material. Under ADR-011 they must not be presented as production-grade automotive truth. The first real data is the 12-car curation of ADR-017 ([`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)).
 
 ## Architecture direction
-Lovable/React is the presentation layer. `apps/api/app/services/advisor/` is the source of truth for ranking. The intended integration is:
+The Decision Hub site (`apps/web`, TanStack Start, design imported from the Lovable exports) is the presentation layer. `apps/api/app/services/advisor/` is the source of truth for ranking. The integration is live:
 
-`Lovable frontend -> REST API -> Python backend/FastAPI -> Advisor v3 -> Dataset/DB`
+`Decision Hub site -> /api (same origin) -> FastAPI -> Advisor v3 -> PostgreSQL catalogue`
 
-Do not duplicate the scoring algorithm in TypeScript. The frontend consumes API payloads.
+Site and API deploy together as one Vercel project (`vercel.json`). Do not duplicate the scoring algorithm in TypeScript. The frontend consumes API payloads and types generated from the API's OpenAPI schema.
 
 ## MVP user journey
 1. Landing
@@ -64,13 +64,14 @@ Do not duplicate the scoring algorithm in TypeScript. The frontend consumes API 
 - UI should transform data into decisions, not dump tables.
 
 ## Current product state
-- Landing: mature MVP design.
-- `/app/start`: implemented as Lovable mock flow and requires real API integration next.
-- Decision Report: mock UI exists.
-- Vehicle detail: rich UI exists, including Garage Fit redesign.
-- Dataset v0.2: synthetic development dataset.
-- Advisor v3: integrated in API and Guided Decision, calibrated against historical synthetic profiles.
-- Specialist data providers and reviewed catalog coverage: next major technical milestone.
+- Build: API-first and unified on `main` since PR #22, hardened by the Architectural Council decisions A–F (see [`CURRENT_STATUS.md`](CURRENT_STATUS.md)).
+- Landing: November 2026 Lovable design, merged onto the API-backed site.
+- `/app/start`: live Guided Decision against the API for cars; motorcycles and scooters open the catalogue.
+- Decision Report: `/app/report?s=<decision id>` loads from the API and recomputes the ranking on every read.
+- Vehicle detail and comparison: API data, with `?spec=` keeping the chosen variant; Garage Fit included.
+- Catalogue: seed and synthetic demo data only; no reviewed real cars yet.
+- Advisor v3: the only ranking runtime, in the API and the Guided Decision.
+- Next milestone: curate, review and publish the first 12 real cars (ADR-017, [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)), after the production ops gates in `CURRENT_STATUS.md`.
 
 ## Ownership split
 - Product/UX/Decision model: Andrea.
@@ -80,9 +81,10 @@ Do not duplicate the scoring algorithm in TypeScript. The frontend consumes API 
 Read, in order:
 1. `docs/PROJECT_CONTEXT.md`
 2. `docs/CURRENT_STATUS.md`
-3. `docs/DECISIONS.md`
-4. `docs/TOMMASO_TASKS.md`
-5. `docs/advisor-v3.md`
-6. `docs/api-contract.md` and `docs/architecture.md`
+3. `docs/snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md` (open findings and roadmap)
+4. `docs/f1-twelve-cars-curation.md`
+5. `docs/DECISIONS.md`
+6. `docs/advisor-v3.md`
+7. `docs/api-contract.md` and `docs/architecture.md`
 
-Then continue from the first item under **Next actions** in `CURRENT_STATUS.md`.
+Then continue from the first item under **Remaining pre-go-live gates** in `CURRENT_STATUS.md`. `docs/TOMMASO_TASKS.md` and `docs/TOMMASO_BACKLOG.md` are historical.

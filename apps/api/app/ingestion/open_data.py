@@ -4,6 +4,7 @@ deterministic, so the same run directory always yields the same bundle."""
 
 import hashlib
 import json
+import os
 import re
 import unicodedata
 from collections.abc import Callable, Iterator
@@ -24,6 +25,12 @@ RDW_URL = "https://opendata.rdw.nl/resource"
 RDW_VEHICLES = "m9d7-ebf2"
 RDW_APPROVAL_ENERGY = "gr7t-qfnb"
 RDW_FUEL = "8ys7-d773"
+# Row caps of the RDW queries. A response that fills its cap may have lost rows, so
+# its values are recorded as a gap, never as verified (see _truncated).
+RDW_GROUP_LIMIT = 50
+RDW_APPROVAL_LIMIT = 1000
+# A two-wheeler slug names files under artifacts/: one plain path component.
+TWO_WHEEL_SLUG = re.compile(r"[a-z0-9][a-z0-9-]*")
 MOTOSPECDB_URL = "https://motospecdb.com/api/v1/bikes.json"
 # Two-wheelers are looked up among the Dutch registrations from this year on.
 TWO_WHEEL_SINCE_YEAR = 2024
@@ -374,7 +381,7 @@ def rdw_car_request(tan: str, variant: str, version: str) -> Request:
                 "$where": _version_where(tan, variant, version),
                 "$group": fields,
                 "$order": "n desc",
-                "$limit": 50,
+                "$limit": RDW_GROUP_LIMIT,
             },
         ),
     )
@@ -391,21 +398,33 @@ def rdw_body_request(tan: str, variant: str, version: str) -> Request:
                 "$where": _version_where(tan, variant, version),
                 "$group": "merk,inrichting",
                 "$order": "n desc,inrichting",
-                "$limit": 50,
+                "$limit": RDW_GROUP_LIMIT,
             },
         ),
     )
 
 
-def hybrid_plates_request(tan: str, variant: str, version: str) -> Request:
-    """A few registered vehicles of one version: fuel data is published per vehicle."""
+def _merk_where(merks: list[str]) -> str:
+    return "merk in (" + ",".join(_soql(merk) for merk in sorted(merks)) + ")"
+
+
+def hybrid_plates_request(
+    tan: str, variant: str, version: str, merks: list[str]
+) -> Request:
+    """A few registered vehicles of one version and make: fuel data is per vehicle.
+
+    One approval version can be registered by two makes, so the sample is limited to
+    the registry spellings of the family's make (see make_rows)."""
+    key = "|".join((tan, variant, version, *sorted(merks)))
     return Request(
-        f"rdw/hybrid-plates-{_short('|'.join((tan, variant, version)))}.json",
+        f"rdw/hybrid-plates-{_short(key)}.json",
         _rdw_url(
             RDW_VEHICLES,
             {
                 "$select": "kenteken",
-                "$where": _version_where(tan, variant, version),
+                "$where": _version_where(tan, variant, version)
+                + " AND "
+                + _merk_where(merks),
                 "$order": "kenteken",
                 "$limit": HYBRID_SAMPLE,
             },
@@ -414,11 +433,12 @@ def hybrid_plates_request(tan: str, variant: str, version: str) -> Request:
 
 
 def hybrid_motor_request(
-    tan: str, variant: str, version: str, plates: list[str]
+    tan: str, variant: str, version: str, plates: list[str], merks: list[str]
 ) -> Request:
     listed = ",".join(_soql(plate) for plate in plates)
+    key = "|".join((tan, variant, version, *sorted(merks)))
     return Request(
-        f"rdw/hybrid-motor-{_short('|'.join((tan, variant, version)))}.json",
+        f"rdw/hybrid-motor-{_short(key)}.json",
         _rdw_url(
             RDW_FUEL,
             {
@@ -431,6 +451,20 @@ def hybrid_motor_request(
             },
         ),
     )
+
+
+def validate_two_wheelers(two_wheelers: dict) -> None:
+    """Every slug names files under artifacts/, so it must be one safe, unique name."""
+    seen = set()
+    for entry in two_wheelers["models"]:
+        value = entry.get("slug")
+        if not isinstance(value, str) or not TWO_WHEEL_SLUG.fullmatch(value):
+            raise OpenDataError(
+                f"Two-wheeler slug {value!r} must match {TWO_WHEEL_SLUG.pattern}."
+            )
+        if value in seen:
+            raise OpenDataError(f"Two-wheeler slug {value!r} is listed twice.")
+        seen.add(value)
 
 
 def two_wheel_versions_request(entry: dict) -> Request:
@@ -483,7 +517,7 @@ def two_wheel_values_request(
                 + f" AND merk={_soql(entry['rdw_merk'])}",
                 "$group": fields,
                 "$order": "n desc",
-                "$limit": 50,
+                "$limit": RDW_GROUP_LIMIT,
             },
         ),
     )
@@ -504,7 +538,7 @@ def two_wheel_power_request(
                 "$where": f"typegoedkeuringsnummer={_soql(tan.lower())}",
                 "$order": "codevarianttgk,codeuitvoeringtgk,"
                 "volgnummerrevisieuitvoering,volgnummerenergiebron",
-                "$limit": 1000,
+                "$limit": RDW_APPROVAL_LIMIT,
             },
         ),
     )
@@ -543,9 +577,13 @@ def motospecdb_entry(
     if link is not None and not isinstance(link, dict):
         return None, "motospecdb_link_unbound"
     wanted = (link or {}).get("slug")
-    found = next((b for b in bikes if wanted and b.get("slug") == wanted), None)
-    if found is None:
+    found_all = [b for b in bikes if wanted and b.get("slug") == wanted]
+    if not found_all:
         return None, "motospecdb_no_entry"
+    if len(found_all) > 1:
+        # Two entries under one slug: the reviewed one cannot be told apart.
+        return None, "motospecdb_duplicate_slug"
+    found = found_all[0]
     if found.get("brand", "").casefold() != entry["make"].casefold():
         return None, "motospecdb_brand_differs"
     if any(found.get(field) != link.get(field) for field in MOTOSPECDB_REVIEWED):
@@ -582,10 +620,43 @@ class Run:
             if self.manifest_path.exists()
             else {}
         )
+        # (artifact path, sha256) pairs whose bytes on disk were checked.
+        self._verified: set[tuple[str, str]] = set()
+
+    def _path(self, request: Request) -> Path:
+        """The artifact's file, refused unless it lies strictly inside artifacts/."""
+        base = self.artifacts.resolve()
+        path = (self.artifacts / request.artifact_path).resolve()
+        if path == base or not path.is_relative_to(base):
+            raise OpenDataError(
+                f"Artifact path {request.artifact_path!r} leaves the artifacts folder."
+            )
+        return path
+
+    def _intact(self, request: Request, entry: dict) -> bool:
+        key = (request.artifact_path, entry["sha256"])
+        if key in self._verified:
+            return True
+        try:
+            data = self._path(request).read_bytes()
+        except FileNotFoundError:
+            return False
+        if hashlib.sha256(data).hexdigest() != entry["sha256"]:
+            return False
+        self._verified.add(key)
+        return True
 
     def has(self, request: Request) -> bool:
+        """True when the response is recorded and its stored bytes still match.
+
+        A fetch interrupted before the manifest was written, or a damaged file,
+        reads as missing, so the next fetch stores it again."""
         entry = self.manifest.get(request.artifact_path)
-        return entry is not None and entry["url"] == request.url
+        return (
+            entry is not None
+            and entry["url"] == request.url
+            and self._intact(request, entry)
+        )
 
     def read(self, request: Request):
         entry = self.manifest.get(request.artifact_path)
@@ -593,9 +664,15 @@ class Run:
             raise OpenDataError(
                 f"Missing or outdated artifact {request.artifact_path}; fetch first."
             )
-        data = (self.artifacts / request.artifact_path).read_bytes()
+        try:
+            data = self._path(request).read_bytes()
+        except FileNotFoundError as error:
+            raise OpenDataError(
+                f"Artifact {request.artifact_path} is missing on disk; fetch again."
+            ) from error
         if hashlib.sha256(data).hexdigest() != entry["sha256"]:
             raise OpenDataError(f"Artifact {request.artifact_path} changed on disk.")
+        self._verified.add((request.artifact_path, entry["sha256"]))
         return json.loads(data)
 
     def evidence_path(self, request: Request) -> str:
@@ -611,25 +688,51 @@ class Run:
         )
 
     def store(self, request: Request, data: bytes, retrieved_at: datetime) -> None:
+        path = self._path(request)  # before any folder or byte is written
         json.loads(data)  # a non-JSON error page must never become evidence
+        sha256 = hashlib.sha256(data).hexdigest()
         earlier = self.manifest.get(request.artifact_path)
-        if earlier and earlier["url"] != request.url and self._cited(request):
-            # A changed question under the same path would break that bundle's hashes.
+        if (
+            earlier
+            and (earlier["url"] != request.url or earlier["sha256"] != sha256)
+            and self._cited(request)
+        ):
+            # A changed question or answer under the same path would break that
+            # bundle's hashes; a refetch of a damaged file must return the same bytes.
             raise OpenDataError(
                 f"{request.artifact_path} is evidence of a bundle in {self.root}; "
                 "fetch into a new run folder."
             )
-        path = self.artifacts / request.artifact_path
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+        _replace(path, data)
         self.manifest[request.artifact_path] = {
             "url": request.url,
             "retrieved_at": retrieved_at.astimezone(UTC).isoformat(timespec="seconds"),
-            "sha256": hashlib.sha256(data).hexdigest(),
+            "sha256": sha256,
         }
-        self.manifest_path.write_text(
-            json.dumps(self.manifest, indent=1, sort_keys=True) + "\n"
+        # The artifact lands first: a crash in between leaves it unrecorded, so the
+        # next fetch stores it again instead of trusting a half-written file.
+        _replace(
+            self.manifest_path,
+            (json.dumps(self.manifest, indent=1, sort_keys=True) + "\n").encode(),
         )
+        self._verified.add((request.artifact_path, sha256))
+
+
+def _replace(path: Path, data: bytes) -> None:
+    """Write a file whole or not at all: a temporary sibling, then an atomic rename.
+
+    The temporary name never ends in .json, so no bundle glob can read it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with open(temporary, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def resolve_families(
@@ -810,8 +913,21 @@ def _rdw_counts(rows: list[dict], field: str) -> dict[Decimal, int]:
 
 def _same_make(family_make: str, rdw_rows: list[dict]) -> bool:
     """Exact after normalisation: one approval version can be registered by two makes."""
+    return bool(make_rows(family_make, rdw_rows))
+
+
+def make_rows(family_make: str, rdw_rows: list[dict]) -> list[dict]:
+    """The rows registered under the family's make, compared after normalisation.
+
+    One approval version can be registered by two makes; the other make's rows must
+    never lend a value, a completeness check or a plate to this one."""
     wanted = slug(family_make)
-    return any(slug(row.get("merk") or "") == wanted for row in rdw_rows)
+    return [row for row in rdw_rows if slug(row.get("merk") or "") == wanted]
+
+
+def _truncated(rows: list, limit: int) -> bool:
+    """A response that fills its row cap may have lost rows past the cap."""
+    return len(rows) >= limit
 
 
 def _complete(rows: list[dict]) -> bool:
@@ -823,14 +939,17 @@ def choose_version(
 ) -> tuple[dict, Request | None, list]:
     """The most-registered version with exact, complete RDW data; else the top one.
 
+    Only rows of the family's make count, so a shared approval of another make can
+    make a version neither complete nor matched.
+
     Returns (EEA bucket, RDW request or None, RDW requests still to fetch)."""
     fallback = None
     for bucket in group["versions"]:
         request = rdw_car_request(*bucket["key"][2:])
         if not run.has(request):
             return bucket, None, [request]
-        rows = run.read(request)
-        if rows and _same_make(family["make"], rows):
+        rows = make_rows(family["make"], run.read(request))
+        if rows:
             if _complete(rows):
                 return bucket, request, []
             fallback = fallback or (bucket, request)
@@ -839,20 +958,29 @@ def choose_version(
     return group["versions"][0], None, []
 
 
+def _registry_makes(run: Run, family_make: str, rdw_request: Request) -> list[str]:
+    """The registry's own spellings of the family's make for one version."""
+    rows = make_rows(family_make, run.read(rdw_request))
+    return sorted({row["merk"] for row in rows})
+
+
 def plan_hybrid(
-    run: Run, bucket: dict, rdw_request: Request | None
+    run: Run, bucket: dict, rdw_request: Request | None, family_make: str
 ) -> tuple[list[Request], list[Request]]:
     """(stored requests that tell the hybrid kind, requests still to fetch)."""
     if rdw_request is None:
         return [], []
+    merks = _registry_makes(run, family_make, rdw_request)
+    if not merks:
+        return [], []
     approval = bucket["key"][2:]
-    plates_request = hybrid_plates_request(*approval)
+    plates_request = hybrid_plates_request(*approval, merks)
     if not run.has(plates_request):
         return [], [plates_request]
     plates = [row["kenteken"] for row in run.read(plates_request)]
     if not plates:
         return [], []
-    motor_request = hybrid_motor_request(*approval, plates)
+    motor_request = hybrid_motor_request(*approval, plates, merks)
     if not run.has(motor_request):
         return [], [motor_request]
     return [plates_request, motor_request], []
@@ -893,6 +1021,7 @@ def _families(run: Run, name_map: dict) -> tuple[list[dict], list[dict]]:
 
 def plan(run: Run, name_map: dict, two_wheelers: dict) -> Iterator[Request]:
     """Yield every request still missing, given what the run already holds."""
+    validate_two_wheelers(two_wheelers)  # before any request names a file
     names = names_request()
     if not run.has(names):
         yield names
@@ -914,7 +1043,7 @@ def plan(run: Run, name_map: dict, two_wheelers: dict) -> Iterator[Request]:
                     if not run.has(body):
                         yield body
                 if not missing and group["mode"] == "H":
-                    yield from plan_hybrid(run, bucket, rdw_request)[1]
+                    yield from plan_hybrid(run, bucket, rdw_request, family["make"])[1]
     for entry in two_wheelers["models"]:
         yield from plan_two_wheeler(run, entry)[1]
     if not run.has(motospecdb_request()):
@@ -948,9 +1077,19 @@ def _number(value) -> Decimal:
     return Decimal(str(value))
 
 
-def _code(value: str | None) -> str:
-    """Approval codes compare without leading zeros: RDW writes "00" and "0" alike."""
-    return (value or "").lstrip("0") or "0"
+def _code(value: str | None) -> str | None:
+    """Approval codes compare without leading zeros: RDW writes "00" and "0" alike.
+
+    A missing or blank code is None, never "0": it matches nothing."""
+    text = (value or "").strip()
+    if not text:
+        return None
+    return text.lstrip("0") or "0"
+
+
+def _same_code(left: str | None, right: str | None) -> bool:
+    """True when both codes are present and equal without leading zeros."""
+    return _code(left) is not None and _code(left) == _code(right)
 
 
 def _plain(value: Decimal) -> str:
@@ -1202,7 +1341,17 @@ def continue_bundle(
             if selected and _interval(selected) == _interval(observation):
                 report["unchanged"] += 1
                 continue
-            decision = {**decision, "supersedes_id": head["id"]}
+            # A value can return to an earlier observation (A, then B, then A). The
+            # observation is immutable and kept once; the revision is a new decision,
+            # so its ID names the decision it supersedes.
+            decision = {
+                **decision,
+                "id": _uuid("decision", observation["id"], "supersedes", head["id"]),
+                "supersedes_id": head["id"],
+                "decided_at": max(
+                    decision["decided_at"], head["decided_at"], key=_moment
+                ),
+            }
             report["revised"].append(
                 {
                     "variant_key": scope[0],
@@ -1211,8 +1360,19 @@ def continue_bundle(
                     "to": observation["raw_value"],
                 }
             )
-        merged["observations"].append(observation)
+        kept = observations.get(observation["id"])
+        if kept is None:
+            observations[observation["id"]] = observation
+            merged["observations"].append(observation)
+        elif kept != observation:
+            # Same ID, other content: the extraction changed under an unchanged
+            # VERSION. Reusing either one would misstate the value.
+            raise OpenDataError(
+                f"Observation {observation['id']} ({scope[0]}, {scope[1]}) differs "
+                "from the published one with the same ID; bump the builder VERSION."
+            )
         merged["decisions"].append(decision)
+        heads[scope] = decision
     report["kept_without_fresh_value"] = len(set(heads) - refreshed)
     used = {o["snapshot_id"] for o in merged["observations"]}
     for record in [*merged["vehicles"], *merged["variants"]]:
@@ -1224,8 +1384,15 @@ def continue_bundle(
     return CatalogV2.model_validate(merged).model_dump(mode="json"), report
 
 
+def _moment(value: str) -> datetime:
+    return datetime.fromisoformat(value)
+
+
 def _approval(variant: dict) -> tuple:
-    return tuple(r["value"] for r in variant["external_references"])
+    """The variant's approval references, each with its namespace."""
+    return tuple(
+        sorted((r["namespace"], r["value"]) for r in variant["external_references"])
+    )
 
 
 def _held_back(previous: dict, fresh: dict, families: dict, report: dict) -> set:
@@ -1235,11 +1402,15 @@ def _held_back(previous: dict, fresh: dict, families: dict, report: dict) -> set
     and a new version's registered body can contradict the vehicle's frozen body
     style. Neither is corrected automatically: the addition waits for a person."""
     published = {v["variant_key"] for v in previous["variants"]}
-    owners = {_approval(v): v for v in previous["variants"]}
     makes = {
-        v["canonical_key"]: v["make"].casefold()
+        v["canonical_key"]: slug(v["make"])
         for v in [*previous["vehicles"], *fresh["vehicles"]]
     }
+    # Every published owner, by make and approval: two makes can share an approval,
+    # and one make can publish it under several variants.
+    owners: dict[tuple, list[dict]] = {}
+    for v in previous["variants"]:
+        owners.setdefault((makes[v["vehicle_key"]], _approval(v)), []).append(v)
     bodies = {v["canonical_key"]: v.get("body_style") for v in previous["vehicles"]}
     entries = {
         v["variant_key"]: v for family in families.values() for v in family["variants"]
@@ -1249,14 +1420,17 @@ def _held_back(previous: dict, fresh: dict, families: dict, report: dict) -> set
         key, vehicle = variant["variant_key"], variant["vehicle_key"]
         if key in published:
             continue
-        owner = owners.get(_approval(variant))
+        owner = next(
+            (
+                v
+                for v in owners.get((makes[vehicle], _approval(variant)), [])
+                if v["vehicle_key"] != vehicle
+            ),
+            None,
+        )
         body = bodies.get(vehicle)
         entry = entries.get(key, {})
-        if (
-            owner
-            and owner["vehicle_key"] != vehicle
-            and makes[owner["vehicle_key"]] == makes[vehicle]
-        ):
+        if owner:
             gap = {
                 "metric": "identity",
                 "reason": "approval_published_under_other_model",
@@ -1433,7 +1607,9 @@ def _vehicle_body(vehicle: dict, entry: dict) -> None:
     one name), leave it unknown: the vehicle is not split by guess."""
     variants = entry["variants"]
     codes = {v["rdw_body_code"] for v in variants}
-    if any(len(v["rdw_body_codes"]) and v["rdw_body_code"] is None for v in variants):
+    if any(v.get("rdw_body_truncated") for v in variants):
+        reason = "rdw_rows_truncated"
+    elif any(len(v["rdw_body_codes"]) and v["rdw_body_code"] is None for v in variants):
         reason = "rdw_body_styles_differ"
     elif any(v["rdw_match"] == "none" for v in variants):
         reason = "rdw_no_exact_version"
@@ -1540,11 +1716,13 @@ def _car_variant(
                 {"metric": metric, "reason": "phev_electric_definition_unknown"}
             )
     rdw_match, body_code, body_codes, body_snapshot = "none", None, {}, None
+    body_truncated = False
     if rdw_request is None:
         for metric in ("length_mm", "body_width_mm", "height_mm", "seats"):
             gaps.append({"metric": metric, "reason": "rdw_no_exact_version"})
     else:
-        rows = bundle.run.read(rdw_request)
+        raw_rows = bundle.run.read(rdw_request)
+        rows = make_rows(make, raw_rows)
         rdw_snapshot = bundle.snapshot(rdw_request, "rdw-open-data")
         evidence.append(rdw_snapshot)
         rdw_match = "exact"
@@ -1554,6 +1732,9 @@ def _car_variant(
             ("height_mm", "hoogte_voertuig", "cm", 10),
             ("seats", "aantal_zitplaatsen", None, 1),
         ):
+            if _truncated(raw_rows, RDW_GROUP_LIMIT):
+                gaps.append({"metric": metric, "reason": "rdw_rows_truncated"})
+                continue
             counts = _rdw_counts(rows, field)
             _record(
                 bundle,
@@ -1576,11 +1757,15 @@ def _car_variant(
         body_request = rdw_body_request(tan, variant, version)
         if not bundle.run.has(body_request):
             raise OpenDataError("RDW body-style responses are missing; fetch first.")
-        body_code, body_codes = registered_body(make, bundle.run.read(body_request))
+        body_rows = bundle.run.read(body_request)
+        body_code, body_codes = registered_body(make, body_rows)
+        body_truncated = _truncated(body_rows, RDW_GROUP_LIMIT)
+        if body_truncated:
+            body_code = None  # a code past the cap could outnumber the ones read
         body_snapshot = bundle.snapshot(body_request, "rdw-open-data")
     powertrain, motor_kw = POWERTRAINS[mode], []
     if mode == "H":
-        requests, missing = plan_hybrid(bundle.run, bucket, rdw_request)
+        requests, missing = plan_hybrid(bundle.run, bucket, rdw_request, make)
         if missing:
             raise OpenDataError("RDW hybrid responses are missing; fetch first.")
         if requests:
@@ -1620,6 +1805,7 @@ def _car_variant(
         "rdw_body_code": body_code,
         "rdw_body_codes": body_codes,
         "rdw_body_snapshot": body_snapshot,
+        "rdw_body_truncated": body_truncated,
         "gaps": gaps,
     }
 
@@ -1627,6 +1813,7 @@ def _car_variant(
 def build_two_wheelers(
     run: Run, two_wheelers: dict, previous: dict | None = None
 ) -> tuple[dict | None, dict]:
+    validate_two_wheelers(two_wheelers)
     bundle = _Bundle(run, previous)
     report = {"models": []}
     bikes = run.read(motospecdb_request())["bikes"]
@@ -1661,6 +1848,7 @@ def build_two_wheelers(
             dutch_registrations_of_version=int(top["n"]),
         )
         rows = run.read(requests["values"])
+        values_truncated = _truncated(rows, RDW_GROUP_LIMIT)
         for metric, field, unit, factor, context in (
             ("engine_displacement_cc", "cilinderinhoud", "cm3", 1, None),
             ("mass_kg", "massa_rijklaar", "kg", 1, {"method": "mass_in_running_order"}),
@@ -1669,6 +1857,9 @@ def build_two_wheelers(
             ("height_mm", "hoogte_voertuig", "cm", 10, None),
             ("seats", "aantal_zitplaatsen", "count", 1, None),
         ):
+            if values_truncated:
+                item["gaps"].append({"metric": metric, "reason": "rdw_rows_truncated"})
+                continue
             counts = _rdw_counts(rows, field)
             _record(
                 bundle,
@@ -1689,14 +1880,19 @@ def build_two_wheelers(
                 },
                 locator=f"rows[*].{field}",
             )
+        approval_rows = run.read(requests["power"])
         power_rows = [
             r
-            for r in run.read(requests["power"])
-            if _code(r.get("codevarianttgk")) == _code(variant)
-            and _code(r.get("codeuitvoeringtgk")) == _code(version)
+            for r in approval_rows
+            if _same_code(r.get("codevarianttgk"), variant)
+            and _same_code(r.get("codeuitvoeringtgk"), version)
         ]
         evidence = [versions_snapshot, values_snapshot]
-        petrol = False
+        petrol, bounds, latest = False, [], None
+        approvals_truncated = _truncated(approval_rows, RDW_APPROVAL_LIMIT)
+        if approvals_truncated:
+            # The latest revision may lie past the cap: neither power nor fuel holds.
+            power_rows = []
         if power_rows:
             latest = max(int(r["volgnummerrevisieuitvoering"]) for r in power_rows)
             current = [
@@ -1709,13 +1905,16 @@ def build_two_wheelers(
                 for f in ("maximumnettovermogenogr", "maximumnettovermogenbgr")
                 if r.get(f)
             ]
-        if not power_rows or not bounds or not petrol:
-            item["gaps"].append(
-                {"metric": "engine_power_kw", "reason": "rdw_field_empty"}
-            )
-        else:
+        power_snapshot = None
+        if petrol:
+            # The approval states the fuel, so it is identity evidence with or
+            # without a power value.
             power_snapshot = bundle.snapshot(requests["power"], "rdw-open-data")
             evidence.append(power_snapshot)
+        if approvals_truncated or not bounds or not petrol:
+            reason = "rdw_rows_truncated" if approvals_truncated else "rdw_field_empty"
+            item["gaps"].append({"metric": "engine_power_kw", "reason": reason})
+        else:
             bundle.observe(
                 variant_key=variant_key,
                 metric="engine_power_kw",
@@ -1857,6 +2056,10 @@ GAP_REASONS = {
     "was not checked by this run, and every variant would inherit the body style; "
     "not filled.",
     "motospecdb_no_entry": "MotoSpecDB has no entry for this model.",
+    "motospecdb_duplicate_slug": "MotoSpecDB lists more than one entry under the "
+    "linked slug, so the reviewed one cannot be told apart.",
+    "rdw_rows_truncated": "The RDW answer filled its row limit, so rows may be "
+    "missing; the values read are not accepted.",
     "motospecdb_brand_differs": "The linked MotoSpecDB entry names another make.",
     "motospecdb_combined_entry": "The MotoSpecDB entry joins several variants or "
     "generations, so its values may belong to another one.",

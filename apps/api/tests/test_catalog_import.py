@@ -539,10 +539,11 @@ def test_catalog_historical_profile_replay_restores_materialized_collection():
                 """
             ).fetchone()
             assert replayed.status == "completed"
-            assert replayed.run_id == first.run_id
+            # A replay is a new attempt with its own run; the older run is retired.
+            assert replayed.run_id != first.run_id
             assert maintenance_count == {"count": 2}
             assert identical_current.status == "unchanged"
-            assert identical_current.run_id == first.run_id
+            assert identical_current.run_id == replayed.run_id
         finally:
             _cleanup_catalog_test_rows(conn)
 

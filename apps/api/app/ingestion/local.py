@@ -61,17 +61,30 @@ class IngestionResult:
         )
 
 
+class UnsafeIngestionPathError(ValueError):
+    pass
+
+
 def load_local_documents(path: str | Path) -> list[LocalDocument]:
     root = Path(path)
     if not root.exists():
         raise FileNotFoundError(f"Ingestion path does not exist: {root}")
 
     files = [root] if root.is_file() else sorted(root.rglob("*"))
+    # A directory's files must stay inside it, even through symlinks.
+    boundary = None if root.is_file() else root.resolve(strict=True)
     documents: list[LocalDocument] = []
 
     for file_path in files:
         if not file_path.is_file() or file_path.suffix.lower() not in SUPPORTED_SUFFIXES:
             continue
+        if boundary is not None and not file_path.resolve(strict=True).is_relative_to(
+            boundary
+        ):
+            raise UnsafeIngestionPathError(
+                "Ingestion file resolves outside the input directory: "
+                f"{file_path.relative_to(root).as_posix()}"
+            )
         if file_path.suffix.lower() == ".json":
             documents.extend(_load_json_documents(file_path))
         else:
@@ -439,10 +452,17 @@ def _assign_int(
 
 
 def _parse_int(value: str) -> int | None:
-    compact = value.strip().replace(".", "").replace(",", "")
-    if not re.fullmatch(r"\d+", compact):
-        return None
-    return int(compact)
+    """Plain digits or Italian dot-grouped thousands only.
+
+    Decimals ("19.990,50") and comma groups ("19,990", decimal or thousands?)
+    stay unparsed instead of losing their separator and growing 100 or 1000 times.
+    """
+    text = value.strip()
+    if re.fullmatch(r"\d+", text):
+        return int(text)
+    if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", text):
+        return int(text.replace(".", ""))
+    return None
 
 
 def _document_metadata(

@@ -67,6 +67,8 @@ def test_migration_files_are_ordered():
         "0012_list_price_read_view.sql",
         "0013_plug_in_hybrid_fuel_type.sql",
         "0014_body_style_provenance.sql",
+        "0015_catalog_v2_read_view_pivot.sql",
+        "0016_security_and_integrity_hardening.sql",
     ]
 
 

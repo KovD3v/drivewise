@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from pydantic import ValidationError
+
 from app.schemas.advisor import AdvisorRecommendationRequest
 from app.schemas.advisor import AdvisorGarageDimensions
 from app.schemas.guided_decisions import (
@@ -34,6 +36,24 @@ from app.services.guided_decisions.questions import (
 )
 
 
+# Every turn rewrites the stored profile and appends a turn row; the cap bounds
+# what one anonymous decision link can write. Creation counts as turn one.
+MAX_GUIDED_DECISION_TURNS = 40
+
+GARAGE_DIMENSION_FIELDS = (
+    "useful_length_mm",
+    "useful_width_mm",
+    "useful_height_mm",
+    "door_width_mm",
+    "door_height_mm",
+)
+
+RECOMPUTE_FALLBACK_WARNING = (
+    "Non è stato possibile ricalcolare la classifica con il catalogo attuale: "
+    "mostriamo l'ultima risposta salvata, che potrebbe non essere aggiornata."
+)
+
+
 @dataclass(frozen=True)
 class GuidedDecisionEngineResult:
     profile: DecisionProfile
@@ -57,16 +77,10 @@ def process_guided_decision_turn(
         captured_at=as_of,
     )
 
-    preview_ranking, garage_compatibility = _build_preview_ranking(
-        profile,
-        advisor_repository=advisor_repository,
-        as_of=as_of,
+    live = _live_fields(profile, advisor_repository=advisor_repository, as_of=as_of)
+    assistant_message = _assistant_message(
+        profile, updated_fields, live["next_question"]
     )
-    completion = profile_completion(profile)
-    confidence = _decision_confidence(profile, preview_ranking)
-    missing = missing_information(profile)
-    question = next_question(profile)
-    assistant_message = _assistant_message(profile, updated_fields, question)
 
     response = GuidedDecisionResponse(
         decision_id=decision_id,
@@ -75,12 +89,7 @@ def process_guided_decision_turn(
         message=assistant_message,
         decision_profile=profile,
         updated_fields=updated_fields,
-        profile_completion=completion,
-        decision_confidence=confidence,
-        missing_information=missing,
-        next_question=question,
-        preview_ranking=preview_ranking,
-        garage_compatibility=garage_compatibility,
+        **live,
         warnings=_warnings(
             updated_fields,
             invalid_garage_dimension=(
@@ -91,6 +100,53 @@ def process_guided_decision_turn(
         ),
     )
     return GuidedDecisionEngineResult(profile=profile, response=response)
+
+
+def recompute_guided_decision_response(
+    stored: GuidedDecisionResponse,
+    profile: DecisionProfile,
+    *,
+    advisor_repository,
+    as_of: datetime,
+) -> GuidedDecisionResponse:
+    """Rebuild the ranking of a stored decision from its profile.
+
+    A reopened link must reflect the current catalogue and source permissions,
+    so a revoked source never lingers in a saved answer. Only a profile that
+    today's validation rejects falls back to the stored answer, with a warning;
+    any other failure propagates instead of serving stale data silently.
+    """
+    # Only the profile-to-request step may fall back: a validation error raised
+    # by catalogue data must surface, never hide behind the stored answer.
+    try:
+        if profile.budget_eur is not None and profile.primary_use is not None:
+            _advisor_request_from_profile(profile)
+    except ValidationError:
+        warnings = list(dict.fromkeys([*stored.warnings, RECOMPUTE_FALLBACK_WARNING]))
+        return stored.model_copy(update={"warnings": warnings})
+    live = _live_fields(profile, advisor_repository=advisor_repository, as_of=as_of)
+    return stored.model_copy(update={"decision_profile": profile, **live})
+
+
+def _live_fields(
+    profile: DecisionProfile,
+    *,
+    advisor_repository,
+    as_of: datetime,
+) -> dict[str, Any]:
+    preview_ranking, garage_compatibility = _build_preview_ranking(
+        profile,
+        advisor_repository=advisor_repository,
+        as_of=as_of,
+    )
+    return {
+        "profile_completion": profile_completion(profile),
+        "decision_confidence": _decision_confidence(profile, preview_ranking),
+        "missing_information": missing_information(profile),
+        "next_question": next_question(profile),
+        "preview_ranking": preview_ranking,
+        "garage_compatibility": garage_compatibility,
+    }
 
 
 def _build_preview_ranking(
@@ -113,14 +169,22 @@ def _build_preview_ranking(
             [],
         )
 
-    request = _advisor_request_from_profile(profile)
+    try:
+        request = _advisor_request_from_profile(profile)
+    except ValidationError:
+        return (
+            PreviewRanking(
+                status="blocked",
+                blocking_reasons=["invalid_profile_bounds"],
+            ),
+            [],
+        )
     candidates = advisor_repository.list_candidates(as_of=as_of)
-    repository_exclusions = advisor_repository.count_excluded_candidates(as_of=as_of)
     result = score_recommendations(
         request,
         candidates,
         as_of=as_of,
-        initial_excluded_counts=repository_exclusions,
+        pending_garage=_pending_hard_garage(profile),
     )
     has_items = any(group.items for group in result.groups)
     preview = PreviewRanking(
@@ -142,22 +206,40 @@ def _build_preview_ranking(
     return preview, _garage_compatibility(profile, result.groups, candidates)
 
 
-def _advisor_request_from_profile(profile: DecisionProfile) -> AdvisorRecommendationRequest:
-    garage_values = {
+def _garage_values(profile: DecisionProfile) -> dict[str, int]:
+    return {
         field_name: getattr(profile.garage, field_name).value
-        for field_name in (
-            "useful_length_mm",
-            "useful_width_mm",
-            "useful_height_mm",
-            "door_width_mm",
-            "door_height_mm",
-        )
+        for field_name in GARAGE_DIMENSION_FIELDS
         if getattr(profile.garage, field_name) is not None
     }
-    parks_in_garage = profile.parking is not None and profile.parking.value == "garage"
+
+
+def _parks_in_garage(profile: DecisionProfile) -> bool:
+    return profile.parking is not None and profile.parking.value == "garage"
+
+
+def _pending_hard_garage(profile: DecisionProfile) -> dict[str, int] | None:
+    """Known garage measures while a hard garage constraint is still incomplete.
+
+    Without them the Advisor request carries no garage at all, so the hard
+    constraint would vanish and the preview could report ``ready``.
+    """
+    garage_values = _garage_values(profile)
+    if (
+        _parks_in_garage(profile)
+        and profile.constraint_modes.garage == "hard"
+        and len(garage_values) < len(GARAGE_DIMENSION_FIELDS)
+    ):
+        return garage_values
+    return None
+
+
+def _advisor_request_from_profile(profile: DecisionProfile) -> AdvisorRecommendationRequest:
+    garage_values = _garage_values(profile)
     garage = (
         AdvisorGarageDimensions.model_validate(garage_values)
-        if parks_in_garage and len(garage_values) == 5
+        if _parks_in_garage(profile)
+        and len(garage_values) == len(GARAGE_DIMENSION_FIELDS)
         else None
     )
     return AdvisorRecommendationRequest(

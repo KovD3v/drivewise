@@ -168,6 +168,11 @@ def _validate_http_url(url: str, index: int) -> None:
         raise FirecrawlConfigError(
             f"Invalid url at sources[{index}]: expected http or https URL"
         )
+    # Credentials in a source URL would be printed in plans and sent to Firecrawl.
+    if parsed.username is not None or parsed.password is not None:
+        raise FirecrawlConfigError(
+            f"Invalid url at sources[{index}]: credentials are not allowed in URLs"
+        )
 
 
 def document_type_value(value: str) -> PlannerDocumentType:

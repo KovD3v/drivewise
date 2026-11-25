@@ -2,6 +2,7 @@ from typing import Any
 from uuid import UUID
 
 from app.repositories.filters import ListingFilters
+from app.repositories.vehicles import LIKE_ESCAPE, contains_pattern
 
 
 class ListingsRepository:
@@ -19,11 +20,11 @@ class ListingsRepository:
             where_clauses.append("l.spec_id = %s")
             params.append(filters.spec_id)
         if filters.make:
-            where_clauses.append("v.make ILIKE %s")
-            params.append(f"%{filters.make}%")
+            where_clauses.append(f"v.make ILIKE %s {LIKE_ESCAPE}")
+            params.append(contains_pattern(filters.make))
         if filters.model:
-            where_clauses.append("v.model ILIKE %s")
-            params.append(f"%{filters.model}%")
+            where_clauses.append(f"v.model ILIKE %s {LIKE_ESCAPE}")
+            params.append(contains_pattern(filters.model))
         if filters.condition:
             where_clauses.append("l.condition = %s")
             params.append(filters.condition)
@@ -36,8 +37,8 @@ class ListingsRepository:
             where_clauses.append("l.mileage <= %s")
             params.append(filters.max_mileage)
         if filters.location_region:
-            where_clauses.append("l.location_region ILIKE %s")
-            params.append(f"%{filters.location_region}%")
+            where_clauses.append(f"l.location_region ILIKE %s {LIKE_ESCAPE}")
+            params.append(contains_pattern(filters.location_region))
 
         where_sql = ""
         if where_clauses:
@@ -98,6 +99,8 @@ class ListingsRepository:
               spec.battery_kwh,
               spec.energy_consumption_kwh_100km,
               spec.consumption_l_100km,
+              spec.consumption_l_100km_basis,
+              spec.energy_consumption_kwh_100km_basis,
               spec.wltp_range_km,
               spec.co2_g_km,
               spec.euro_emission_standard,
@@ -173,6 +176,8 @@ class ListingsRepository:
               spec.battery_kwh,
               spec.energy_consumption_kwh_100km,
               spec.consumption_l_100km,
+              spec.consumption_l_100km_basis,
+              spec.energy_consumption_kwh_100km_basis,
               spec.wltp_range_km,
               spec.co2_g_km,
               spec.euro_emission_standard,
@@ -262,6 +267,10 @@ class ListingsRepository:
                 "energy_consumption_kwh_100km"
             ],
             "consumption_l_100km": row["consumption_l_100km"],
+            "consumption_l_100km_basis": row.get("consumption_l_100km_basis"),
+            "energy_consumption_kwh_100km_basis": row.get(
+                "energy_consumption_kwh_100km_basis"
+            ),
             "wltp_range_km": row["wltp_range_km"],
             "co2_g_km": row["co2_g_km"],
             "euro_emission_standard": row["euro_emission_standard"],

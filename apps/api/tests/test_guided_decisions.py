@@ -93,7 +93,8 @@ def test_sample_message_builds_structured_profile_and_next_question():
     assert result.response.preview_ranking.scoring_version == "advisor-v3.0"
     assert result.response.profile_completion > 0
     assert result.response.decision_confidence > 0
-    assert repository.calls == [("list", AS_OF), ("excluded", AS_OF)]
+    # The preview never runs the catalogue-wide exclusion count it used to discard.
+    assert repository.calls == [("list", AS_OF)]
 
 
 def test_guided_profile_collects_family_and_constraints():

@@ -4,6 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from collections.abc import Mapping
 from typing import Any
 
 from app.schemas.advisor import (
@@ -28,6 +29,7 @@ from app.services.advisor.garage import (
     garage_fit,
 )
 from app.services.advisor.issues import ISSUES_VERSION, known_issue_penalty
+from app.services.advisor import messages_it
 from app.services.advisor.powertrain import POWERTRAIN_FIT_VERSION, powertrain_fit
 from app.services.advisor.pricing import price_basis, priced_terms
 from app.services.advisor.recalls import RECALLS_VERSION, recall_penalty
@@ -40,7 +42,6 @@ from app.services.advisor.energy_prices import (
     ARERA_SOURCE_URL,
     ELECTRICITY_PRICE_EUR_PER_KWH,
     ENERGY_ASSUMPTION_VERSION,
-    ENERGY_ASSUMPTIONS,
     ENERGY_PRICES_OBSERVED_AT,
     LIQUID_ENERGY_PRICES_EUR_PER_LITER,
     MIMIT_SOURCE_NAME,
@@ -222,22 +223,15 @@ class AdvisorScoringResult:
 
 def build_assumptions(request: AdvisorRecommendationRequest) -> list[str]:
     assert request.annual_km is not None
-    annual_km_source = (
-        f"default for primary_use={request.primary_use}"
-        if request.annual_km_was_defaulted
-        else "provided by the request"
-    )
     return [
-        (
-            f"Annual distance: {request.annual_km} km ({annual_km_source}); "
-            "used only for the annual energy-cost estimate."
+        messages_it.annual_distance_assumption(
+            request.annual_km,
+            primary_use=request.primary_use,
+            defaulted=request.annual_km_was_defaulted,
         ),
-        (
-            "The running_cost component covers energy only; maintenance, tax, "
-            "insurance, depreciation, and financing are excluded."
-        ),
-        "Only the first three ordered priorities contribute to Preference Fit; extra priorities remain accepted for compatibility.",
-        *ENERGY_ASSUMPTIONS,
+        messages_it.RUNNING_COST_SCOPE_ASSUMPTION,
+        messages_it.PRIORITY_LIMIT_ASSUMPTION,
+        *messages_it.energy_assumptions(),
     ]
 
 
@@ -247,7 +241,15 @@ def score_recommendations(
     *,
     as_of: datetime | None = None,
     initial_excluded_counts: dict[str, int] | None = None,
+    pending_garage: Mapping[str, float] | None = None,
 ) -> AdvisorScoringResult:
+    """Rank the candidates for one request.
+
+    ``pending_garage`` carries the garage measures known so far when the user
+    made the garage a hard constraint but has not given all five. A vehicle
+    that a known measure already rules out is excluded; every other vehicle
+    stays ``insufficient_data`` until the garage fit can be evaluated.
+    """
     evaluation_time = _as_aware_datetime(as_of) or datetime.now(timezone.utc)
     excluded = Counter(initial_excluded_counts or {})
     weights = _normalized_weights(request)
@@ -275,6 +277,18 @@ def score_recommendations(
         if constraint_evaluation.status == "excluded":
             excluded[constraint_evaluation.reasons[0]] += 1
             continue
+        constraint_missing = constraint_evaluation.missing_data
+        if pending_garage is not None:
+            pending = _safe_assessment(
+                "garage-fit-v1",
+                lambda: garage_fit(pending_garage, candidate),
+            )
+            if pending.status == "available" and pending.value == 0:
+                excluded["garage_incompatible"] += 1
+                continue
+            constraint_missing = tuple(
+                dict.fromkeys((*constraint_missing, *pending.missing_data))
+            )
 
         item = _score_candidate(
             request,
@@ -283,7 +297,7 @@ def score_recommendations(
             evaluation_time,
             garage_assessment=garage_assessment,
             constraint_tradeoffs=constraint_evaluation.soft_tradeoffs,
-            constraint_missing=constraint_evaluation.missing_data,
+            constraint_missing=constraint_missing,
         )
         scored_by_group[item.condition_group].append(item)
 
@@ -758,7 +772,7 @@ def _score_candidate(
     tradeoffs.extend(
         AdvisorFactor(
             component="use_case_fit",
-            message=f"Trade-off soft: {tradeoff}.",
+            message=messages_it.soft_tradeoff_message(tradeoff),
             metric="constraint",
             value=tradeoff,
             contribution=0,
@@ -1209,20 +1223,8 @@ def _build_factors(
     weights: dict[AdvisorScoreComponent, float],
     evidence: dict[str, Any],
 ) -> tuple[list[AdvisorFactor], list[AdvisorFactor]]:
-    positive_messages = {
-        "price_fit": "Il prezzo usa bene il budget disponibile.",
-        "use_case_fit": "Carrozzeria e preferenze sono adatte all'uso principale.",
-        "running_cost": "Il costo energia stimato e contenuto.",
-        "space": "Posti e bagagliaio offrono una buona versatilita.",
-        "efficiency_range": "Efficienza e autonomia sono competitive.",
-    }
-    tradeoff_messages = {
-        "price_fit": "Il prezzo lascia poco margine nel budget.",
-        "use_case_fit": "Carrozzeria o preferenze si adattano poco all'uso.",
-        "running_cost": "Il costo energia stimato e elevato.",
-        "space": "Posti o bagagliaio sono sotto la fascia piu versatile.",
-        "efficiency_range": "Efficienza o autonomia sono sotto la fascia migliore.",
-    }
+    positive_messages = messages_it.POSITIVE_FACTOR_MESSAGES
+    tradeoff_messages = messages_it.TRADEOFF_FACTOR_MESSAGES
     factor_metrics = {
         "price_fit": ("price_eur", evidence["price_eur"], request.budget_max_eur),
         "use_case_fit": (
@@ -1265,10 +1267,9 @@ def _build_factors(
         if component_score < 70:
             message = tradeoff_messages[component]
             if component == "price_fit" and evidence["budget_overrun_eur"] > 0:
-                message = (
-                    "Il prezzo supera il budget massimo di "
-                    f"EUR {evidence['budget_overrun_eur']:.2f} "
-                    f"({evidence['budget_overrun_percent']:.2f}%)."
+                message = messages_it.budget_overrun_message(
+                    evidence["budget_overrun_eur"],
+                    evidence["budget_overrun_percent"],
                 )
                 metric = "budget_overrun_eur"
                 value = evidence["budget_overrun_eur"]
@@ -1292,10 +1293,9 @@ def _build_factors(
             0,
             AdvisorFactor(
                 component="price_fit",
-                message=(
-                    "Il prezzo supera il budget massimo di "
-                    f"EUR {evidence['budget_overrun_eur']:.2f} "
-                    f"({evidence['budget_overrun_percent']:.2f}%)."
+                message=messages_it.budget_overrun_message(
+                    evidence["budget_overrun_eur"],
+                    evidence["budget_overrun_percent"],
                 ),
                 metric="budget_overrun_eur",
                 value=evidence["budget_overrun_eur"],

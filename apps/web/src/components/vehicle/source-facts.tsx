@@ -1,5 +1,6 @@
 import type { ListPrice } from '@/api/drivewise'
 import { Card, KeyValue } from '@/components/vehicle/primitives'
+import { safeHttpsUrl } from '@/lib/safe-url'
 
 // Copy and blocks shared by the Advisor result and the vehicle detail for a
 // price taken from a public price list instead of a seller's offer (ADR-013).
@@ -78,6 +79,7 @@ export function listPriceRows(price: ListPrice) {
 
 /** The list price with its date, notes and a link to the price list. Never an offer. */
 export function ListPricePanel({ price }: { price: ListPrice }) {
+  const sourceUrl = safeHttpsUrl(price.source_url)
   return (
     <Card>
       <KeyValue rows={listPriceRows(price)} columns={1} />
@@ -86,14 +88,18 @@ export function ListPricePanel({ price }: { price: ListPrice }) {
           <li key={note}>{note}</li>
         ))}
       </ul>
-      <a
-        className="mt-4 inline-flex text-[0.85rem] font-medium text-foreground underline underline-offset-4"
-        href={price.source_url}
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        Apri il listino di {price.source_name}
-      </a>
+      {sourceUrl ? (
+        <a
+          className="mt-4 inline-flex text-[0.85rem] font-medium text-foreground underline underline-offset-4"
+          href={sourceUrl}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Apri il listino di {price.source_name}
+        </a>
+      ) : (
+        <p className="mt-4 text-[0.85rem] text-muted-foreground">Fonte: listino di {price.source_name}</p>
+      )}
     </Card>
   )
 }
@@ -114,12 +120,14 @@ export function SourceCredits({ credits, className }: { credits: Credit[]; class
         Fonti dei dati
       </h3>
       <ul className="mt-3 space-y-2 text-[0.85rem]">
-        {[...unique.values()].map((credit) => (
+        {[...unique.values()].map((credit) => {
+          const url = safeHttpsUrl(credit.url)
+          return (
           <li key={credit.name} className="flex flex-wrap gap-x-2">
-            {credit.url ? (
+            {url ? (
               <a
                 className="font-medium text-foreground underline underline-offset-4"
-                href={credit.url}
+                href={url}
                 rel="noopener noreferrer"
                 target="_blank"
               >
@@ -130,7 +138,8 @@ export function SourceCredits({ credits, className }: { credits: Credit[]; class
             )}
             <span className="text-muted-foreground">Licenza: {credit.license}</span>
           </li>
-        ))}
+          )
+        })}
       </ul>
     </div>
   )

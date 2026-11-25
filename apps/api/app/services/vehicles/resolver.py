@@ -266,7 +266,11 @@ def _row_to_spec(row: dict[str, Any]) -> VehicleSpec | None:
             "energy_consumption_kwh_100km": row.get(
                 "energy_consumption_kwh_100km"
             ),
+            "energy_consumption_kwh_100km_basis": row.get(
+                "energy_consumption_kwh_100km_basis"
+            ),
             "consumption_l_100km": row["consumption_l_100km"],
+            "consumption_l_100km_basis": row.get("consumption_l_100km_basis"),
             "wltp_range_km": row["wltp_range_km"],
             "co2_g_km": row["co2_g_km"],
             "euro_emission_standard": row["euro_emission_standard"],

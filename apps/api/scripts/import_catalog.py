@@ -16,6 +16,9 @@ from app.ingestion.catalog import (
 )
 
 
+WRITE_ALLOWED_ENVS = frozenset({"local", "test"})
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Validate or import a reviewed Drivewise catalog snapshot."
@@ -52,6 +55,15 @@ def main(
         return 0
 
     load_env_file(env_path)
+    app_env = os.getenv("APP_ENV", "local").strip() or "local"
+    if app_env not in WRITE_ALLOWED_ENVS:
+        print(
+            f"Catalog v1 --write is disabled when APP_ENV={app_env}. "
+            "Catalog v1 is frozen outside local and test databases; publish "
+            "catalog data with Catalog v2 (scripts/import_catalog_v2.py) instead.",
+            file=sys.stderr,
+        )
+        return 1
     database_url = os.getenv("DATABASE_URL", "").strip()
     if not database_url:
         print(

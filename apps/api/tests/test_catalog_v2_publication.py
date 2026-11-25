@@ -609,8 +609,11 @@ def test_upgrade_collision_check_precedes_identity_constraint_replacement(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            # 0012 and 0014 replace 0009 views and 0013 updates 0009 columns: all follow it.
-            if migration.name[:4] not in {"0001", "0009", "0012", "0013", "0014"}:
+            # 0012, 0014, 0015 and 0016 replace 0009 views and 0013 updates 0009
+            # columns: all follow it.
+            if migration.name[:4] not in {
+                "0001", "0009", "0012", "0013", "0014", "0015", "0016"
+            }:
                 conn.execute(migration.read_text())
         conn.execute(
             """INSERT INTO vehicles (id, canonical_key, model_family_key, make, model,
@@ -646,14 +649,23 @@ def test_publication_migration_preserves_existing_knowledge_engine_codes(conn):
             )
         )
         for migration in sorted(MIGRATIONS_PATH.glob("*.sql")):
-            # 0012 and 0014 replace 0009 views and 0013 updates 0009 columns: all follow it.
-            if migration.name[:4] not in {"0001", "0009", "0012", "0013", "0014"}:
+            # 0012, 0014, 0015 and 0016 replace 0009 views and 0013 updates 0009
+            # columns: all follow it.
+            if migration.name[:4] not in {
+                "0001", "0009", "0012", "0013", "0014", "0015", "0016"
+            }:
                 conn.execute(migration.read_text())
         conn.execute("UPDATE vehicle_specs SET engine_code = 'reviewed-code'")
         conn.execute((MIGRATIONS_PATH / "0009_catalog_publication.sql").read_text())
         conn.execute((MIGRATIONS_PATH / "0012_list_price_read_view.sql").read_text())
         conn.execute((MIGRATIONS_PATH / "0013_plug_in_hybrid_fuel_type.sql").read_text())
         conn.execute((MIGRATIONS_PATH / "0014_body_style_provenance.sql").read_text())
+        conn.execute(
+            (MIGRATIONS_PATH / "0015_catalog_v2_read_view_pivot.sql").read_text()
+        )
+        conn.execute(
+            (MIGRATIONS_PATH / "0016_security_and_integrity_hardening.sql").read_text()
+        )
         codes = conn.execute("SELECT engine_code FROM catalog_read_specs").fetchall()
         assert codes and all(row["engine_code"] == "reviewed-code" for row in codes)
 

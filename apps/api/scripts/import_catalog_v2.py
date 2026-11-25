@@ -15,6 +15,8 @@ from app.core.database_url import contains_placeholder_database_url
 from app.ingestion.catalog import CatalogValidationError
 from app.ingestion.catalog_v2 import load_catalog_v2
 from app.ingestion.catalog_v2_writer import (
+    SyntheticSourceError,
+    check_synthetic_sources,
     publish_catalog_v2,
     stage_catalog_v2,
     verify_artifacts,
@@ -29,6 +31,12 @@ def main(argv=None, env_path=PROJECT_ROOT / ".env") -> int:
     mode.add_argument("--publish", type=UUID, metavar="BATCH_ID")
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--adopt-legacy", action="store_true")
+    parser.add_argument(
+        "--allow-synthetic",
+        action="store_true",
+        help="Demo or test databases only: let sourced evidence from test hosts "
+        "or synthetic licences rank.",
+    )
     args = parser.parse_args(argv)
     if args.adopt_legacy and not args.publish:
         parser.error("--adopt-legacy requires --publish")
@@ -36,6 +44,8 @@ def main(argv=None, env_path=PROJECT_ROOT / ".env") -> int:
         payload = (
             load_catalog_v2(args.check or args.stage) if not args.publish else None
         )
+        if payload is not None:
+            check_synthetic_sources(payload, allow_synthetic=args.allow_synthetic)
         if args.check:
             verify_artifacts(payload, args.artifact_root)
             print("Catalog v2 and artifact hashes are valid.")
@@ -61,9 +71,13 @@ def main(argv=None, env_path=PROJECT_ROOT / ".env") -> int:
                     args.publish,
                     artifact_root=args.artifact_root,
                     adopt_legacy=args.adopt_legacy,
+                    allow_synthetic=args.allow_synthetic,
                 )
                 print(f"Batch {args.publish}: {result}")
         return 0
+    except SyntheticSourceError as error:
+        print(f"Catalog v2 operation refused: {error}", file=sys.stderr)
+        return 1
     except (CatalogValidationError, ValidationError, psycopg.Error, OSError) as error:
         # SQL errors and validation input can contain credentials or scraped content.
         print(

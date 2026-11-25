@@ -7,6 +7,8 @@ import {
   type PanInfo,
 } from "framer-motion";
 import {
+  ArrowLeft,
+  ArrowRight,
   BrainCircuit,
   Check,
   EyeOff,
@@ -285,7 +287,7 @@ export function CustomizableFeatureGrid() {
 
                 <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {heroSlug && !editing && <SmartGarageHero feature={bySlug(heroSlug)} />}
-                  {(heroSlug && editing ? items : rest).map((slug, i) => (
+                  {(heroSlug && editing ? items : rest).map((slug, i, list) => (
                     <DraggableCard
                       key={slug}
                       feature={bySlug(slug)}
@@ -297,6 +299,9 @@ export function CustomizableFeatureGrid() {
                         else nodes.current.delete(slug);
                       }}
                       onHide={() => hide(slug)}
+                      // Keyboard alternative to dragging: swap with the neighbour shown in this section.
+                      onMoveEarlier={i > 0 ? () => move(slug, list[i - 1]!) : undefined}
+                      onMoveLater={i < list.length - 1 ? () => move(slug, list[i + 1]!) : undefined}
                       onDragMove={(x, y) => {
                         const t = findTarget(slug, x, y);
                         if (t) move(slug, t);
@@ -320,6 +325,8 @@ function DraggableCard({
   reduce,
   register,
   onHide,
+  onMoveEarlier,
+  onMoveLater,
   onDragMove,
 }: {
   feature: Feature;
@@ -328,11 +335,16 @@ function DraggableCard({
   reduce: boolean;
   register: (el: HTMLElement | null) => void;
   onHide: () => void;
+  /** Undefined for the first card of its section. */
+  onMoveEarlier: (() => void) | undefined;
+  /** Undefined for the last card of its section. */
+  onMoveLater: (() => void) | undefined;
   onDragMove: (x: number, y: number) => void;
 }) {
   const controls = useDragControls();
   const [dragging, setDragging] = useState(false);
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moveButtons = useRef(new Map<string, HTMLButtonElement>());
   const lastMove = useRef(0);
 
   useEffect(
@@ -439,6 +451,39 @@ function DraggableCard({
             >
               <EyeOff className="size-4" />
             </motion.button>
+            {[
+              { key: "earlier", label: `Sposta prima ${feature.title}`, onMove: onMoveEarlier, Icon: ArrowLeft, offset: "right-14" },
+              { key: "later", label: `Sposta dopo ${feature.title}`, onMove: onMoveLater, Icon: ArrowRight, offset: "right-3" },
+            ].map(({ key, label: moveLabel, onMove, Icon, offset }) => (
+              <motion.button
+                key={key}
+                ref={(el: HTMLButtonElement | null) => {
+                  if (el) moveButtons.current.set(key, el);
+                  else moveButtons.current.delete(key);
+                }}
+                type="button"
+                aria-label={moveLabel}
+                // aria-disabled, not disabled: a button that reaches the section end keeps the keyboard focus.
+                aria-disabled={!onMove}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ duration: 0.25, ease: EASE, delay: 0.06 }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  if (!onMove) return;
+                  onMove();
+                  // Reordering moves this card's DOM node, which drops focus: give it back to the same button.
+                  requestAnimationFrame(() => moveButtons.current.get(key)?.focus());
+                }}
+                className={cn(
+                  "absolute top-3 z-20 grid size-8 place-items-center rounded-full border border-border/70 bg-background/85 text-muted-foreground backdrop-blur transition-colors duration-300 hover:border-primary/45 hover:text-primary aria-disabled:cursor-default aria-disabled:opacity-35 aria-disabled:hover:border-border/70 aria-disabled:hover:text-muted-foreground",
+                  offset,
+                )}
+              >
+                <Icon className="size-4" />
+              </motion.button>
+            ))}
           </>
         )}
       </AnimatePresence>

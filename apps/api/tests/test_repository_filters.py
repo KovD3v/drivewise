@@ -114,7 +114,7 @@ def test_document_search_repository_uses_text_filters_without_vector_operators()
     )
 
     assert "document_type = %s" in conn.query
-    assert "title ILIKE %s OR content ILIKE %s" in conn.query
+    assert "title ILIKE %s ESCAPE '\\' OR content ILIKE %s ESCAPE '\\'" in conn.query
     assert "embedding" not in conn.query
     assert "<=>" not in conn.query
     assert "@@" not in conn.query

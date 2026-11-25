@@ -1,7 +1,9 @@
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
@@ -18,6 +20,21 @@ from app.ingestion.firecrawl import (  # noqa: E402
 
 DEFAULT_SOURCES_PATH = PROJECT_ROOT / "data/sources.example.json"
 FIRECRAWL_ENV_KEYS = frozenset({"FIRECRAWL_API_KEY"})
+SENSITIVE_QUERY_KEY = re.compile(
+    r"key|token|secret|pass|auth|sig|session|credential|code", re.IGNORECASE
+)
+
+
+def redact_url(url: str) -> str:
+    """Hide values of query parameters that look like credentials."""
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    query = [
+        (key, "REDACTED" if SENSITIVE_QUERY_KEY.search(key) else value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+    ]
+    return urlunsplit(parts._replace(query=urlencode(query, safe="/:,")))
 
 
 def main(argv: list[str] | None = None, env_path: Path = PROJECT_ROOT / ".env") -> int:
@@ -57,7 +74,7 @@ def print_plan(plan: FirecrawlIngestionPlan) -> None:
     for source in plan.firecrawl_sources:
         print(f"- {source.name}")
         print(f"  Type: {source.source_type}")
-        print(f"  URL: {source.url}")
+        print(f"  URL: {redact_url(source.url)}")
         print(f"  Limit: {source.limit}")
         print(f"  Document type: {source.document_type}")
         print(f"  Crawl depth: {source.crawl_depth}")

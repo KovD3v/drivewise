@@ -218,6 +218,7 @@ function MyDriveWise() {
                   <Link
                     to="/app/vehicle/$id"
                     params={{ id: a.vehicleId }}
+                    search={{ s: a.sessionId }}
                     className="flex items-center gap-4 rounded-2xl border border-border/70 bg-card/70 px-4 py-4 backdrop-blur transition-colors hover:border-primary/40"
                   >
                     <span className="font-heading shrink-0 text-2xl font-extrabold tabular-nums text-primary">

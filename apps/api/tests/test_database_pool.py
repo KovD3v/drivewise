@@ -7,6 +7,9 @@ class FakeConnection:
     def __init__(self) -> None:
         self.closed = False
 
+    def execute(self, query: str, params=None):
+        return self
+
     def commit(self) -> None:
         pass
 

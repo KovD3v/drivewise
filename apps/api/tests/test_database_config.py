@@ -38,6 +38,7 @@ def test_placeholder_database_url_detects_masked_password():
 
 def test_cors_origins_default_to_local_frontend(monkeypatch):
     get_settings.cache_clear()
+    monkeypatch.setenv("APP_ENV", "local")
     monkeypatch.setenv("API_CORS_ORIGINS", "")
 
     settings = get_settings()

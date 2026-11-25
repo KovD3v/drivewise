@@ -181,6 +181,28 @@ Advisor's names (see "Identity migration and ownership").
 [`0014_body_style_provenance.sql`](../apps/api/migrations/0014_body_style_provenance.sql)
 replaces `catalog_read_provenance` so a filled body style is credited to the
 snapshot that states it (see "Identity migration and ownership").
+[`0015_catalog_v2_read_view_pivot.sql`](../apps/api/migrations/0015_catalog_v2_read_view_pivot.sql),
+rewrites the read path with the same eligibility rules as
+`0012`. `catalog_scalar_facts` counts the current contexts of a metric in one
+window pass, and `catalog_read_specs` pivots a v2 spec's scalar facts in one
+`LATERAL` aggregate instead of one correlated subquery per column. v2 specs now
+also publish length, body width, height, displacement and power, so Advisor v3
+(Garage Fit, TCO) reads the same reviewed values as `GET /vehicles/{id}`, and
+`catalog_read_provenance` credits those facts under the read-column names
+(`width_mm`, `displacement_cc`, `power_kw`). The view columns keep their names,
+types and order.
+[`0016_security_and_integrity_hardening.sql`](../apps/api/migrations/0016_security_and_integrity_hardening.sql)
+is additive: it changes no stored row and stops with a clear error when it finds
+one that breaks a new rule. Statement triggers make `TRUNCATE` hit the same
+append-only rejection as update and delete on `source_snapshots`,
+`spec_observations` and `fact_decisions`. Snapshot `source_url` values must be
+`https://`. A decision's `valid_from` and `valid_to` context values must be real
+`YYYY-MM-DD` dates (`catalog_iso_date_valid`), so the `::date` casts in the read
+views cannot fail on a stored row. `catalog_current_facts` counts a fact as
+eligible only when its decision's `actor_kind` is `human` or `rule`, so an agent
+decision needs a human or rule sign-off before it can rank. It also adds lookup
+indexes for fact reads and for the retention purge of guided decisions and
+recommendation runs.
 
 | New table | Responsibility |
 | --- | --- |
@@ -264,8 +286,9 @@ uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py 
   --artifact-root data/fixtures/catalog/artifacts
 
 # Replace BATCH_UUID with the UUID printed by --stage.
+# --allow-synthetic is required because the demo fixture uses .test hosts and a synthetic licence.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
+  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts --allow-synthetic
 ```
 
 The artifacts of `catalog-v2.synthetic.json` are explicitly synthetic and carry
@@ -315,14 +338,17 @@ uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py 
   --stage data/fixtures/catalog/catalog-v2.demo.synthetic.json \
   --artifact-root data/fixtures/catalog/artifacts
 # Replace BATCH_UUID with the UUID printed by --stage.
+# --allow-synthetic is required because the demo fixture uses .test hosts and a synthetic licence.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
+  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts --allow-synthetic
 ```
 
 Build the site with `VITE_SYNTHETIC_DATA=true` so every page shows the demo notice.
-The read views do not yet publish v2 length, width, height or transmission to the
-Advisor, so a profile with a garage or an automatic-gearbox requirement stays
-provisional (`insufficient_data`). Two-wheelers are listed but never ranked.
+Since `0015` the read views publish v2 length, body width and height to the
+Advisor when the bundle holds reviewed facts for them, so Garage Fit depends on
+those facts being in the bundle. They still do not publish v2 transmission, so a
+profile with an automatic-gearbox requirement stays provisional
+(`insufficient_data`). Two-wheelers are listed but never ranked.
 
 ### Identity migration and ownership
 

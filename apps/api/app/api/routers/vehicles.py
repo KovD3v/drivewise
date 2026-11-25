@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.dependencies import get_vehicles_repository
+from app.api.dependencies import get_vehicles_repository, require_internal_routes
 from app.ingestion.catalog_v2 import VehicleType
 from app.repositories.filters import VehicleFilters
 from app.repositories.vehicles import VehiclesRepository
@@ -19,15 +19,17 @@ from app.services.vehicles.resolver import resolve_vehicle_query
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
+MAX_FILTER_LENGTH = 120
+
 
 @router.get("", response_model=list[VehicleSummary])
 def list_vehicles(
     repository: Annotated[VehiclesRepository, Depends(get_vehicles_repository)],
-    make: str | None = Query(default=None),
-    model: str | None = Query(default=None),
-    fuel_type: str | None = Query(default=None),
-    body_style: str | None = Query(default=None),
-    market: str | None = Query(default=None),
+    make: str | None = Query(default=None, max_length=MAX_FILTER_LENGTH),
+    model: str | None = Query(default=None, max_length=MAX_FILTER_LENGTH),
+    fuel_type: str | None = Query(default=None, max_length=MAX_FILTER_LENGTH),
+    body_style: str | None = Query(default=None, max_length=MAX_FILTER_LENGTH),
+    market: str | None = Query(default=None, max_length=MAX_FILTER_LENGTH),
     max_price_eur: float | None = Query(default=None, ge=0),
     vehicle_type: VehicleType | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
@@ -47,7 +49,11 @@ def list_vehicles(
     return repository.list_vehicles(filters)
 
 
-@router.post("/resolve", response_model=VehicleResolveResponse)
+@router.post(
+    "/resolve",
+    response_model=VehicleResolveResponse,
+    dependencies=[Depends(require_internal_routes)],
+)
 def resolve_vehicle(
     request: VehicleResolveRequest,
     repository: Annotated[VehiclesRepository, Depends(get_vehicles_repository)],
@@ -72,6 +78,8 @@ def get_vehicle_facts(
     vehicle_id: UUID,
     repository: Annotated[VehiclesRepository, Depends(get_vehicles_repository)],
 ) -> list[dict]:
-    if repository.get_vehicle(vehicle_id) is None:
+    exists = getattr(repository, "vehicle_exists", None)
+    found = exists(vehicle_id) if callable(exists) else repository.get_vehicle(vehicle_id) is not None
+    if not found:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return repository.list_facts(vehicle_id)

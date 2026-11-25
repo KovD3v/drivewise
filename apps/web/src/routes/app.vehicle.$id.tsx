@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, Minus } from "lucide-react";
 import { EASE } from "@/lib/motion";
@@ -10,7 +10,8 @@ import { DynamicSections } from "@/components/vehicle/DynamicSections";
 import { GarageFit, type GarageInput } from "@/components/vehicle/GarageFit";
 import { AppHeader } from "@/components/app/AppHeader";
 import { contextualSuggestions, datasetAnswer } from "@/lib/vehicle-ask";
-import { rankVehicles, type ScoredVehicle } from "@/lib/decision-engine";
+import { loadDecisionReport, loadGuidedDecisionReport, type RankingGroup, type ScoredVehicle, type VehicleCondition } from "@/lib/decision-engine";
+import type { GarageCompatibility } from "@/api/drivewise";
 import type { DecisionProfile } from "@/lib/decision-profile";
 import { loadState } from "@/lib/decision-state";
 import { buildReportSections } from "@/lib/report-sections";
@@ -19,14 +20,33 @@ import { fromApiVehicle, getVehicleDetail, type Vehicle } from "@/services/vehic
 import { categoryLabel } from "@/lib/category-labels";
 import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts";
 import { PriceLine } from "@/components/vehicle/PriceLine";
+import { isUuid } from "@/lib/uuid";
+
+/**
+ * `spec` names the version to show; `s` the guided decision that scored it; `condition` the
+ * Advisor group (new or used) the link came from, when the decision ranks both.
+ */
+type VehicleSearch = { spec?: string; s?: string; condition?: VehicleCondition };
 
 export const Route = createFileRoute("/app/vehicle/$id")({
+  validateSearch: (search: Record<string, unknown>): VehicleSearch => ({
+    spec: typeof search["spec"] === "string" ? search["spec"] : undefined,
+    s: typeof search["s"] === "string" ? search["s"] : undefined,
+    condition: search["condition"] === "new" || search["condition"] === "used" ? search["condition"] : undefined,
+  }),
   loader: async ({ params }) => {
+    // A malformed id can never name a vehicle: answer 404 instead of letting the API reject it as an error.
+    if (!isUuid(params.id)) throw notFound();
     const detail = await getVehicleDetail(params.id);
     if (!detail) throw notFound();
     return { vehicle: fromApiVehicle(detail), detail };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, match }) => {
+    if (!loaderData && match.status === "error")
+      return { meta: [
+        { title: "Servizio temporaneamente non disponibile | DriveWise" },
+        { name: "robots", content: "noindex" },
+      ] };
     if (!loaderData)
       return { meta: [
         { title: "Veicolo non trovato | DriveWise" },
@@ -59,28 +79,50 @@ export const Route = createFileRoute("/app/vehicle/$id")({
 
 // TanStack splits each route slot into its own chunk; a slot function must not be referenced elsewhere.
 function VehicleUnavailable() {
-  return <VehicleMissing />;
+  const router = useRouter();
+  return (
+    <VehicleMessage
+      title="Servizio temporaneamente non disponibile."
+      body="Non riusciamo a leggere il catalogo DriveWise in questo momento. Riprova tra qualche istante."
+      action={
+        <button
+          type="button"
+          // A loader error needs the router to reload the route; invalidate also resets the error boundary.
+          onClick={() => void router.invalidate()}
+          className="mt-8 inline-flex h-12 items-center rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+        >
+          Riprova
+        </button>
+      }
+    />
+  );
 }
 
 function VehicleNotFound() {
-  return <VehicleMissing />;
-}
-
-function VehicleMissing() {
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader label="Dettaglio veicolo" />
-      <main className="mx-auto w-full max-w-[46rem] px-6 py-24 text-center sm:px-8">
-        <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.03em]">Veicolo non trovato.</h1>
-        <p className="mt-4 text-[0.95rem] text-muted-foreground">
-          Questo veicolo non è presente nel catalogo DriveWise.
-        </p>
+    <VehicleMessage
+      title="Veicolo non trovato."
+      body="Questo veicolo non è presente nel catalogo DriveWise."
+      action={
         <Link
           to="/app/start"
           className="mt-8 inline-flex h-12 items-center rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           Torna alla Scelta Guidata
         </Link>
+      }
+    />
+  );
+}
+
+function VehicleMessage({ title, body, action }: { title: string; body: string; action: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader label="Dettaglio veicolo" />
+      <main className="mx-auto w-full max-w-[46rem] px-6 py-24 text-center sm:px-8">
+        <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.03em]">{title}</h1>
+        <p className="mt-4 text-[0.95rem] text-muted-foreground">{body}</p>
+        {action}
       </main>
     </div>
   );
@@ -106,27 +148,55 @@ function garageInputFrom(profile: DecisionProfile | null): GarageInput | undefin
 function VehiclePage() {
   const { vehicle: loaded, detail } = Route.useLoaderData();
   const reduce = useReducedMotion();
+  const { spec, s: decisionId, condition } = Route.useSearch();
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
-
-  useEffect(() => {
-    const state = loadState();
-    if (state?.profile.vehicleType === loaded.vehicle_type) setProfile(state.profile);
-  }, [loaded.vehicle_type]);
-
-  const activeProfile: DecisionProfile = profile ?? { vehicleType: loaded.vehicle_type };
   const [ranked, setRanked] = useState<ScoredVehicle[]>([]);
+  const [groups, setGroups] = useState<RankingGroup[]>([]);
+  const [garageChecks, setGarageChecks] = useState<GarageCompatibility[]>([]);
+
   useEffect(() => {
     let alive = true;
-    if (profile) void rankVehicles(profile).then(items => { if (alive) setRanked(items); }).catch(() => { if (alive) setRanked([]); });
+    setProfile(null);
+    setRanked([]);
+    setGroups([]);
+    setGarageChecks([]);
+    if (decisionId && loaded.vehicle_type === "car") {
+      // The link names the decision: read it from the API, so the score shows in any browser.
+      void loadGuidedDecisionReport(decisionId)
+        .then((report) => { if (alive) { setProfile(report.profile); setRanked(report.ranking); setGroups(report.groups); setGarageChecks(report.garageCompatibility); } })
+        .catch(() => { /* no score without the decision; the catalogue facts still show */ });
+    } else {
+      const state = loadState();
+      if (state?.profile.vehicleType === loaded.vehicle_type) {
+        setProfile(state.profile);
+        void loadDecisionReport(state.profile)
+          .then((report) => { if (alive) { setRanked(report.ranking); setGroups(report.groups); setGarageChecks(report.garageCompatibility); } })
+          .catch(() => { if (alive) setRanked([]); });
+      }
+    }
     return () => { alive = false; };
-  }, [profile]);
-  const scored = ranked.find(item => item.vehicle.id === loaded.id);
-  // The score belongs to one version: show that version's facts next to it, not the default one's.
-  const v = useMemo(() => (scored ? fromApiVehicle(detail, scored.specId) : loaded), [scored, detail, loaded]);
+  }, [decisionId, loaded.vehicle_type]);
+
+  const activeProfile: DecisionProfile = profile ?? { vehicleType: loaded.vehicle_type };
+  // The condition and version the link names first: the same car can rank new and used, or as another version.
+  const candidates = groups.find(group => group.condition === condition)?.items ?? ranked;
+  const rankedHere = candidates.find(item => item.vehicle.id === loaded.id && item.specId === spec)
+    ?? ranked.find(item => item.vehicle.id === loaded.id && item.specId === spec)
+    ?? ranked.find(item => item.vehicle.id === loaded.id);
+  // The version shown: the one the link names, else the one the Advisor scored, else the default.
+  const activeSpecId = useMemo(() => {
+    const known = (id: string | undefined) => (id && detail.specs?.some((candidate) => candidate.id === id) ? id : undefined);
+    return known(spec) ?? known(rankedHere?.specId) ?? detail.specs?.[0]?.id;
+  }, [spec, rankedHere, detail]);
+  // The score belongs to one version: show it only next to that version's facts.
+  const scored = rankedHere && rankedHere.specId === activeSpecId ? rankedHere : undefined;
+  const v = useMemo(() => (activeSpecId ? fromApiVehicle(detail, activeSpecId) : loaded), [activeSpecId, detail, loaded]);
 
   const score = useCountUp(scored?.score ?? 0, reduce ? 0 : 1300, !!reduce);
   const sections = buildReportSections(v, activeProfile);
   const garage = garageInputFrom(profile);
+  // The Guided Decision API already checked this version against the user's garage.
+  const garageEvaluation = garageChecks.find((check) => check.vehicleId === v.id && check.specId === activeSpecId);
 
   const alternatives = ranked.filter(item => item.vehicle.id !== v.id).slice(0, 3);
 
@@ -183,7 +253,7 @@ function VehiclePage() {
 
           <Link
             to="/app/compare"
-            search={{ vehicle: v.id }}
+            search={{ vehicle: v.id, spec: activeSpecId }}
             className="relative mt-6 inline-flex h-11 items-center rounded-full border border-border/70 bg-background px-5 text-[0.875rem] font-medium transition-colors hover:border-primary/40"
           >
             Confronta
@@ -226,6 +296,18 @@ function VehiclePage() {
                 </ul>
               </div>
             </div>
+          ) : rankedHere ? (
+            <p className="relative mt-10 border-t border-border/70 pt-8 text-sm text-muted-foreground">
+              Il punteggio della tua Scelta Guidata riguarda un'altra versione di questo veicolo.{" "}
+              <Link
+                to="/app/vehicle/$id"
+                params={{ id: v.id }}
+                search={{ spec: rankedHere.specId, s: decisionId ?? profile?.decisionId, condition }}
+                className="text-foreground underline underline-offset-4"
+              >
+                Vedi la versione valutata
+              </Link>
+            </p>
           ) : v.vehicle_type !== "car" ? (
             <p className="relative mt-10 border-t border-border/70 pt-8 text-sm text-muted-foreground">
               Per moto e scooter DriveWise mostra il catalogo senza punteggio: il motore decisionale valuta solo le auto.{" "}
@@ -250,15 +332,15 @@ function VehiclePage() {
           </VSection>
         )}
 
-        {v.vehicle_type === "car" && v.dimensions?.length_mm && (
+        {v.vehicle_type === "car" && (v.dimensions?.length_mm || garageEvaluation) && (
           <VSection title="Compatibilità garage" intro="Confronto fra le misure reali del veicolo e quelle del tuo garage.">
-            <GarageFit vehicle={v} garage={garage} />
+            <GarageFit vehicle={v} garage={garage} evaluation={garageEvaluation} />
           </VSection>
         )}
 
         {v.vehicle_type === "car" && (
           <VSection title="Chiedi a DriveWise" intro="Risposte costruite solo sui dati di questo veicolo.">
-            <AskDriveWise vehicle={v} />
+            <AskDriveWise vehicle={v} specId={activeSpecId} />
           </VSection>
         )}
 
@@ -286,6 +368,7 @@ function VehiclePage() {
                   <Link
                     to="/app/vehicle/$id"
                     params={{ id: a.vehicle.id }}
+                    search={{ spec: a.specId, s: decisionId ?? profile?.decisionId }}
                     className="block h-full rounded-2xl border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
                   >
                     <p className="truncate text-[0.9rem] font-medium">{vehicleName(a.vehicle)}</p>
@@ -304,14 +387,14 @@ function VehiclePage() {
   );
 }
 
-function AskDriveWise({ vehicle }: { vehicle: Vehicle }) {
+function AskDriveWise({ vehicle, specId }: { vehicle: Vehicle; specId: string | undefined }) {
   const [value, setValue] = useState("");
   const [thread, setThread] = useState<{ q: string; a: string }[]>([]);
 
   const ask = async (q: string) => {
     const text = q.trim();
     if (!text) return;
-    try { const answer = await datasetAnswer(text, vehicle); setThread(t => [...t, { q: text, a: answer }]); }
+    try { const answer = await datasetAnswer(text, vehicle, specId); setThread(t => [...t, { q: text, a: answer }]); }
     catch (error) { setThread(t => [...t, { q: text, a: error instanceof Error ? error.message : 'Analisi non disponibile. Riprova.' }]); }
     setValue("");
   };

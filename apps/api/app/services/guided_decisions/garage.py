@@ -38,21 +38,56 @@ def evaluate_garage_compatibility(
     if profile.parking is None or profile.parking.value != "garage":
         return None
 
-    profile_dimensions = {
-        "garage.useful_length_mm": profile.garage.useful_length_mm,
-        "garage.useful_width_mm": profile.garage.useful_width_mm,
-        "garage.useful_height_mm": profile.garage.useful_height_mm,
-        "garage.door_width_mm": profile.garage.door_width_mm,
-        "garage.door_height_mm": profile.garage.door_height_mm,
+    garage = profile.garage
+    # Each margin pairs one garage measure with the vehicle measure it bounds.
+    pairs = {
+        "length_mm": (
+            ("garage.useful_length_mm", _fact_value(garage.useful_length_mm)),
+            ("vehicle.length_mm", vehicle_dimensions.length_mm),
+        ),
+        "width_mm": (
+            ("garage.useful_width_mm", _fact_value(garage.useful_width_mm)),
+            ("vehicle.body_width_mm", vehicle_dimensions.body_width_mm),
+        ),
+        "height_mm": (
+            ("garage.useful_height_mm", _fact_value(garage.useful_height_mm)),
+            ("vehicle.height_mm", vehicle_dimensions.height_mm),
+        ),
+        "door_width_mm": (
+            ("garage.door_width_mm", _fact_value(garage.door_width_mm)),
+            ("vehicle.entry_width_mm", vehicle_dimensions.entry_width_mm),
+        ),
+        "door_height_mm": (
+            ("garage.door_height_mm", _fact_value(garage.door_height_mm)),
+            ("vehicle.height_mm", vehicle_dimensions.height_mm),
+        ),
     }
-    missing_data = [key for key, fact in profile_dimensions.items() if fact is None]
-    vehicle_values = {
-        "vehicle.length_mm": vehicle_dimensions.length_mm,
-        "vehicle.body_width_mm": vehicle_dimensions.body_width_mm,
-        "vehicle.height_mm": vehicle_dimensions.height_mm,
-        "vehicle.entry_width_mm": vehicle_dimensions.entry_width_mm,
-    }
-    missing_data.extend(key for key, value in vehicle_values.items() if value is None)
+    measured: dict[str, int] = {}
+    missing_data: list[str] = []
+    for margin_name, ((garage_key, garage_value), (vehicle_key, vehicle_value)) in (
+        pairs.items()
+    ):
+        if garage_value is None:
+            missing_data.append(garage_key)
+        if vehicle_value is None:
+            missing_data.append(vehicle_key)
+        if garage_value is not None and vehicle_value is not None:
+            measured[margin_name] = garage_value - vehicle_value
+    missing_data = list(dict.fromkeys(missing_data))
+    margins = GarageMargins(**measured)
+
+    # One negative margin proves the vehicle does not fit, whatever else is
+    # unknown; every margin is needed only to call the fit comfortable or tight.
+    if any(margin < 0 for margin in measured.values()):
+        return GarageCompatibility(
+            vehicle_id=vehicle_id,
+            spec_id=spec_id,
+            status="incompatible",
+            message="Il veicolo non è geometricamente compatibile con il garage.",
+            margins=margins,
+            missing_data=missing_data,
+            evaluation_version=GARAGE_EVALUATION_VERSION,
+        )
 
     if missing_data:
         return GarageCompatibility(
@@ -67,50 +102,12 @@ def evaluate_garage_compatibility(
             evaluation_version=GARAGE_EVALUATION_VERSION,
         )
 
-    length_margin = profile.garage.useful_length_mm.value - vehicle_dimensions.length_mm
-    width_margin = (
-        profile.garage.useful_width_mm.value - vehicle_dimensions.body_width_mm
-    )
-    height_margin = profile.garage.useful_height_mm.value - vehicle_dimensions.height_mm
-    door_width_margin = (
-        profile.garage.door_width_mm.value - vehicle_dimensions.entry_width_mm
-    )
-    door_height_margin = (
-        profile.garage.door_height_mm.value - vehicle_dimensions.height_mm
-    )
-    margins = GarageMargins(
-        length_mm=length_margin,
-        width_mm=width_margin,
-        height_mm=height_margin,
-        door_width_mm=door_width_margin,
-        door_height_mm=door_height_margin,
-    )
-
-    if (
-        min(
-            length_margin,
-            width_margin,
-            height_margin,
-            door_width_margin,
-            door_height_margin,
-        )
-        < 0
-    ):
-        return GarageCompatibility(
-            vehicle_id=vehicle_id,
-            spec_id=spec_id,
-            status="incompatible",
-            message="Il veicolo non è geometricamente compatibile con il garage.",
-            margins=margins,
-            evaluation_version=GARAGE_EVALUATION_VERSION,
-        )
-
     comfortable = (
-        length_margin >= COMFORTABLE_LENGTH_MARGIN_MM
-        and width_margin >= COMFORTABLE_TOTAL_WIDTH_MARGIN_MM
-        and height_margin >= COMFORTABLE_HEIGHT_MARGIN_MM
-        and door_width_margin >= COMFORTABLE_DOOR_WIDTH_MARGIN_MM
-        and door_height_margin >= COMFORTABLE_DOOR_HEIGHT_MARGIN_MM
+        measured["length_mm"] >= COMFORTABLE_LENGTH_MARGIN_MM
+        and measured["width_mm"] >= COMFORTABLE_TOTAL_WIDTH_MARGIN_MM
+        and measured["height_mm"] >= COMFORTABLE_HEIGHT_MARGIN_MM
+        and measured["door_width_mm"] >= COMFORTABLE_DOOR_WIDTH_MARGIN_MM
+        and measured["door_height_mm"] >= COMFORTABLE_DOOR_HEIGHT_MARGIN_MM
     )
     if comfortable:
         status = "comfortable"
@@ -129,3 +126,7 @@ def evaluate_garage_compatibility(
         margins=margins,
         evaluation_version=GARAGE_EVALUATION_VERSION,
     )
+
+
+def _fact_value(fact) -> int | None:
+    return None if fact is None else fact.value

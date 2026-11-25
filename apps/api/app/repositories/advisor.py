@@ -91,6 +91,23 @@ _CANDIDATE_LISTING_COLUMNS = """              l.id AS listing_id,
               import_run.status AS import_status,
 """
 
+
+def _null_columns(columns_sql: str) -> str:
+    """NULL placeholders with the output names of a column list, so the offer and
+    list-price branches of one UNION ALL have the same columns in the same order."""
+    names = [
+        line.strip().rstrip(",").split(" AS ")[-1].split(".")[-1]
+        for line in columns_sql.splitlines()
+        if line.strip()
+    ]
+    return "".join(f"              NULL AS {name},\n" for name in names)
+
+
+_NULL_LISTING_COLUMNS = _null_columns(_CANDIDATE_LISTING_COLUMNS)
+_NULL_LIST_PRICE_COLUMNS = _null_columns(LIST_PRICE_COLUMNS)
+
+# Maintenance, safety and feature rows are v1 tables: a spec adopted by catalog v2
+# reads them no longer, so stale v1 rows cannot score a reviewed v2 variant.
 _CANDIDATE_CHILDREN = """              COALESCE(
                 (
                   SELECT jsonb_agg(
@@ -131,6 +148,7 @@ _CANDIDATE_CHILDREN = """              COALESCE(
                   FROM vehicle_maintenance_items AS item
                   JOIN sources AS item_source ON item_source.id = item.source_id
                   WHERE item.spec_id = s.id
+                    AND s.catalog_version = 1
                     AND item_source.ranking_permission = 'permitted'
                 ),
                 '[]'::jsonb
@@ -156,6 +174,7 @@ _CANDIDATE_CHILDREN = """              COALESCE(
                   FROM vehicle_safety_ratings AS rating
                   JOIN sources AS rating_source ON rating_source.id = rating.source_id
                   WHERE rating.spec_id = s.id
+                    AND s.catalog_version = 1
                     AND rating_source.ranking_permission = 'permitted'
                 ),
                 '[]'::jsonb
@@ -179,6 +198,7 @@ _CANDIDATE_CHILDREN = """              COALESCE(
                   FROM vehicle_features AS feature
                   JOIN sources AS feature_source ON feature_source.id = feature.source_id
                   WHERE feature.spec_id = s.id
+                    AND s.catalog_version = 1
                     AND feature.category IN ('adas', 'safety')
                     AND feature_source.ranking_permission = 'permitted'
                 ),
@@ -203,6 +223,7 @@ _CANDIDATE_CHILDREN = """              COALESCE(
                   FROM vehicle_features AS feature
                   JOIN sources AS feature_source ON feature_source.id = feature.source_id
                   WHERE feature.spec_id = s.id
+                    AND s.catalog_version = 1
                     AND feature.category IN ('technology', 'comfort')
                     AND feature_source.ranking_permission = 'permitted'
                 ),
@@ -491,14 +512,26 @@ class AdvisorRepository:
         *,
         as_of: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """Offer candidates, then variants with no eligible offer at list price (ADR-013)."""
+        """Offer candidates, then variants with no eligible offer at list price (ADR-013).
+
+        Both branches run in one statement, so they share one snapshot: an offer
+        that changes mid-request can neither hide a variant nor price it twice.
+        """
         evaluation_time = _as_utc(as_of)
         fresh_since = evaluation_time - timedelta(days=FRESHNESS_DAYS)
         rows = self.conn.execute(
             _CANDIDATE_SPEC_COLUMNS
             + _CANDIDATE_LISTING_COLUMNS
+            + _NULL_LIST_PRICE_COLUMNS
             + _CANDIDATE_CHILDREN
-            + """            FROM listings AS l
+            + """              ,'offer' AS candidate_price_basis,
+              0 AS candidate_branch,
+              l.condition AS sort_condition,
+              l.price_eur AS sort_price,
+              l.mileage AS sort_mileage,
+              l.listing_ref AS sort_ref,
+              l.id AS sort_id
+            FROM listings AS l
             JOIN vehicles AS v
               ON v.id = l.vehicle_id
             JOIN catalog_read_specs AS s
@@ -516,22 +549,20 @@ class AdvisorRepository:
             + _ELIGIBLE_OFFER_GATES
             + _SPEC_PROVENANCE_GATES
             + _SPEC_VALUE_GATES
-            + """            ORDER BY
-              l.condition,
-              v.model_family_key,
-              l.price_eur,
-              l.mileage NULLS LAST,
-              l.listing_ref,
-              l.id
-            """,
-            (fresh_since, evaluation_time),
-        ).fetchall()
-        candidates = [_candidate_from_row(row) for row in rows]
-        list_price_rows = self.conn.execute(
-            _CANDIDATE_SPEC_COLUMNS
+            + """            UNION ALL
+"""
+            + _CANDIDATE_SPEC_COLUMNS
+            + _NULL_LISTING_COLUMNS
             + LIST_PRICE_COLUMNS
             + _CANDIDATE_CHILDREN
-            + """            FROM vehicles AS v
+            + """              ,'list_price' AS candidate_price_basis,
+              1 AS candidate_branch,
+              NULL AS sort_condition,
+              s.list_price_eur AS sort_price,
+              NULL AS sort_mileage,
+              s.variant_key AS sort_ref,
+              s.id AS sort_id
+            FROM vehicles AS v
             JOIN catalog_read_specs AS s
               ON s.vehicle_id = v.id
             """
@@ -548,16 +579,25 @@ class AdvisorRepository:
 """
             + _SPEC_PROVENANCE_GATES
             + _SPEC_VALUE_GATES
+            # Offers first by condition, family, price, mileage and reference; then
+            # list-price variants by family, price, variant key and id.
             + """            ORDER BY
-              v.model_family_key,
-              s.list_price_eur,
-              s.variant_key,
-              s.id
+              candidate_branch,
+              sort_condition,
+              model_family_key,
+              sort_price,
+              sort_mileage NULLS LAST,
+              sort_ref,
+              sort_id
             """,
-            (fresh_since, evaluation_time),
+            (fresh_since, evaluation_time, fresh_since, evaluation_time),
         ).fetchall()
-        candidates.extend(_list_price_candidate_from_row(row) for row in list_price_rows)
-        return candidates
+        return [
+            _list_price_candidate_from_row(row)
+            if row.get("candidate_price_basis") == "list_price"
+            else _candidate_from_row(row)
+            for row in rows
+        ]
 
     def count_excluded_candidates(
         self,
@@ -738,6 +778,12 @@ class AdvisorRepository:
              AND l.spec_id = s.id
              AND l.last_seen_at >= %s
              AND (l.valid_until IS NULL OR l.valid_until >= %s)
+             AND l.price_eur IS NOT NULL
+             -- The Advisor offer rule: a used offer counts only with its mileage.
+             AND (
+               l.condition = 'new'
+               OR (l.condition IN ('used', 'certified') AND l.mileage IS NOT NULL)
+             )
             WHERE """ + CAR_ONLY_SQL + """
             ORDER BY
               v.make,

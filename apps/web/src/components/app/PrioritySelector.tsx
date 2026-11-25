@@ -4,23 +4,33 @@ import { OptionCheck } from "./OptionCheck";
 import { EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-const ordinals = ["1°", "2°", "3°"];
-
 export function PrioritySelector({
   options,
   onConfirm,
   confirmLabel = "Conferma selezione",
+  max = 3,
+  exclusive = [],
+  ranked = true,
 }: {
   options: string[];
   onConfirm: (picked: string[]) => void;
   confirmLabel?: string;
+  /** How many options one answer may hold. */
+  max?: number;
+  /** Options that stand alone, such as "none": picking one clears the others, and the reverse. */
+  exclusive?: string[];
+  /** Whether the pick order is a ranking, shown as 1°, 2°, 3°. */
+  ranked?: boolean;
 }) {
   const [picked, setPicked] = useState<string[]>([]);
 
   const toggle = (o: string) => {
-    setPicked((prev) =>
-      prev.includes(o) ? prev.filter((p) => p !== o) : prev.length < 3 ? [...prev, o] : prev,
-    );
+    setPicked((prev) => {
+      if (prev.includes(o)) return prev.filter((p) => p !== o);
+      if (exclusive.includes(o)) return [o];
+      const others = prev.filter((p) => !exclusive.includes(p));
+      return others.length < max ? [...others, o] : others;
+    });
   };
 
   return (
@@ -48,7 +58,8 @@ export function PrioritySelector({
                 active
                   ? "border-primary bg-primary text-primary-foreground shadow-[var(--shadow-lift)]"
                   : "border-border/70 bg-background text-muted-foreground hover:-translate-y-0.5 hover:border-primary hover:bg-primary/8 hover:text-foreground hover:shadow-[var(--shadow-lift)]",
-                picked.length > 0 && !active && "opacity-55",
+                // Dim only the options that can no longer be added.
+                !active && picked.length >= max && !exclusive.includes(o) && "opacity-55",
               )}
             >
               <AnimatePresence initial={false}>
@@ -61,7 +72,7 @@ export function PrioritySelector({
                     className="flex items-center gap-1.5"
                   >
                     <OptionCheck />
-                    <span className="text-[0.7rem] font-bold">{ordinals[rank]}</span>
+                    {ranked && <span className="text-[0.7rem] font-bold">{rank + 1}°</span>}
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -79,7 +90,7 @@ export function PrioritySelector({
         >
           {confirmLabel}
         </button>
-        <span className="text-[0.8rem] text-muted-foreground">{picked.length}/3 selezionate</span>
+        <span className="text-[0.8rem] text-muted-foreground">{picked.length}/{max} selezionate</span>
       </div>
     </motion.div>
   );
