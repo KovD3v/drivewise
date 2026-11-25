@@ -3,7 +3,7 @@
 This page describes the PostgreSQL schema after migration `0016`: 21 tables and
 7 views. It states what each table stores and which rules the database enforces.
 The reasons for the catalogue rules are in [Catalog v2](catalog-v2.md). The
-proposed change to vehicle identity is in
+accepted change to vehicle identity (ADR-020) is not built yet. It is in
 [the identity and facts design](catalog-identity-and-facts-design.md).
 
 To list the tables and views of a migrated database, run:
@@ -282,5 +282,5 @@ lock, so two runs cannot apply the same file.
 - The list of metrics is repeated in the SQL domain, the Python contract, and the
   JSON schema.
 
-[The identity and facts design](catalog-identity-and-facts-design.md) proposes a
-change for each limit.
+[The identity and facts design](catalog-identity-and-facts-design.md) defines a
+change for each limit. None is built yet.

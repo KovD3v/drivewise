@@ -1,7 +1,8 @@
-# Identità dei veicoli e forma dei fatti: proposta di design
+# Identità dei veicoli e forma dei fatti: design
 
-Data: 25 novembre 2026. Stato: proposta (ADR-020). Nessuna migrazione e nessuna
-modifica al codice.
+Data: 25 novembre 2026. Stato: accettata da Tommaso il 25 novembre 2026
+(ADR-020). Nessun passo è costruito: nessuna migrazione e nessuna modifica al
+codice.
 
 Questo documento decide cosa archivia il catalogo per un veicolo e a quale riga
 appartiene ogni valore. Parte da [Catalog v2](catalog-v2.md) e ne cambia la chiave
@@ -87,7 +88,7 @@ Comando che rigenera il conteggio:
 
 	grep -rl "dc_peak_charge_power_kw" apps docs --include=*.sql --include=*.py --include=*.json --include=*.ts | grep -v "tests\|fixtures"
 
-## Proposta
+## Design
 
 ### Una riga veicolo è una generazione di un modello in un mercato
 
@@ -107,7 +108,7 @@ Per questo la generazione entra nel file dei nomi rivisto a mano
 (`data/open-data/car-names.it.json`), che già separa due modelli con lo stesso nome
 tramite i numeri di omologazione.
 
-Catalog v2 tiene carrozzeria, fase e anno modello nell'identità. Questa proposta li
+Catalog v2 tiene carrozzeria, fase e anno modello nell'identità. Questo design li
 toglie perché sono vuoti all'import, e una chiave che si compila dopo è una chiave
 che cambia.
 

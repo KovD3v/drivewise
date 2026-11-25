@@ -106,7 +106,8 @@ Initial cache storage is planned in PostgreSQL. Redis is represented only by env
 
 ## Data Collection
 
-The proposed change to vehicle identity and to the shape of catalogue facts is in
+The accepted change to vehicle identity and to the shape of catalogue facts
+(ADR-020) is not built yet. It is in
 [the identity and facts design](catalog-identity-and-facts-design.md).
 [Catalog v2](catalog-v2.md) is implemented end to end: append-only evidence
 storage (`0008`), reviewed publication into the read views (`0009`), two-wheel

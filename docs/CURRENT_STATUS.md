@@ -31,6 +31,6 @@ _Last updated: 2026-11-25_
 ## Remaining pre-go-live gates (ADR-017)
 
 1. **Production DB & Vercel Ops:** apply migrations `0010`–`0016` on production Neon, verify Preview `DATABASE_URL` does not target production, configure Vercel WAF rate limiting on `POST /api/guided-decisions*` and `/api/advisor/*`, and schedule `apps/api/scripts/purge_expired_sessions.py --days 30 --execute` for GDPR retention.
-2. **Vehicle identity and facts (ADR-020):** review [`catalog-identity-and-facts-design.md`](catalog-identity-and-facts-design.md) and deliver its steps 1 to 5 before any real car is published. A generation cannot be filled after publication.
+2. **Vehicle identity and facts (ADR-020):** deliver steps 1 to 5 of [`catalog-identity-and-facts-design.md`](catalog-identity-and-facts-design.md) before any real car is published. A generation cannot be filled after publication.
 3. **First real Catalog v2 bundle (ADR-019):** follow [`first-cars-curation.md`](first-cars-curation.md) — sign the source reviews (`docs/source-reviews/`), choose the models, then curate and publish them with `list_price_eur`, `cargo_volume_liters`, and `body_style`. Align with Andrea on the `width_with_mirrors_mm` vs `width_mirrors_folded_mm` interval rule.
 4. **Post-go-live follow-ups:** upgrade `uv.lock` (`starlette`, `anyio`, `certifi`) and `bun.lock` so CI `dependency-audit` can become blocking; separate read-only vs write token on shared decision URLs (Stage 1, `F-27`); run private-buyer beta validation (`docs/product-beta.md`).

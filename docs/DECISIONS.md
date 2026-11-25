@@ -185,7 +185,7 @@ waits until after the first release.
 
 ## ADR-020: A vehicle is one generation, and each fact has a scope and a type
 
-**Status:** Proposed (2026-11-25)
+**Status:** Accepted (2026-11-25)
 
 A vehicle row is one generation of one model in one market. The generation is
 required before publication. Body style, phase, and model year leave the
@@ -196,6 +196,6 @@ One registry file defines every metric.
 The reason is that published identity is frozen. Today a generation cannot be
 filled after the first publication. The design, its evidence, and its six
 delivery steps are in
-[the identity and facts design](catalog-identity-and-facts-design.md). This
-record becomes Accepted when Tommaso has reviewed that document.
+[the identity and facts design](catalog-identity-and-facts-design.md). Tommaso
+reviewed and accepted it on 2026-11-25. No step is built yet.
 
