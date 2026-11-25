@@ -107,8 +107,9 @@ async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const detail = await readErrorDetail(response)
     throw new ApiResponseError(
-      detail || `API request failed with status ${response.status}`,
+      detail.message || `API request failed with status ${response.status}`,
       response.status,
+      detail.code,
     )
   }
   return response.json()
@@ -158,6 +159,8 @@ class ApiResponseError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** The machine-readable `detail.code` the API sends with some errors, e.g. `max_turns_reached`. */
+    readonly code: string | null = null,
   ) {
     super(message)
     this.name = 'ApiResponseError'
@@ -168,34 +171,26 @@ export function isApiNotFoundError(error: unknown) {
   return error instanceof ApiResponseError && error.status === 404
 }
 
-async function readErrorDetail(response: Response) {
+/** True when the API rejected the request with this `detail.code`. */
+export function isApiErrorCode(error: unknown, code: string) {
+  return error instanceof ApiResponseError && error.code === code
+}
+
+async function readErrorDetail(response: Response): Promise<{ message: string | null; code: string | null }> {
   try {
     const payload = await response.json()
-    if (payload && typeof payload.detail === 'string') {
-      return payload.detail
-    }
+    const detail = payload?.detail
+    if (typeof detail === 'string') return { message: detail, code: null }
+    if (detail && typeof detail === 'object' && typeof detail.code === 'string') return { message: null, code: detail.code }
   } catch {
-    return null
+    // A body that is not JSON carries no detail.
   }
-  return null
+  return { message: null, code: null }
 }
 
 // Guided Decision uses the existing persisted backend contract; errors never become mock rankings.
-export interface GuidedDecisionResponse {
-  contractVersion: 'guided-decision-v1'
-  decisionId: string
-  profileVersion: number
-  status: 'active' | 'completed' | 'abandoned'
-  message: string
-  decisionProfile: Record<string, { value: string | number | boolean | string[] } | Record<string, { value: number } | null> | null>
-  profileCompletion: number
-  decisionConfidence: number
-  missingInformation: { key: string; reason: string }[]
-  nextQuestion: { id: string; type: 'number' | 'boolean' | 'single_select' | 'multi_select' | 'text'; label: string; reason: string; constraints: { minimum: number | null; maximum: number | null; unit: string | null; options: string[] } | null } | null
-  previewRanking: { status: 'blocked' | 'provisional' | 'ready' | 'insufficient_inventory'; groups: AdvisorRecommendationGroup[]; assumptions: string[]; blockingReasons: string[] }
-  garageCompatibility: { vehicleId: string; specId: string; status: 'comfortable' | 'tight' | 'incompatible' | 'insufficient_data'; message: string }[]
-  warnings: string[]
-}
+export type GuidedDecisionResponse = Schemas['GuidedDecisionResponse']
+export type GarageCompatibility = Schemas['GarageCompatibility']
 export async function createGuidedDecision(message: string): Promise<GuidedDecisionResponse> {
   return postJson('/guided-decisions', { message, locale: 'it-IT', market: 'IT' })
 }

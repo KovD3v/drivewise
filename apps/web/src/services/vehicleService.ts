@@ -173,7 +173,3 @@ export async function getVehicleById(id: string): Promise<Vehicle | null> {
   const detail = await getVehicleDetail(id);
   return detail ? fromApiVehicle(detail) : null;
 }
-
-export async function getVehiclesByIds(ids: string[]): Promise<Vehicle[]> {
-  return (await Promise.all(ids.map(getVehicleById))).filter((v): v is Vehicle => v !== null);
-}

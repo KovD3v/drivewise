@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/vehicle/primitives";
 import { mm2cm, vehicleName } from "@/lib/vehicle-format";
 import type { Vehicle } from "@/services/vehicleService";
+import type { GarageCompatibility } from "@/api/drivewise";
 
 type Tone = "green" | "yellow" | "red";
 
@@ -289,7 +290,96 @@ export type GarageInput = {
   result?: "fits_comfortably" | "fits_tight" | "does_not_fit" | undefined;
 };
 
-export function GarageFit({ vehicle, garage }: { vehicle: Vehicle; garage?: GarageInput | undefined }) {
+const evaluationLabel: Record<GarageCompatibility["status"], string> = {
+  comfortable: "Entra comodamente",
+  tight: "Entra ma con poco margine",
+  incompatible: "Non entra nel tuo garage",
+  insufficient_data: "Misure insufficienti per la verifica",
+};
+const evaluationTone: Record<GarageCompatibility["status"], Tone | null> = {
+  comfortable: "green",
+  tight: "yellow",
+  incompatible: "red",
+  insufficient_data: null,
+};
+const marginLabels: [keyof NonNullable<GarageCompatibility["margins"]>, string][] = [
+  ["lengthMm", "Lunghezza"],
+  ["widthMm", "Larghezza"],
+  ["heightMm", "Altezza"],
+  ["doorWidthMm", "Larghezza della porta"],
+  ["doorHeightMm", "Altezza della porta"],
+];
+const missingLabels: Record<string, string> = {
+  "garage.useful_length_mm": "lunghezza utile del garage",
+  "garage.useful_width_mm": "larghezza utile del garage",
+  "garage.useful_height_mm": "altezza utile del garage",
+  "garage.door_width_mm": "larghezza della porta del garage",
+  "garage.door_height_mm": "altezza della porta del garage",
+  "vehicle.length_mm": "lunghezza del veicolo",
+  "vehicle.body_width_mm": "larghezza del veicolo",
+  "vehicle.height_mm": "altezza del veicolo",
+  "vehicle.entry_width_mm": "larghezza d'ingresso del veicolo",
+};
+const signedMargin = (mm: number) => (mm < 0 ? `mancano ${cm(-mm)}` : `${cm(mm)} di margine`);
+
+/** The Guided Decision API's own garage check for this version: verdict, margins and missing measures, never recomputed here. */
+function GarageEvaluation({ vehicle, evaluation }: { vehicle: Vehicle; evaluation: GarageCompatibility }) {
+  const tone = evaluationTone[evaluation.status];
+  const margins = marginLabels.flatMap(([key, l]) => {
+    const value = evaluation.margins?.[key];
+    return typeof value === "number" ? [{ key, label: l, value }] : [];
+  });
+  const missing = [...new Set(evaluation.missingData.map((key) => missingLabels[key] ?? key))];
+  return (
+    <Card className={cn(tone && toneBorder[tone])}>
+      <div className="flex items-center gap-2">
+        <span className={cn("size-2.5 rounded-full", tone ? toneBg[tone] : "bg-muted-foreground")} aria-hidden />
+        <span className="text-[0.72rem] tracking-[0.14em] text-muted-foreground uppercase">
+          Verifica sul tuo garage
+        </span>
+      </div>
+      <p className={cn("font-heading mt-4 text-[1.2rem] font-semibold tracking-[-0.02em]", tone && toneText[tone])}>
+        {evaluationLabel[evaluation.status]}
+      </p>
+      <p className="mt-2 max-w-2xl text-[0.95rem] leading-relaxed text-foreground/85">
+        {vehicleName(vehicle)}: {evaluation.message}
+      </p>
+      {margins.length > 0 && (
+        <dl className="mt-6">
+          {margins.map((m) => (
+            <div key={m.key} className="flex items-baseline justify-between gap-4 border-b border-border/60 py-2.5 last:border-0">
+              <dt className="text-[0.85rem] text-muted-foreground">{m.label}</dt>
+              <dd className={cn("text-[0.9rem] font-medium tabular-nums", m.value < 0 ? "text-destructive" : "text-foreground")}>
+                {signedMargin(m.value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {missing.length > 0 && (
+        <p className="mt-5 text-[0.85rem] text-muted-foreground">
+          Mancano: {missing.join(", ")}.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+export function GarageFit({
+  vehicle,
+  garage,
+  evaluation,
+}: {
+  vehicle: Vehicle;
+  garage?: GarageInput | undefined;
+  /** The Guided Decision API's check for this vehicle version; it wins over any local estimate. */
+  evaluation?: GarageCompatibility | undefined;
+}) {
+  if (evaluation) return <GarageEvaluation vehicle={vehicle} evaluation={evaluation} />;
+  return <LocalGarageFit vehicle={vehicle} garage={garage} />;
+}
+
+function LocalGarageFit({ vehicle, garage }: { vehicle: Vehicle; garage?: GarageInput | undefined }) {
   const reduce = useReducedMotion();
   const g = garage;
   const d = vehicle.dimensions ?? {};

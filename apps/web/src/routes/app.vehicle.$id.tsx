@@ -10,7 +10,8 @@ import { DynamicSections } from "@/components/vehicle/DynamicSections";
 import { GarageFit, type GarageInput } from "@/components/vehicle/GarageFit";
 import { AppHeader } from "@/components/app/AppHeader";
 import { contextualSuggestions, datasetAnswer } from "@/lib/vehicle-ask";
-import { loadGuidedDecisionReport, rankVehicles, type ScoredVehicle } from "@/lib/decision-engine";
+import { loadDecisionReport, loadGuidedDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
+import type { GarageCompatibility } from "@/api/drivewise";
 import type { DecisionProfile } from "@/lib/decision-profile";
 import { loadState } from "@/lib/decision-state";
 import { buildReportSections } from "@/lib/report-sections";
@@ -146,22 +147,24 @@ function VehiclePage() {
   const { spec, s: decisionId } = Route.useSearch();
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
   const [ranked, setRanked] = useState<ScoredVehicle[]>([]);
+  const [garageChecks, setGarageChecks] = useState<GarageCompatibility[]>([]);
 
   useEffect(() => {
     let alive = true;
     setProfile(null);
     setRanked([]);
+    setGarageChecks([]);
     if (decisionId && loaded.vehicle_type === "car") {
       // The link names the decision: read it from the API, so the score shows in any browser.
       void loadGuidedDecisionReport(decisionId)
-        .then((report) => { if (alive) { setProfile(report.profile); setRanked(report.ranking); } })
+        .then((report) => { if (alive) { setProfile(report.profile); setRanked(report.ranking); setGarageChecks(report.garageCompatibility); } })
         .catch(() => { /* no score without the decision; the catalogue facts still show */ });
     } else {
       const state = loadState();
       if (state?.profile.vehicleType === loaded.vehicle_type) {
         setProfile(state.profile);
-        void rankVehicles(state.profile)
-          .then((items) => { if (alive) setRanked(items); })
+        void loadDecisionReport(state.profile)
+          .then((report) => { if (alive) { setRanked(report.ranking); setGarageChecks(report.garageCompatibility); } })
           .catch(() => { if (alive) setRanked([]); });
       }
     }
@@ -169,7 +172,9 @@ function VehiclePage() {
   }, [decisionId, loaded.vehicle_type]);
 
   const activeProfile: DecisionProfile = profile ?? { vehicleType: loaded.vehicle_type };
-  const rankedHere = ranked.find(item => item.vehicle.id === loaded.id);
+  // The version the link names first: the same car can be ranked as a different version or condition.
+  const rankedHere = ranked.find(item => item.vehicle.id === loaded.id && item.specId === spec)
+    ?? ranked.find(item => item.vehicle.id === loaded.id);
   // The version shown: the one the link names, else the one the Advisor scored, else the default.
   const activeSpecId = useMemo(() => {
     const known = (id: string | undefined) => (id && detail.specs?.some((candidate) => candidate.id === id) ? id : undefined);
@@ -182,6 +187,8 @@ function VehiclePage() {
   const score = useCountUp(scored?.score ?? 0, reduce ? 0 : 1300, !!reduce);
   const sections = buildReportSections(v, activeProfile);
   const garage = garageInputFrom(profile);
+  // The Guided Decision API already checked this version against the user's garage.
+  const garageEvaluation = garageChecks.find((check) => check.vehicleId === v.id && check.specId === activeSpecId);
 
   const alternatives = ranked.filter(item => item.vehicle.id !== v.id).slice(0, 3);
 
@@ -317,9 +324,9 @@ function VehiclePage() {
           </VSection>
         )}
 
-        {v.vehicle_type === "car" && v.dimensions?.length_mm && (
+        {v.vehicle_type === "car" && (v.dimensions?.length_mm || garageEvaluation) && (
           <VSection title="Compatibilità garage" intro="Confronto fra le misure reali del veicolo e quelle del tuo garage.">
-            <GarageFit vehicle={v} garage={garage} />
+            <GarageFit vehicle={v} garage={garage} evaluation={garageEvaluation} />
           </VSection>
         )}
 

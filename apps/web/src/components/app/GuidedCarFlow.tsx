@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { EASE } from '@/lib/motion';
 import { MobilePanel } from './MobilePanel';
 import { useNavigate } from '@tanstack/react-router';
-import { createGuidedDecision, addGuidedDecisionTurn, fetchGuidedDecision, type GuidedDecisionResponse } from '@/api/drivewise';
+import { createGuidedDecision, addGuidedDecisionTurn, fetchGuidedDecision, isApiErrorCode, type GuidedDecisionResponse } from '@/api/drivewise';
 import { guidedConfidence, guidedProfile, guidedRanking, toPreview } from '@/lib/decision-engine';
-import { saveState } from '@/lib/decision-state';
+import { clearState, saveState } from '@/lib/decision-state';
 import { AppHeader } from './AppHeader';
 import { DecisionBar } from './DecisionBar';
 import { DecisionMessage, TypingIndicator } from './DecisionMessage';
@@ -44,6 +44,8 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const [error, setError] = useState('');
+  // The API caps the turns of one session (409 max_turns_reached): the profile is kept, no answer is accepted.
+  const [capped, setCapped] = useState(false);
   // The answer to resend and the profile version it answered: a newer version means a new question.
   const [retry, setRetry] = useState<{ message: string; version: number | null } | null>(null);
   const question = response?.nextQuestion;
@@ -71,10 +73,14 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
     sessionId: next.decisionId, status: next.previewRanking.status === 'ready' ? 'ready' : 'collecting',
     currentStep: next.nextQuestion?.id ?? 'report', profile: guidedProfile(next), answers: {},
     profileCompletion: Math.round(next.profileCompletion * 100), decisionConfidence: guidedConfidence(next),
-    rankingIds: guidedRanking(next).map(r => r.vehicle.id), updatedAt: Date.now(),
+    rankingIds: [...new Set(guidedRanking(next).map(r => r.vehicle.id))], updatedAt: Date.now(),
   });
+  const restart = () => {
+    clearState(); setResponse(null); setMessages([]); setCategory(null);
+    setError(''); setRetry(null); setCapped(false);
+  };
   const submit = async (message: string) => {
-    if (inFlight.current || !message.trim()) return;
+    if (inFlight.current || capped || !message.trim()) return;
     const request = !response && category && category !== 'Non lo so ancora'
       ? `Cerco una ${category === 'Hatchback' ? 'compatta' : category}. ${message}` : message;
     if (request.length > 2000) { setError('Scrivi al massimo 2000 caratteri.'); return; }
@@ -85,6 +91,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
       setMessages(prev => [...prev, { prompt: question?.label ?? 'Raccontami cosa cerchi.', answer }]);
       setResponse(next); persist(next); setRetry(null);
     } catch (e) {
+      if (isApiErrorCode(e, 'max_turns_reached')) { setCapped(true); setRetry(null); return; }
       setError(e instanceof Error ? e.message : 'Non riesco ad aggiornare il profilo. Riprova.');
       // Resync a possibly stale version before an explicit retry; never send a duplicate turn automatically.
       if (response) {
@@ -112,7 +119,7 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
               <div className="pl-[3.125rem]">{category === null ? <QuickChoice options={categories} onSelect={setCategory} /> : <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/10 px-4 py-2 text-[0.85rem] text-foreground">{category}</span>}</div>
             </StepStage>
             {messages.map((m, i) => <StepStage key={i} themeId="facts" active={false}><DecisionMessage><p>{m.prompt}</p></DecisionMessage><UserMessage>{m.answer}</UserMessage></StepStage>)}
-            {category !== null && (busy ? <DecisionMessage><TypingIndicator /></DecisionMessage> : <StepStage themeId={question?.id.includes('garage') ? 'garage' : question?.id === 'budget_eur' ? 'budget' : 'facts'} active>
+            {category !== null && !capped && (busy ? <DecisionMessage><TypingIndicator /></DecisionMessage> : <StepStage themeId={question?.id.includes('garage') ? 'garage' : question?.id === 'budget_eur' ? 'budget' : 'facts'} active>
               <DecisionMessage><p>{question?.label ?? (response ? 'Il tuo profilo è pronto.' : 'Raccontami cosa cerchi.')}</p><p className="text-muted-foreground">{question?.reason ?? (!response ? "Scrivi liberamente: userò le tue parole per pesare la scelta." : null)}</p></DecisionMessage>
               <div className="pl-[3.125rem]">
                 {question?.type === 'single_select' ? <QuickChoice key={`${response?.profileVersion}-${error}`} options={choices.map(choice => choice.label)} onSelect={label => void submit(optionValue(label))} /> :
@@ -124,10 +131,17 @@ export function GuidedCarFlow({ initialQuery }: { initialQuery: string }) {
                 </form> : (!response || question) ? <DecisionBar suggestions={response ? [] : ["Cerco un'auto per la famiglia", "Vorrei spendere poco di gestione", "Sto valutando un'elettrica"]} initialValue={response ? '' : initialQuery} placeholder="Descrivi liberamente cosa cerchi" onSubmit={v => void submit(v)} /> : null}
               </div>
             </StepStage>)}
+            {capped && <div role="alert" className="rounded-2xl border border-accent/40 bg-card p-5">
+              <p className="font-medium">Hai raggiunto il numero massimo di risposte per questa sessione.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{ranking.length > 0
+                ? 'Il profilo raccolto finora resta valido: apri il Decision Report per vedere il risultato, oppure inizia una nuova sessione.'
+                : 'Per continuare inizia una nuova sessione: ripartirai da un profilo vuoto.'}</p>
+              <button type="button" onClick={restart} className="mt-3 underline">Inizia una nuova sessione</button>
+            </div>}
             {error && <div role="alert" className="rounded-2xl border border-destructive/30 bg-card p-5"><p>{error}</p>{retryable && <button disabled={busy} onClick={() => void submit(retryable.message)} className="mt-3 underline">Riprova</button>}</div>}
             {response?.previewRanking.status === 'insufficient_inventory' && <p role="status" className="text-sm text-muted-foreground">Nessuna offerta verificata corrisponde al profilo. Puoi modificare budget o utilizzo.</p>}
             {ranking.length > 0 && <button disabled={busy} onClick={() => { if (response) { persist(response); void navigate({ to: '/app/report', search: { s: response.decisionId } }); } }} className="h-12 rounded-full bg-primary px-7 text-[0.95rem] font-medium text-primary-foreground">Mostrami il Decision Report</button>}
-            {response && <DecisionBar placeholder="Aggiungi o correggi un'esigenza" disabled={busy} onSubmit={v => void submit(v)} />}
+            {response && !capped && <DecisionBar placeholder="Aggiungi o correggi un'esigenza" disabled={busy} onSubmit={v => void submit(v)} />}
           </div>
         </div>
         <motion.aside className="min-w-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2, ease: EASE }}><MobilePanel><DecisionProfilePanel known={known} missing={response ? response.missingInformation.map(m => ({ id: m.key, label: labels[m.key] ?? m.reason })) : initialMissing.slice(category === null ? 0 : 1).map(label => ({ id: label, label }))} completion={completion} confidence={confidence} ranking={ranking.slice(0, 3).map(toPreview)} /></MobilePanel></motion.aside>

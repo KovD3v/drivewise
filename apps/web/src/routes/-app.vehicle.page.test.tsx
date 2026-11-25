@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import carDetail from '@/test/fixtures/car-detail.synthetic.json'
-import type { VehicleDetail } from '@/api/drivewise'
+import type { GuidedDecisionResponse, VehicleDetail } from '@/api/drivewise'
+import guidedDecision from '@/test/fixtures/guided-decision.synthetic.json'
 import { fromApiVehicle } from '@/services/vehicleService'
 
 const base = carDetail.specs[0]!
@@ -63,4 +64,27 @@ test('an unknown version falls back to the default one, and the compare link nam
   await renderVehicle()
   const compare = screen.getByText('Confronta').closest('a')!
   expect(JSON.parse(compare.dataset.search!)).toEqual({ vehicle: carDetail.id, spec: base.id })
+})
+
+test('the guided decision garage verdict for the shown version replaces the empty garage form', async () => {
+  search.s = 'decision-with-garage'
+  const decision = guidedDecision as unknown as GuidedDecisionResponse
+  const response: GuidedDecisionResponse = {
+    ...decision,
+    garageCompatibility: [
+      { vehicleId: carDetail.id, specId: other.id, status: 'comfortable', message: 'Altra versione.', margins: null, missingData: [], evaluationVersion: 'garage-fit-v1' },
+      { vehicleId: carDetail.id, specId: base.id, status: 'incompatible', message: 'Il veicolo non è geometricamente compatibile con il garage.',
+        margins: { lengthMm: -40, widthMm: 620, heightMm: null, doorWidthMm: null, doorHeightMm: null }, missingData: ['garage.door_width_mm'], evaluationVersion: 'garage-fit-v1' },
+    ],
+  }
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => response }))
+  await renderVehicle()
+
+  expect(await screen.findByText('Non entra nel tuo garage')).toBeInTheDocument()
+  expect(screen.getByText(/Il veicolo non è geometricamente compatibile con il garage\./)).toBeInTheDocument()
+  expect(screen.getByText('mancano 4 cm')).toBeInTheDocument()
+  expect(screen.getByText('62 cm di margine')).toBeInTheDocument()
+  expect(screen.getByText('Mancano: larghezza della porta del garage.')).toBeInTheDocument()
+  expect(screen.queryByText(/Indica le dimensioni del tuo garage/)).not.toBeInTheDocument()
+  expect(screen.queryByText('Altra versione.')).not.toBeInTheDocument()
 })

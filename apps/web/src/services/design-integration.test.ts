@@ -49,8 +49,8 @@ test('report preserves backend score, reasons and uncertainty without local resc
 
 test('two-wheelers are never ranked and need no guided decision call', async () => {
   vi.stubGlobal('fetch', vi.fn());
-  expect(await loadDecisionReport({ vehicleType: 'motorcycle' })).toEqual({ ranking: [], confidence: null });
-  expect(await loadDecisionReport({ vehicleType: 'car' })).toEqual({ ranking: [], confidence: null });
+  expect(await loadDecisionReport({ vehicleType: 'motorcycle' })).toEqual({ ranking: [], groups: [], confidence: null, garageCompatibility: [] });
+  expect(await loadDecisionReport({ vehicleType: 'car' })).toEqual({ ranking: [], groups: [], confidence: null, garageCompatibility: [] });
   expect(fetch).not.toHaveBeenCalled();
 });
 

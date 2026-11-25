@@ -91,3 +91,34 @@ test('without ?s= and without local state the report asks for the guided decisio
   expect(await screen.findByText('Nessun profilo decisionale attivo.')).toBeInTheDocument()
   expect(fetchGuidedDecision).not.toHaveBeenCalled()
 })
+
+test('with new and used groups the report opens on the stronger winner and switches condition', async () => {
+  type Item = GuidedDecisionResponse['previewRanking']['groups'][number]['items'][number]
+  const car = (model: string, id: string, score: number): Item => ({ ...winner, vehicle: { ...winner.vehicle, id, model }, score })
+  search.s = decision.decisionId
+  vi.mocked(fetchGuidedDecision).mockResolvedValue({
+    ...decision,
+    previewRanking: { ...decision.previewRanking, groups: [
+      { condition: 'new', items: [car('Nuova Uno', 'a1b2c3d4-0000-4000-8000-000000000001', 70)] },
+      { condition: 'used', items: [car('Usata Due', 'a1b2c3d4-0000-4000-8000-000000000002', 85)] },
+    ] },
+  })
+  await renderReport()
+
+  expect(await screen.findByText('Apri la scheda Usata Due')).toBeInTheDocument()
+  const switcher = screen.getByRole('group', { name: 'Classifica per condizione' })
+  expect(switcher).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Usate · 85' })).toHaveAttribute('aria-pressed', 'true')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Nuove · 70' }))
+  expect(await screen.findByText('Apri la scheda Nuova Uno')).toBeInTheDocument()
+  expect(screen.queryByText('Apri la scheda Usata Due')).not.toBeInTheDocument()
+})
+
+test('a single condition group shows no condition switch', async () => {
+  search.s = decision.decisionId
+  vi.mocked(fetchGuidedDecision).mockResolvedValue(decision)
+  await renderReport()
+  await screen.findByText(`Apri la scheda ${winner.vehicle.model}`)
+  expect(screen.queryByRole('group', { name: 'Classifica per condizione' })).not.toBeInTheDocument()
+})

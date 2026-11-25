@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { ctaVariants } from "@/components/landing/CtaButton";
 import { cn } from "@/lib/utils";
 import { contactDetailSchema, contactRequestSchema, contactReasons, collaborationTypes, privacyTypes, contactSubmissionAllowed, remainingCharacterAnnouncement, type ContactField, type ContactReason } from "@/lib/contact-validation";
-import { responseDate, responsePromise } from "@/lib/contact-intelligence";
+import { responseDate } from "@/lib/contact-intelligence";
 import { CONTACT_STAMP_MS, contactTicketRows } from "@/lib/contact-journey-policy";
 import { submitContactDemo } from "@/lib/contact-demo";
 import { useContactContext } from "@/hooks/use-contact-context";
@@ -125,7 +125,7 @@ export function ContactForm({ email, from = "", analysisId = "" }: { email: stri
           {[["Motivo", receipt.reason], ["Nome", receipt.name], ["Email", receipt.email]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>)}
           <div><dt className="text-xs text-muted-foreground">Messaggio</dt><dd className="mt-1 line-clamp-2 whitespace-pre-line break-words leading-relaxed">{receipt.message}</dd></div>
         </dl>
-        <p className="mt-6 border-t border-border pt-5 text-sm leading-relaxed">{responsePromise(receipt.reason, receipt.responseDate)}</p>
+        <p className="mt-6 border-t border-border pt-5 text-sm leading-relaxed">Per contattarci davvero, scrivici a <a className="break-words font-medium underline underline-offset-4" href={`mailto:${email}`}>{email}</a>.</p>
         <div className="mt-7 flex flex-wrap gap-3"><Link to="/" className={ctaVariants({ variant: "ghost", size: "sm" })}>Torna alla home</Link><Link to="/app/start" className={ctaVariants({ variant: "primary", size: "sm" })}>Inizia la scelta guidata</Link></div>
       </section> : resolved ? <section>
         <h2 ref={resolvedHeading} tabIndex={-1} className="font-heading text-2xl font-bold">Grazie, siamo felici di averti aiutato.</h2>

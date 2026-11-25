@@ -9,7 +9,7 @@ import { DynamicSections } from "@/components/vehicle/DynamicSections";
 import { VSection } from "@/components/vehicle/primitives";
 import { PriceLine } from "@/components/vehicle/PriceLine";
 import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts";
-import { loadDecisionReport, loadGuidedDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
+import { loadDecisionReport, loadGuidedDecisionReport, topRankingGroup, type RankingGroup, type ScoredVehicle, type VehicleCondition } from "@/lib/decision-engine";
 import {
   dnaLabels,
   usageLabels,
@@ -85,7 +85,8 @@ function ReportPage() {
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [ranking, setRanking] = useState<ScoredVehicle[] | null>(null);
+  // The Advisor's condition groups (new, used), each in its own rank order.
+  const [ranking, setRanking] = useState<RankingGroup[] | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -107,7 +108,7 @@ function ReportPage() {
         if (!alive) return;
         setProfile(report.profile);
         setConfidence(report.confidence);
-        setRanking(report.ranking);
+        setRanking(report.groups);
       }).catch(fail);
     } else {
       // Without ?s= the last decision saved in this browser is the only fallback.
@@ -120,7 +121,7 @@ function ReportPage() {
         void loadDecisionReport(state.profile).then((report) => {
           if (!alive) return;
           setConfidence(report.confidence);
-          setRanking(report.ranking);
+          setRanking(report.groups);
         }).catch(fail);
       }
     }
@@ -145,29 +146,29 @@ function ReportPage() {
   // A ranking only exists for a guided car decision, which always carries the API confidence.
   if (!profile || confidence === null) return <ReportMissing />;
 
-  return <ReportContent profile={profile} ranking={ranking} confidence={confidence} />;
+  return <ReportContent profile={profile} groups={ranking} confidence={confidence} />;
 }
 
+const conditionLabels: Record<VehicleCondition, string> = { new: "Nuove", used: "Usate" };
+
+/**
+ * The Advisor ranks new and used cars apart. With both groups the report opens on the group whose
+ * winner ranks highest and lets the user switch; with one group it shows no extra control.
+ */
 function ReportContent({
   profile,
-  ranking,
+  groups,
   confidence,
 }: {
   profile: DecisionProfile;
-  ranking: ScoredVehicle[];
+  groups: RankingGroup[];
   confidence: number;
 }) {
-  const reduce = useReducedMotion();
-  const winner = ranking[0]!;
+  const [picked, setPicked] = useState<VehicleCondition | null>(null);
+  const selected = groups.find((g) => g.condition === picked) ?? topRankingGroup(groups)!;
+  const winner = selected.items[0]!;
   const { s: searchSessionId } = Route.useSearch();
   const sessionId = searchSessionId ?? profile.decisionId;
-  const offerUrl = safeHttpsUrl(winner.offer?.source_url);
-  const checks = describeAdvisorGaps(winner.missingFactors ?? [], winner.warnings ?? []);
-  const shownConfidence = useCountUp(confidence, reduce ? 0 : 1400, !!reduce);
-  const [celebrated, setCelebrated] = useState(false);
-  const alternatives = ranking.slice(1, 5);
-  const sections = buildReportSections(winner.vehicle, profile);
-
   const chips = [
     vehicleTypeLabels[profile.vehicleType],
     profile.category ? categoryLabel(profile.category) : null,
@@ -180,6 +181,72 @@ function ReportContent({
     <div className="min-h-screen bg-background">
       <AppHeader label="Riepilogo della scelta" maxWidth="max-w-[70rem]" />
       <main className="mx-auto w-full max-w-[70rem] space-y-14 px-6 py-12 sm:px-8 lg:py-20">
+        {groups.length > 1 && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div role="group" aria-label="Classifica per condizione" className="inline-flex rounded-full border border-border/70 bg-card p-1">
+              {groups.map((g) => (
+                <button
+                  key={g.condition}
+                  type="button"
+                  aria-pressed={g.condition === selected.condition}
+                  onClick={() => setPicked(g.condition)}
+                  className="min-h-11 rounded-full px-5 text-[0.9rem] font-medium transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                >
+                  {conditionLabels[g.condition]} · {g.items[0]!.score}
+                </button>
+              ))}
+            </div>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              DriveWise valuta separatamente auto nuove e usate: ogni classifica ha il suo vincitore.
+            </p>
+          </div>
+        )}
+        <ReportRanking key={selected.condition} profile={profile} ranking={selected.items} confidence={confidence} sessionId={sessionId} chips={chips} />
+      </main>
+
+      <SaveAnalysisPrompt
+        draft={{
+          sessionId,
+          vehicleId: winner.vehicle.id,
+          brand: winner.vehicle.brand,
+          model: winner.vehicle.model,
+          category: winner.vehicle.category,
+          vehicleType: profile.vehicleType,
+          score: winner.score,
+          confidence,
+          tags: chips.slice(0, 6),
+          profile,
+        }}
+      />
+    </div>
+  );
+}
+
+/** Winner, reasons and alternatives of one condition group; keyed by condition so its animations restart. */
+function ReportRanking({
+  profile,
+  ranking,
+  confidence,
+  sessionId,
+  chips,
+}: {
+  profile: DecisionProfile;
+  ranking: ScoredVehicle[];
+  confidence: number;
+  sessionId: string | undefined;
+  chips: string[];
+}) {
+  const reduce = useReducedMotion();
+  const winner = ranking[0]!;
+  const offerUrl = safeHttpsUrl(winner.offer?.source_url);
+  const checks = describeAdvisorGaps(winner.missingFactors ?? [], winner.warnings ?? []);
+  const shownConfidence = useCountUp(confidence, reduce ? 0 : 1400, !!reduce);
+  const [celebrated, setCelebrated] = useState(false);
+  const alternatives = ranking.slice(1, 5);
+  const sections = buildReportSections(winner.vehicle, profile);
+
+  return (
+    <>
         <motion.article
           initial={reduce ? { opacity: 1 } : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -351,22 +418,6 @@ function ReportContent({
             </ul>
           </VSection>
         )}
-      </main>
-
-      <SaveAnalysisPrompt
-        draft={{
-          sessionId,
-          vehicleId: winner.vehicle.id,
-          brand: winner.vehicle.brand,
-          model: winner.vehicle.model,
-          category: winner.vehicle.category,
-          vehicleType: profile.vehicleType,
-          score: winner.score,
-          confidence,
-          tags: chips.slice(0, 6),
-          profile,
-        }}
-      />
-    </div>
+    </>
   );
 }
