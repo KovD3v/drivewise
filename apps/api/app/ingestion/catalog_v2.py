@@ -179,6 +179,9 @@ class SourceSnapshot(ContractModel):
 
     @model_validator(mode="after")
     def safe_artifact_path(self) -> Self:
+        # Plain HTTP provenance can be altered in transit; evidence must be HTTPS.
+        if self.url.scheme != "https":
+            raise ValueError("snapshot url must use https")
         path = Path(self.artifact_path)
         if path.is_absolute() or ".." in path.parts or "\\" in self.artifact_path:
             raise ValueError("artifact_path must be a relative path without traversal")

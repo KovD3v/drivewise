@@ -6,7 +6,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
-from uuid import UUID, uuid5
+from uuid import UUID, uuid4, uuid5
 
 from pydantic import (
     BaseModel,
@@ -615,7 +615,9 @@ def import_catalog(
             ),
         )
 
-    run_id = uuid5(LISTING_NAMESPACE, f"import:{dataset_hash}")
+    # Every attempt gets its own run. A retry that reused a completed run's ID
+    # would flip it to running/failed and hide the listings it published.
+    run_id = uuid4()
     input_counts = {
         "sources": summary.sources,
         "vehicles": summary.vehicles,
@@ -628,13 +630,6 @@ def import_catalog(
           id, schema_version, dataset_hash, file_name, status, record_counts
         )
         VALUES (%s, %s, %s, %s, 'running', %s)
-        ON CONFLICT (id) DO UPDATE SET
-          file_name = EXCLUDED.file_name,
-          status = 'running',
-          record_counts = EXCLUDED.record_counts,
-          error_message = NULL,
-          started_at = now(),
-          completed_at = NULL
         """,
         (
             run_id,
@@ -678,6 +673,7 @@ def import_catalog(
                 counts,
             )
             completed_counts = {**input_counts, **counts.as_dict()}
+            _supersede_completed_run(conn, dataset_hash, run_id)
             conn.execute(
                 """
                 UPDATE import_runs
@@ -707,6 +703,39 @@ def import_catalog(
         dataset_hash=dataset_hash,
         status="completed",
         counts=counts,
+    )
+
+
+def _supersede_completed_run(conn, dataset_hash: str, run_id: UUID) -> None:
+    """Retire an older completed run of the same dataset inside the new run's transaction.
+
+    Only one completed run may hold a dataset hash. Replaying that dataset rewrites
+    every one of its listings, so the older run keeps no visible listing; any that
+    still point at it move to the new run first. A failed attempt rolls both back.
+    """
+    previous = conn.execute(
+        """
+        SELECT id FROM import_runs
+        WHERE dataset_hash = %s AND status = 'completed' AND id <> %s
+        FOR UPDATE
+        """,
+        (dataset_hash, run_id),
+    ).fetchone()
+    if previous is None:
+        return
+    previous_id = _row_value(previous, "id")
+    conn.execute(
+        "UPDATE listings SET import_run_id = %s WHERE import_run_id = %s",
+        (run_id, previous_id),
+    )
+    # import_runs.status allows only running, completed and failed.
+    conn.execute(
+        """
+        UPDATE import_runs
+        SET status = 'failed', error_message = %s
+        WHERE id = %s
+        """,
+        (f"Superseded by import run {run_id}.", previous_id),
     )
 
 

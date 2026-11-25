@@ -1,18 +1,20 @@
 """Operator-owned scope and agent proposals for the catalog collector."""
 
 from datetime import date
+from decimal import Decimal
 import math
 import re
 from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 
 from app.ingestion.catalog import SourceRecord
 from app.ingestion.catalog_v2 import (
     ContractModel,
     Key,
+    ListPriceTerms,
     Market,
     METRIC_UNITS,
     MeasurementContext,
@@ -130,6 +132,16 @@ class ObservationProposal(ContractModel):
     context: MeasurementContext
     evidence_excerpt: str = Field(min_length=1, max_length=4000)
     evidence_locator: Text
+    # Required exactly for list_price_eur; the same terms as SpecObservation.
+    list_price: ListPriceTerms | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_list_price(self, handler):
+        # Observation IDs hash this dump: without terms it stays as before.
+        data = handler(self)
+        if data.get("list_price") is None:
+            data.pop("list_price", None)
+        return data
 
     @model_validator(mode="after")
     def checked_conversion(self):
@@ -141,25 +153,42 @@ class ObservationProposal(ContractModel):
         if not match:
             raise ValueError("raw_value must be a numeric scalar or ascending range")
 
-        def parse_number(value: str) -> float:
+        def parse_decimal(value: str) -> Decimal:
             if re.fullmatch(r"\d{1,3},\d{3}", value):
                 raise ValueError("ambiguous comma-grouped number; retain a gap")
             if re.fullmatch(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?", value):
                 if (
                     value.count(".") == 1
                     and "," not in value
-                    and raw_unit not in {"cc", "cm3", "mm", "kg"}
+                    and raw_unit not in {"cc", "cm3", "mm", "kg", "eur", "€"}
                 ):
                     raise ValueError("ambiguous dotted number; retain a gap")
-                return float(value.replace(".", "").replace(",", "."))
-            return float(value.replace(",", "."))
+                return Decimal(value.replace(".", "").replace(",", "."))
+            return Decimal(value.replace(",", "."))
 
-        lower, upper = [parse_number(v) for v in (match[1], match[2] or match[1])]
+        lower_raw, upper_raw = [
+            parse_decimal(v) for v in (match[1], match[2] or match[1])
+        ]
+        lower, upper = float(lower_raw), float(upper_raw)
         if lower > upper:
             raise ValueError("raw range is inverted; investigate the source")
         target = METRIC_UNITS[self.metric]
         if self.unit != target:
             raise ValueError("normalized unit does not match the metric")
+        if (self.metric == "list_price_eur") != (self.list_price is not None):
+            raise ValueError("list price terms are required exactly for list_price_eur")
+        if self.list_price is not None:
+            # The raw value is the printed amount; the value is VAT-inclusive.
+            if raw_unit not in {"eur", "€"}:
+                raise ValueError("a list price must be printed in EUR")
+            if match[2] or lower_raw != self.list_price.printed_amount_eur:
+                raise ValueError("raw value must be the printed list price amount")
+            expected = self.list_price.incl_vat_amount()
+            if self.value_min != expected or self.value_max != expected:
+                raise ValueError(
+                    "list price must equal its VAT-inclusive amount, rounded to cents"
+                )
+            return self
         conversions = {
             ("cv", "kW"): 0.73549875,
             ("ps", "kW"): 0.73549875,

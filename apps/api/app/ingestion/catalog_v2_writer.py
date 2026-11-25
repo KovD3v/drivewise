@@ -2,7 +2,10 @@
 
 import hashlib
 import json
-from pathlib import Path
+import os
+import stat
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from psycopg import sql
@@ -11,22 +14,112 @@ from psycopg.types.json import Jsonb
 from app.ingestion.catalog import CatalogValidationError
 from app.ingestion.catalog_v2 import CatalogV2
 
+# Never follow a symlink, never block on a FIFO or device, never leak the fd.
+_OPEN_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+
+
+def _open_beneath(root_fd: int, relative: str) -> int:
+    """Open a regular file below root_fd, walking each component without symlinks.
+
+    O_NOFOLLOW guards only the last component, so every directory is opened
+    relative to its parent's descriptor: a swapped-in symlink fails closed.
+    """
+    parts = PurePosixPath(relative).parts
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("unsafe artifact path")
+    current = root_fd
+    try:
+        for part in parts[:-1]:
+            child = os.open(part, _OPEN_FLAGS | os.O_DIRECTORY, dir_fd=current)
+            if current != root_fd:
+                os.close(current)
+            current = child
+        fd = os.open(parts[-1], _OPEN_FLAGS, dir_fd=current)
+    finally:
+        if current != root_fd:
+            os.close(current)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise ValueError("artifact is not a regular file")
+    return fd
+
 
 def verify_artifacts(payload: CatalogV2, artifact_root: Path) -> None:
     root = artifact_root.resolve(strict=True)
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_CLOEXEC", 0))
+    try:
+        for snapshot in payload.snapshots:
+            try:
+                fd = _open_beneath(root_fd, snapshot.artifact_path)
+                with os.fdopen(fd, "rb") as stream:
+                    digest = hashlib.file_digest(stream, "sha256").hexdigest()
+                if digest != snapshot.content_sha256:
+                    raise ValueError
+            except (OSError, ValueError) as error:
+                raise CatalogValidationError(
+                    f"Missing, unsafe or hash-mismatched artifact for snapshot {snapshot.id}."
+                ) from error
+    finally:
+        os.close(root_fd)
+
+
+# Reserved names (RFC 2606, RFC 6761) never host real evidence.
+_RESERVED_SUFFIXES = (".test", ".example", ".invalid", ".localhost")
+_RESERVED_DOMAINS = ("example.com", "example.net", "example.org")
+
+
+def _reserved_host(url: str) -> bool:
+    host = (urlsplit(str(url)).hostname or "").rstrip(".").casefold()
+    return (
+        host in {"test", "example", "invalid", "localhost"}
+        or host.endswith(_RESERVED_SUFFIXES)
+        or any(host == d or host.endswith("." + d) for d in _RESERVED_DOMAINS)
+    )
+
+
+def synthetic_ranking_snapshots(
+    payload: CatalogV2, permissions: dict[str, str] | None = None
+) -> list[UUID]:
+    """Sourced snapshots that would rank but come from a test host or synthetic licence.
+
+    `permissions` maps source keys to the stored permission, which wins over the
+    bundle's: publication never rewrites an existing source.
+    """
+    sources = {source.source_key: source for source in payload.sources}
+    flagged = []
     for snapshot in payload.snapshots:
-        try:
-            path = (root / snapshot.artifact_path).resolve(strict=True)
-            if not path.is_relative_to(root) or not path.is_file():
-                raise ValueError
-            with path.open("rb") as stream:
-                digest = hashlib.file_digest(stream, "sha256").hexdigest()
-            if digest != snapshot.content_sha256:
-                raise ValueError
-        except (OSError, ValueError) as error:
-            raise CatalogValidationError(
-                f"Missing, unsafe or hash-mismatched artifact for snapshot {snapshot.id}."
-            ) from error
+        source = sources[snapshot.source_key]
+        permission = (permissions or {}).get(
+            source.source_key, source.ranking_permission
+        )
+        if snapshot.evidence_kind != "sourced" or permission != "permitted":
+            continue
+        if (
+            _reserved_host(snapshot.url)
+            or _reserved_host(source.url)
+            or "synthetic" in source.license.casefold()
+        ):
+            flagged.append(snapshot.id)
+    return flagged
+
+
+class SyntheticSourceError(CatalogValidationError):
+    """Our own message, with no source content: safe to print."""
+
+
+def check_synthetic_sources(
+    payload: CatalogV2,
+    *,
+    allow_synthetic: bool,
+    permissions: dict[str, str] | None = None,
+) -> None:
+    if allow_synthetic:
+        return
+    if synthetic_ranking_snapshots(payload, permissions):
+        raise SyntheticSourceError(
+            "Sourced evidence from a test host or synthetic licence would rank; "
+            "pass --allow-synthetic only for a demo or test database."
+        )
 
 
 def dataset_hash(data: dict) -> str:
@@ -199,8 +292,18 @@ def _publish_identity(conn, table, key_column, key, values, *, adopt_legacy):
 
 
 def publish_catalog_v2(
-    conn, batch_id: UUID, *, artifact_root: Path, adopt_legacy=False
+    conn,
+    batch_id: UUID,
+    *,
+    artifact_root: Path,
+    adopt_legacy=False,
+    allow_synthetic: bool = True,
 ) -> str:
+    """Publish a staged batch in one transaction.
+
+    The library default keeps synthetic fixtures publishable for tests; the
+    import CLI passes allow_synthetic=False unless --allow-synthetic is given.
+    """
     with conn.transaction():
         # ponytail: serialize local batch publishers; use per-variant locks at higher throughput.
         conn.execute("SELECT pg_advisory_xact_lock(742021, 2)")
@@ -211,13 +314,16 @@ def publish_catalog_v2(
             raise CatalogValidationError("Unknown staged batch.")
         if row["published_at"] is not None:
             return "unchanged"
+        # The staged payload must still be the reviewed one: hash it exactly as stored.
+        if dataset_hash(row["payload"]) != row["dataset_hash"]:
+            raise CatalogValidationError("Staged batch payload differs from its hash.")
         payload = CatalogV2.model_validate(row["payload"])
         verify_artifacts(payload, artifact_root)
         previous_writer = conn.execute(
             "SELECT current_setting('drivewise.catalog_writer', true) AS writer"
         ).fetchone()["writer"]
         conn.execute("SELECT set_config('drivewise.catalog_writer', 'v2', true)")
-        source_ids = {}
+        source_ids, permissions = {}, {}
         for source in payload.sources:
             # Replaying a bundle must never restore a revoked source permission.
             conn.execute(
@@ -237,9 +343,26 @@ def publish_catalog_v2(
                     source.notes,
                 ),
             )
-            source_ids[source.source_key] = conn.execute(
-                "SELECT id FROM sources WHERE source_key = %s", (source.source_key,)
-            ).fetchone()["id"]
+            stored = conn.execute(
+                """SELECT id, source_type, market, url, ranking_permission
+                   FROM sources WHERE source_key = %s""",
+                (source.source_key,),
+            ).fetchone()
+            # A key collision must not borrow another origin's permission.
+            if (stored["source_type"], stored["market"], stored["url"]) != (
+                source.source_type,
+                source.market,
+                source.url,
+            ):
+                raise CatalogValidationError(
+                    f"Source {source.source_key} differs from the stored source "
+                    "(type, market or URL)."
+                )
+            source_ids[source.source_key] = stored["id"]
+            permissions[source.source_key] = stored["ranking_permission"]
+        check_synthetic_sources(
+            payload, allow_synthetic=allow_synthetic, permissions=permissions
+        )
         for snapshot in payload.snapshots:
             values = snapshot.model_dump()
             values["source_id"] = source_ids[values.pop("source_key")]
