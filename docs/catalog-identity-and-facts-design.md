@@ -1,12 +1,11 @@
 # Identità dei veicoli e forma dei fatti: proposta di design
 
-Data: 25 novembre 2026. Stato: proposta. Nessuna migrazione e nessuna modifica al
-codice.
+Data: 25 novembre 2026. Stato: proposta (ADR-020). Nessuna migrazione e nessuna
+modifica al codice.
 
 Questo documento decide cosa archivia il catalogo per un veicolo e a quale riga
-appartiene ogni valore. Prosegue la
-[revisione del modello dati](data-architecture-review.md) di settembre e ne cambia
-un punto: la chiave del veicolo.
+appartiene ogni valore. Parte da [Catalog v2](catalog-v2.md) e ne cambia la chiave
+del veicolo.
 
 ## Perché adesso
 
@@ -16,7 +15,7 @@ link condivisi dagli utenti.
 
 ## Decisioni di prodotto da cui parte
 
-Tommaso le ha prese il 25 novembre 2026.
+Tommaso le ha prese il 25 novembre 2026. ADR-019 le registra.
 
 | Punto | Decisione |
 | --- | --- |
@@ -97,9 +96,9 @@ Per questo la generazione entra nel file dei nomi rivisto a mano
 (`data/open-data/car-names.it.json`), che già separa due modelli con lo stesso nome
 tramite i numeri di omologazione.
 
-La revisione di settembre teneva carrozzeria e anno modello nell'identità. Questa
-proposta li toglie perché sono vuoti all'import, e una chiave che si compila dopo è
-una chiave che cambia.
+Catalog v2 tiene carrozzeria, fase e anno modello nell'identità. Questa proposta li
+toglie perché sono vuoti all'import, e una chiave che si compila dopo è una chiave
+che cambia.
 
 ### Un fatto appartiene a una generazione oppure a una variante
 
@@ -132,7 +131,8 @@ codici, ambito e contesto richiesto. Il validatore Python, lo schema JSON e i
 vincoli SQL derivano da quel file. Un test fallisce quando una delle copie non
 coincide con il file.
 
-La revisione di settembre proponeva già questo file. Non è mai stato scritto.
+La revisione del modello dati di settembre 2026 proponeva già questo file. Non è
+mai stato scritto.
 
 ### Metriche nuove
 
