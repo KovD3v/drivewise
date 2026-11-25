@@ -201,7 +201,9 @@ function ReportContent({
             </p>
           </div>
         )}
-        <ReportRanking key={selected.condition} profile={profile} ranking={selected.items} confidence={confidence} sessionId={sessionId} chips={chips} />
+        <ReportRanking key={selected.condition} profile={profile} ranking={selected.items} confidence={confidence} sessionId={sessionId} chips={chips}
+          // With both groups the same version can rank new and used: the link names which entry to show.
+          condition={groups.length > 1 ? selected.condition : undefined} />
       </main>
 
       <SaveAnalysisPrompt
@@ -229,12 +231,14 @@ function ReportRanking({
   confidence,
   sessionId,
   chips,
+  condition,
 }: {
   profile: DecisionProfile;
   ranking: ScoredVehicle[];
   confidence: number;
   sessionId: string | undefined;
   chips: string[];
+  condition: VehicleCondition | undefined;
 }) {
   const reduce = useReducedMotion();
   const winner = ranking[0]!;
@@ -362,7 +366,7 @@ function ReportRanking({
               <Link
                 to="/app/vehicle/$id"
                 params={{ id: winner.vehicle.id }}
-                search={{ spec: winner.specId, s: sessionId }}
+                search={{ spec: winner.specId, s: sessionId, condition }}
               >
                 <span className="min-w-0 text-center">Apri la scheda {winner.vehicle.model}</span>
                 <ArrowRight className="size-4 shrink-0" aria-hidden />
@@ -398,7 +402,7 @@ function ReportRanking({
                   <Link
                     to="/app/vehicle/$id"
                     params={{ id: a.vehicle.id }}
-                    search={{ spec: a.specId, s: sessionId }}
+                    search={{ spec: a.specId, s: sessionId, condition }}
                     className="flex w-full min-h-11 min-w-0 items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card px-4 py-3.5 text-sm transition-colors hover:border-primary/40"
                   >
                     <span className="min-w-0 flex-1">

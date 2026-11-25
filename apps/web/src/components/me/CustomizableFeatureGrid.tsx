@@ -344,6 +344,7 @@ function DraggableCard({
   const controls = useDragControls();
   const [dragging, setDragging] = useState(false);
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moveButtons = useRef(new Map<string, HTMLButtonElement>());
   const lastMove = useRef(0);
 
   useEffect(
@@ -456,17 +457,27 @@ function DraggableCard({
             ].map(({ key, label: moveLabel, onMove, Icon, offset }) => (
               <motion.button
                 key={key}
+                ref={(el: HTMLButtonElement | null) => {
+                  if (el) moveButtons.current.set(key, el);
+                  else moveButtons.current.delete(key);
+                }}
                 type="button"
                 aria-label={moveLabel}
-                disabled={!onMove}
+                // aria-disabled, not disabled: a button that reaches the section end keeps the keyboard focus.
+                aria-disabled={!onMove}
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ duration: 0.25, ease: EASE, delay: 0.06 }}
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={onMove}
+                onClick={() => {
+                  if (!onMove) return;
+                  onMove();
+                  // Reordering moves this card's DOM node, which drops focus: give it back to the same button.
+                  requestAnimationFrame(() => moveButtons.current.get(key)?.focus());
+                }}
                 className={cn(
-                  "absolute top-3 z-20 grid size-8 place-items-center rounded-full border border-border/70 bg-background/85 text-muted-foreground backdrop-blur transition-colors duration-300 hover:border-primary/45 hover:text-primary disabled:pointer-events-none disabled:opacity-35",
+                  "absolute top-3 z-20 grid size-8 place-items-center rounded-full border border-border/70 bg-background/85 text-muted-foreground backdrop-blur transition-colors duration-300 hover:border-primary/45 hover:text-primary aria-disabled:cursor-default aria-disabled:opacity-35 aria-disabled:hover:border-border/70 aria-disabled:hover:text-muted-foreground",
                   offset,
                 )}
               >

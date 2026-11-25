@@ -10,7 +10,7 @@ import { DynamicSections } from "@/components/vehicle/DynamicSections";
 import { GarageFit, type GarageInput } from "@/components/vehicle/GarageFit";
 import { AppHeader } from "@/components/app/AppHeader";
 import { contextualSuggestions, datasetAnswer } from "@/lib/vehicle-ask";
-import { loadDecisionReport, loadGuidedDecisionReport, type ScoredVehicle } from "@/lib/decision-engine";
+import { loadDecisionReport, loadGuidedDecisionReport, type RankingGroup, type ScoredVehicle, type VehicleCondition } from "@/lib/decision-engine";
 import type { GarageCompatibility } from "@/api/drivewise";
 import type { DecisionProfile } from "@/lib/decision-profile";
 import { loadState } from "@/lib/decision-state";
@@ -22,13 +22,17 @@ import { ListPricePanel, SourceCredits } from "@/components/vehicle/source-facts
 import { PriceLine } from "@/components/vehicle/PriceLine";
 import { isUuid } from "@/lib/uuid";
 
-/** `spec` names the version to show; `s` the guided decision that scored it. */
-type VehicleSearch = { spec?: string; s?: string };
+/**
+ * `spec` names the version to show; `s` the guided decision that scored it; `condition` the
+ * Advisor group (new or used) the link came from, when the decision ranks both.
+ */
+type VehicleSearch = { spec?: string; s?: string; condition?: VehicleCondition };
 
 export const Route = createFileRoute("/app/vehicle/$id")({
   validateSearch: (search: Record<string, unknown>): VehicleSearch => ({
     spec: typeof search["spec"] === "string" ? search["spec"] : undefined,
     s: typeof search["s"] === "string" ? search["s"] : undefined,
+    condition: search["condition"] === "new" || search["condition"] === "used" ? search["condition"] : undefined,
   }),
   loader: async ({ params }) => {
     // A malformed id can never name a vehicle: answer 404 instead of letting the API reject it as an error.
@@ -144,27 +148,29 @@ function garageInputFrom(profile: DecisionProfile | null): GarageInput | undefin
 function VehiclePage() {
   const { vehicle: loaded, detail } = Route.useLoaderData();
   const reduce = useReducedMotion();
-  const { spec, s: decisionId } = Route.useSearch();
+  const { spec, s: decisionId, condition } = Route.useSearch();
   const [profile, setProfile] = useState<DecisionProfile | null>(null);
   const [ranked, setRanked] = useState<ScoredVehicle[]>([]);
+  const [groups, setGroups] = useState<RankingGroup[]>([]);
   const [garageChecks, setGarageChecks] = useState<GarageCompatibility[]>([]);
 
   useEffect(() => {
     let alive = true;
     setProfile(null);
     setRanked([]);
+    setGroups([]);
     setGarageChecks([]);
     if (decisionId && loaded.vehicle_type === "car") {
       // The link names the decision: read it from the API, so the score shows in any browser.
       void loadGuidedDecisionReport(decisionId)
-        .then((report) => { if (alive) { setProfile(report.profile); setRanked(report.ranking); setGarageChecks(report.garageCompatibility); } })
+        .then((report) => { if (alive) { setProfile(report.profile); setRanked(report.ranking); setGroups(report.groups); setGarageChecks(report.garageCompatibility); } })
         .catch(() => { /* no score without the decision; the catalogue facts still show */ });
     } else {
       const state = loadState();
       if (state?.profile.vehicleType === loaded.vehicle_type) {
         setProfile(state.profile);
         void loadDecisionReport(state.profile)
-          .then((report) => { if (alive) { setRanked(report.ranking); setGarageChecks(report.garageCompatibility); } })
+          .then((report) => { if (alive) { setRanked(report.ranking); setGroups(report.groups); setGarageChecks(report.garageCompatibility); } })
           .catch(() => { if (alive) setRanked([]); });
       }
     }
@@ -172,8 +178,10 @@ function VehiclePage() {
   }, [decisionId, loaded.vehicle_type]);
 
   const activeProfile: DecisionProfile = profile ?? { vehicleType: loaded.vehicle_type };
-  // The version the link names first: the same car can be ranked as a different version or condition.
-  const rankedHere = ranked.find(item => item.vehicle.id === loaded.id && item.specId === spec)
+  // The condition and version the link names first: the same car can rank new and used, or as another version.
+  const candidates = groups.find(group => group.condition === condition)?.items ?? ranked;
+  const rankedHere = candidates.find(item => item.vehicle.id === loaded.id && item.specId === spec)
+    ?? ranked.find(item => item.vehicle.id === loaded.id && item.specId === spec)
     ?? ranked.find(item => item.vehicle.id === loaded.id);
   // The version shown: the one the link names, else the one the Advisor scored, else the default.
   const activeSpecId = useMemo(() => {
@@ -294,7 +302,7 @@ function VehiclePage() {
               <Link
                 to="/app/vehicle/$id"
                 params={{ id: v.id }}
-                search={{ spec: rankedHere.specId, s: decisionId ?? profile?.decisionId }}
+                search={{ spec: rankedHere.specId, s: decisionId ?? profile?.decisionId, condition }}
                 className="text-foreground underline underline-offset-4"
               >
                 Vedi la versione valutata

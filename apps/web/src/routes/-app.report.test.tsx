@@ -105,7 +105,9 @@ test('with new and used groups the report opens on the stronger winner and switc
   })
   await renderReport()
 
-  expect(await screen.findByText('Apri la scheda Usata Due')).toBeInTheDocument()
+  const open = await screen.findByText('Apri la scheda Usata Due')
+  // With two groups the vehicle link names the condition, so the page shows that group's entry.
+  expect(JSON.parse(open.closest('a')!.dataset.search!)).toMatchObject({ condition: 'used' })
   const switcher = screen.getByRole('group', { name: 'Classifica per condizione' })
   expect(switcher).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Usate · 85' })).toHaveAttribute('aria-pressed', 'true')
@@ -121,4 +123,6 @@ test('a single condition group shows no condition switch', async () => {
   await renderReport()
   await screen.findByText(`Apri la scheda ${winner.vehicle.model}`)
   expect(screen.queryByRole('group', { name: 'Classifica per condizione' })).not.toBeInTheDocument()
+  const link = screen.getByText(`Apri la scheda ${winner.vehicle.model}`).closest('a')!
+  expect(JSON.parse(link.dataset.search!)).not.toHaveProperty('condition')
 })

@@ -8,7 +8,7 @@ import { fromApiVehicle } from '@/services/vehicleService'
 const base = carDetail.specs[0]!
 const other = { ...base, id: 'b9b0b7c0-0000-4000-8000-000000000002', seats: 7 }
 const detail = { ...carDetail, specs: [base, other] } as unknown as VehicleDetail
-const search: { spec?: string; s?: string } = {}
+const search: { spec?: string; s?: string; condition?: 'new' | 'used' } = {}
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -26,7 +26,7 @@ vi.mock('@/components/app/AppHeader', () => ({ AppHeader: () => null }))
 
 // jsdom has no IntersectionObserver; framer-motion's whileInView needs one.
 beforeEach(() => { vi.spyOn(window, 'scrollTo').mockImplementation(() => {}); vi.stubGlobal('IntersectionObserver', class { observe() {} unobserve() {} disconnect() {} takeRecords() { return [] } }) })
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); delete search.spec; delete search.s })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); delete search.spec; delete search.s; delete search.condition })
 
 async function renderVehicle() {
   const { Route } = await import('./app.vehicle.$id')
@@ -87,4 +87,24 @@ test('the guided decision garage verdict for the shown version replaces the empt
   expect(screen.getByText('Mancano: larghezza della porta del garage.')).toBeInTheDocument()
   expect(screen.queryByText(/Indica le dimensioni del tuo garage/)).not.toBeInTheDocument()
   expect(screen.queryByText('Altra versione.')).not.toBeInTheDocument()
+})
+
+test('the condition the report link names picks that group entry when the version ranks new and used', async () => {
+  const decision = guidedDecision as unknown as GuidedDecisionResponse
+  const template = decision.previewRanking.groups[0]!.items[0]!
+  const entry = (reason: string, score: number) => ({
+    ...template, vehicle: { ...template.vehicle, id: carDetail.id }, selected_spec: { ...template.selected_spec, id: base.id }, score,
+    positive_factors: [{ ...template.positive_factors[0]!, message: reason }],
+  })
+  const response: GuidedDecisionResponse = { ...decision, garageCompatibility: [], previewRanking: { ...decision.previewRanking, groups: [
+    { condition: 'new', items: [entry('Motivo della versione nuova', 70)] },
+    { condition: 'used', items: [entry('Motivo della versione usata', 85)] },
+  ] } }
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => response }))
+  search.s = 'decision-both-groups'
+  search.spec = base.id
+  search.condition = 'new'
+  await renderVehicle()
+  expect(await screen.findByText('Motivo della versione nuova')).toBeInTheDocument()
+  expect(screen.queryByText('Motivo della versione usata')).not.toBeInTheDocument()
 })
