@@ -104,8 +104,10 @@ def purge_expired_sessions(
     row = conn.execute(COUNT_SQL, params).fetchone()
     counts = {key: int(value) for key, value in dict(row).items()}
     if execute:
-        conn.execute(DELETE_DECISIONS_SQL, params)
-        conn.execute(DELETE_RUNS_SQL, params)
+        # Parents report what the DELETE removed; children report the count taken
+        # just before, because ON DELETE CASCADE returns no row count.
+        counts["guided_decisions"] = conn.execute(DELETE_DECISIONS_SQL, params).rowcount
+        counts["recommendation_runs"] = conn.execute(DELETE_RUNS_SQL, params).rowcount
     return PurgeReport(cutoff=cutoff, executed=execute, counts=counts)
 
 

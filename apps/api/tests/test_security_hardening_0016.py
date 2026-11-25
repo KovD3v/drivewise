@@ -258,8 +258,9 @@ def test_purge_parses_days_and_defaults_to_a_dry_run():
 
 
 class FakeResult:
-    def __init__(self, row=None):
+    def __init__(self, row=None, rowcount=-1):
         self.row = row
+        self.rowcount = rowcount
 
     def fetchone(self):
         return self.row
@@ -280,7 +281,7 @@ class FakeConnection:
                     "recommendation_items": 3,
                 }
             )
-        return FakeResult()
+        return FakeResult(rowcount=2 if "guided_decisions" in query else 1)
 
 
 def test_purge_dry_run_only_counts_and_execute_deletes_with_one_cutoff():
