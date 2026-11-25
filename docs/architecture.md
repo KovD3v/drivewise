@@ -100,15 +100,15 @@ version requirements are met. See `docs/advisor-v3.md`.
 
 ## Data
 
-The intended database is Neon PostgreSQL. The MVP schema lives in `apps/api/migrations`, uses Italian/European market assumptions for vehicle prices and specs, and enables the `vector` extension for pgvector-compatible embeddings storage.
+The database is Neon PostgreSQL. [The data model page](data-model.md) describes every table and view. The schema lives in `apps/api/migrations`, uses Italian/European market assumptions for vehicle prices and specs, and enables the `vector` extension for pgvector-compatible embeddings storage.
 
 Initial cache storage is planned in PostgreSQL. Redis is represented only by environment placeholders so a future task can add it without changing configuration conventions.
 
 ## Data Collection
 
-The proposed evolution for sourced specifications, vehicle identity and
-conflict resolution is documented in
-[the September 2026 data architecture review](data-architecture-review.md).
+The accepted change to vehicle identity and to the shape of catalogue facts
+(ADR-020) is not built yet. It is in
+[the identity and facts design](catalog-identity-and-facts-design.md).
 [Catalog v2](catalog-v2.md) is implemented end to end: append-only evidence
 storage (`0008`), reviewed publication into the read views (`0009`), two-wheel
 metrics (`0010`), the list-price metric and read view (`0011`, `0012`),

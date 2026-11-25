@@ -1,8 +1,8 @@
 # Catalog v2: identity and evidence foundation
 
-Implemented on 14 September 2026 following the
-[architecture review](data-architecture-review.md): an executable contract and
-additive evidence storage. The follow-up publication workflow is documented below.
+Implemented on 14 September 2026: an executable contract and additive evidence
+storage. [The identity and facts design](catalog-identity-and-facts-design.md)
+proposes the next change to this model. The follow-up publication workflow is documented below.
 
 ## Validate a bundle
 

@@ -1,305 +1,286 @@
-# Drivewise Data Model
+# Drivewise data model
 
-## Scope
+This page describes the PostgreSQL schema after migration `0016`: 21 tables and
+7 views. It states what each table stores and which rules the database enforces.
+The reasons for the catalogue rules are in [Catalog v2](catalog-v2.md). The
+accepted change to vehicle identity (ADR-020) is not built yet. It is in
+[the identity and facts design](catalog-identity-and-facts-design.md).
 
-The MVP data model stores synthetic vehicle records, basic specs, source metadata, listing snapshots, document text, and deterministic Advisor v3 recommendation outputs.
+To list the tables and views of a migrated database, run:
 
-The schema is oriented to the Italian and European market. Prices are stored in euro, listing odometers are interpreted as kilometres, and technical fields use WLTP and European emissions assumptions.
+	psql "$DATABASE_URL" -At -c "select relname, relkind from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and relkind in ('r','v') order by 2, 1"
 
-It is designed for PostgreSQL-compatible Neon databases and enables pgvector with:
+## The groups of tables
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
+```mermaid
+erDiagram
+    vehicles ||--o{ vehicle_specs : "has variants"
+    vehicle_specs ||--o{ fact_decisions : "has facts (v2)"
+    sources ||--o{ source_snapshots : "captured as"
+    source_snapshots ||--o{ spec_observations : "states"
+    spec_observations ||--o{ fact_decisions : "supports"
+    vehicle_specs ||--o{ listings : "offered as"
+    sources ||--o{ listings : "publishes"
+    vehicle_specs ||--o{ vehicle_safety_ratings : "profile (v1)"
+    vehicle_specs ||--o{ vehicle_features : "profile (v1)"
+    guided_decisions ||--o{ guided_decision_turns : "has turns"
+    recommendation_runs ||--o{ recommendation_items : "ranks"
+    vehicle_specs ||--o{ recommendation_items : "recommended as"
 ```
 
-Real Firecrawl ingestion, external embedding providers, and production hybrid/vector search are intentionally deferred. Firecrawl has a dry-run planner. Embeddings have a dry-run planner plus a fake-only development write path, and `POST /search/documents` can query those fake vectors only when `mode` is explicitly `vector_fake`.
+| Group | Tables | Written by |
+| --- | --- | --- |
+| Catalogue identity | `vehicles`, `vehicle_specs` | v1 import, v2 publisher |
+| Evidence (v2) | `sources`, `source_snapshots`, `spec_observations`, `fact_decisions`, `catalog_v2_batches` | v2 publisher |
+| Record provenance and profile (v1) | `vehicle_provenance`, `vehicle_spec_provenance`, `vehicle_safety_ratings`, `vehicle_features`, `vehicle_maintenance_items`, `vehicle_media_assets`, `import_runs` | v1 import |
+| Offers | `listings` | v1 import |
+| Sessions and results | `guided_decisions`, `guided_decision_turns`, `recommendation_runs`, `recommendation_items` | API |
+| Text search | `documents` | local ingestion |
 
-Local fixture ingestion is documented in `docs/ingestion.md`. It writes normalized fixture content into `documents` and stores conservative extraction proposals in `documents.metadata`.
+`drivewise_schema_migrations` records the applied migrations and their checksums.
 
-Reviewed catalog imports are a separate path documented in
-`docs/catalog-import.md`. They populate canonical vehicles, purchasable
-variants, offers, and record-level provenance without calling external services.
+## Two catalogue versions share the identity tables
 
-## Migration Files
+`vehicles.catalog_version` and `vehicle_specs.catalog_version` are `1` or `2`.
 
-- `apps/api/migrations/0001_enable_pgvector.sql` enables pgvector.
-- `apps/api/migrations/0002_create_mvp_schema.sql` creates the MVP schema.
-- `apps/api/migrations/0003_seed_initial_vehicles.sql` inserts synthetic seed data.
-- `apps/api/migrations/0004_curated_catalog.sql` adds stable catalog identity,
-  variant-linked offers, import runs, and provenance.
-- `apps/api/migrations/0006_guided_decisions.sql` persists the current guided
-  decision state and append-only per-turn profile snapshots. Version `0005` is
-  reserved by the existing vehicle-knowledge-profile design.
-- `apps/api/migrations/0005_vehicle_knowledge_profile.sql` adds optional,
-  detail-only vehicle-spec knowledge fields and relational child records.
-- `apps/api/migrations/0007_https_primary_provenance.sql` validates existing
-  primary provenance and rejects non-HTTPS vehicle, spec, and listing URLs.
-- `apps/api/migrations/0008_catalog_evidence.sql` adds nullable identity attributes
-  and immutable snapshots, observations, and fact decisions. See the
-  [catalog v2 contract and compatibility boundary](catalog-v2.md).
+- **Version 1** rows hold their values in columns. The v1 import writes them from
+  a reviewed JSON file. Outside the `local` and `test` environments the v1 import
+  refuses to write.
+- **Version 2** rows hold identity in columns and every measured value in
+  `fact_decisions`. The read views compute the columns that the API and the
+  Advisor read.
 
-Run migrations with:
+The triggers `vehicles_v2_writer` and `vehicle_specs_v2_writer` reject an update
+of a version 2 row unless the v2 publisher made it.
 
-```bash
-python apps/api/scripts/migrate.py
-```
+No database holds reviewed real cars. Production serves the synthetic demo bundle.
 
-The script loads local `.env`, reads `DATABASE_URL`, and records applied migrations in `drivewise_schema_migrations`.
+## Catalogue identity
 
-## Tables
+### `vehicles`
 
-### vehicles
+One row is one catalogue vehicle in one market.
 
-Canonical vehicle identity for a market and model year.
+| Column | Meaning |
+| --- | --- |
+| `canonical_key` | Stable import identity. Unique. |
+| `model_family_key` | Groups the vehicles of one model in the product. |
+| `make`, `model`, `market` | Required. `market` is a national code such as `IT`. |
+| `vehicle_type` | `car`, `motorcycle`, or `scooter`. |
+| `generation_key`, `phase_key`, `body_style`, `model_year` | Optional. The open-data import leaves all four empty. |
+| `identity_evidence` | Snapshot ids that support the identity (v2). |
+| `fuel_type`, `base_price_eur` | Version 1 mirrors of the default variant. |
+| `legacy_record` | The v1 row as it was before a v2 adoption. |
 
-Key columns:
+The unique index `vehicles_identity_v2_key` covers `lower(make)`, `lower(model)`,
+`vehicle_type`, `generation_key`, `phase_key`, `body_style`, `model_year`, and
+`market`. It treats two empty values as equal.
 
-- `id uuid primary key`
-- `canonical_key`, a stable model-year-market import identity
-- `model_family_key`, shared by model years and variants in one family
-- `make`
-- `model`
-- `model_year`
-- `body_style`
-- `fuel_type`
-- `market` with values such as `IT` or `EU`
-- `base_price_eur`
+A published version 2 identity is frozen. The publisher accepts one change: it
+fills an empty `body_style` when a new snapshot states it. It rejects every other
+difference, including a generation that was empty.
 
-Uniqueness is enforced on `canonical_key` and on the legacy
-`(make, model, model_year, market)` identity. `body_style`, `fuel_type`, and
-`base_price_eur` remain compatibility mirrors of the default variant.
+### `vehicle_specs`
 
-### vehicle_specs
+One row is one variant of a vehicle. `variant_key` is unique. At most one variant
+per vehicle has `is_default`.
 
-Structured purchasable variants for a vehicle.
+| Columns | Version 1 | Version 2 |
+| --- | --- | --- |
+| `trim`, `transmission`, `drivetrain`, `engine_code`, `powertrain_type`, `fuel`, `valid_from`, `valid_to`, `external_references`, `identity_evidence` | partly used | identity of the variant |
+| `fuel_type` | stored | derived by the publisher from `powertrain_type` and `fuel` |
+| `body_style` | stored | copied from the vehicle |
+| `horsepower`, `battery_kwh`, `consumption_l_100km`, `energy_consumption_kwh_100km`, `wltp_range_km`, `co2_g_km`, `seats`, `cargo_volume_liters`, `list_price_eur`, `euro_emission_standard` | stored | empty; the read views fill the ones that have a fact |
+| Knowledge profile: `generation_name`, `restyling_label`, `category`, `doors`, `length_mm`, `width_mm`, `height_mm`, `wheelbase_mm`, `curb_weight_kg`, `gross_weight_kg`, `payload_kg`, `displacement_cc`, `cylinders`, `power_kw`, `torque_nm`, `battery_usable_kwh`, `transmission_type`, `gear_count`, `differential_type`, `acceleration_0_100_s`, `top_speed_kmh`, `braking_100_0_m`, `homologation_cycle` | stored | empty; the read views fill dimensions and power from facts |
 
-Key columns:
+`powertrain_type` is `ICE`, `MHEV`, `HEV`, `PHEV`, or `BEV`.
 
-- `vehicle_id`
-- `variant_key`, the stable variant identity
-- `is_default`, with at most one default per vehicle
-- `trim`
-- `body_style`
-- `fuel_type`
-- `list_price_eur`
-- `drivetrain`
-- `transmission`
-- `engine`
-- `horsepower`
-- `battery_kwh`
-- `energy_consumption_kwh_100km`
-- `consumption_l_100km`
-- `wltp_range_km`
-- `co2_g_km`
-- `euro_emission_standard`
-- `cargo_volume_liters`
-- `metadata jsonb`
+## Evidence (version 2)
 
-Uniqueness is enforced on `variant_key`. Trim names are not identities: two
-powertrains may legitimately use the same marketing trim.
+Every published value follows one chain: a source, a snapshot of a document, an
+observation in that document, and a decision about the fact.
 
-The knowledge profile adds nullable detail columns without replacing the
-existing flat compatibility fields: `generation_name`, `restyling_label`,
-`category`, `doors`; `length_mm`, `width_mm`, `height_mm`, `wheelbase_mm`,
-`curb_weight_kg`, `gross_weight_kg`, `payload_kg`; `engine_code`,
-`displacement_cc`, `cylinders`, `power_kw`, `torque_nm`,
-`battery_usable_kwh`; `transmission_type`, `gear_count`, `differential_type`;
-`acceleration_0_100_s`, `top_speed_kmh`, `braking_100_0_m`; and
-`homologation_cycle`. Positive-value and valid-dimension/weight checks protect
-the applicable numeric fields. The API groups these columns into a detailed
-profile only for `GET /vehicles/{vehicle_id}`; no new vehicle identity is
-created by profile data.
+### `sources`
 
-### Vehicle knowledge-profile child tables
+One row is one origin of data. `source_key` and `name` are unique.
 
-All child tables belong to `vehicle_specs` (`spec_id`) and cascade when that
-spec is deleted. They retain a reviewed child-level source through `source_id`,
-`source_url`, and `observed_at`, plus `created_at` and `updated_at`; source URLs
-are HTTPS and source deletion is restricted.
+`ranking_permission` is `permitted`, `not_permitted`, or `manual_validation_only`.
+Only a `permitted` source with a non-empty `license` can make a value eligible for
+ranking. A change of permission takes effect on the next read.
 
-- `vehicle_maintenance_items`: `id`, `spec_id`, `operation_code`, `title`,
-  nullable `interval_km`, `interval_months`, and `notes`, child provenance,
-  timestamps. `(spec_id, operation_code)` is unique and at least one positive
-  interval is required.
-- `vehicle_safety_ratings`: `id`, `spec_id`, `assessment_system`,
-  `assessment_year`, nullable `overall_stars`, `adult_occupant_percent`,
-  `child_occupant_percent`, `vulnerable_road_users_percent`, and
-  `safety_assist_percent`, child provenance, timestamps. Assessment years are
-  1990--2100, scores are constrained to their displayed ranges, and
-  `(spec_id, assessment_system, assessment_year)` is unique.
-- `vehicle_features`: `id`, `spec_id`, `feature_key`, `category`, `name`,
-  `availability`, nullable `notes`, child provenance, timestamps.
-  `(spec_id, feature_key)` is unique; categories are `adas`, `safety`,
-  `technology`, or `comfort`, and availability is `standard` or `optional`.
-- `vehicle_media_assets`: `id`, `spec_id`, `asset_key`, `asset_type`, `title`,
-  HTTPS `url`, nullable `mime_type` and `locale`, child provenance, timestamps.
-  `(spec_id, asset_key)` is unique and types are `photo`, `brochure`, or
-  `manual`.
+`source_type` is `manual_seed`, `public_dataset`, or `curated_internal`.
 
-### sources
+### `source_snapshots`
 
-Metadata for where records came from.
+One row is one captured document: `source_id`, HTTPS `source_url`, `retrieved_at`,
+`content_sha256`, `artifact_path`, and `media_type`. `evidence_kind` is `sourced`,
+`synthetic`, or `legacy`. Only `sourced` evidence can rank.
 
-`source_key` is the stable import identity and `market` records the source's
-market scope. `ranking_permission` is an explicit trust decision with values
-`permitted`, `not_permitted`, or `manual_validation_only`; only `permitted`
-sources can contribute offers or metric evidence to rankings. URL, licence, and
-notes retain the review basis. Migrated legacy sources default to
-`not_permitted`.
+### `spec_observations`
 
-Allowed source types:
+One row is one value that a snapshot states for one metric.
 
-- `manual_seed`
-- `public_dataset`
-- `curated_internal`
+| Column | Meaning |
+| --- | --- |
+| `spec_id` | The variant, or empty while `candidate_variant_keys` lists the possible ones. |
+| `metric` | A name from the `catalog_metric` domain. |
+| `raw_value`, `raw_unit` | The text as the document prints it. |
+| `value_min`, `value_max`, `unit` | The normalized interval. Both numbers are required. |
+| `context` | The market, plus the terms that define the measure: procedure and cycle, method, seating configuration, validity dates. |
+| `evidence_excerpt`, `evidence_locator` | The quoted text and where it is in the document. |
+| `list_price` | The terms of a list price (ADR-015). Present only for `list_price_eur`. |
 
-Real Firecrawl source rows are intentionally excluded until crawling is implemented. The current Firecrawl planner validates source configuration without changing schema or writing rows.
+The `catalog_metric` domain has 24 names. A value is always numeric.
 
-### listings
+### `fact_decisions`
 
-Synthetic or future ingested market listings tied to a vehicle and source.
+One row is one decision about one fact of one variant: `spec_id`, `metric`, and
+`context`.
 
-Key columns:
+- `status` is `verified`, `unknown`, `not_applicable`, or `conflicted`.
+- A `verified` decision names its `selected_observation_id`. A `conflicted`
+  decision names at least two observations in `evidence_ids`.
+- `actor_kind` is `human`, `rule`, or `agent`. A decision by an `agent` never
+  makes a fact eligible for ranking.
+- `supersedes_id` links a decision to the one that it replaces. A fact has one
+  root decision and each decision has at most one successor.
 
-- `vehicle_id`
-- `spec_id`, nullable only for unresolved legacy rows
-- `source_id`
-- `listing_ref`
-- `title`
-- `price_eur`
-- `mileage`, stored as odometer kilometres for EU/IT seed data
-- `condition`
-- `location_region`
-- `source_url`, the exact offer URL
-- `first_seen_at`, `last_seen_at`, and optional `valid_until`
-- `is_active`
-- `content_hash`
-- `import_run_id`
-- `raw_payload jsonb`
+Every fact belongs to a variant. No fact can belong to a vehicle.
 
-Uniqueness is enforced on `(source_id, listing_ref)`.
+### `catalog_v2_batches`
 
-New curated imports always resolve `spec_id`. A listing omitted from a later
-snapshot is left unchanged; only an explicit `is_active: false` deactivates it.
-The composite foreign key `(spec_id, vehicle_id)` prevents a listing from being
-paired with a variant owned by another vehicle.
+One row is one staged bundle: its `payload`, its `dataset_hash`, and
+`published_at` once it is published. A staged bundle changes nothing until
+publication.
 
-### import_runs and provenance
+### Rules that the database enforces
 
-`import_runs` records the v1 dataset hash, file name, status, counts, and a
-sanitized failure message. A completed dataset hash is unique, making identical
-imports no-ops.
+- `source_snapshots`, `spec_observations`, and `fact_decisions` reject every
+  `UPDATE`, `DELETE`, and `TRUNCATE`.
+- Snapshot URLs are HTTPS.
+- A decision cannot predate the decision that it supersedes.
+- The `valid_from` and `valid_to` of a decision context are ISO dates.
 
-`vehicle_provenance` and `vehicle_spec_provenance` link each imported record to
-its reviewed source URL, claim observation time, record observation time,
-content hash, import run, current/historical state, and supported metric names.
-A record can have several simultaneous current claims so different sources can
-support different fields. A new snapshot replaces the entire current claim set;
-older snapshots are rejected transactionally rather than overwriting newer
-data. Ranking queries accept only current claims from permitted sources.
+## Read views
 
-Profile child provenance is deliberately separate from these record-level
-claim tables. Each profile child stores the single source and observation that
-supplied it, so a schedule operation, safety assessment, feature, or media
-asset can have a different source from its parent variant.
+The API and the Advisor read the catalogue through these views, never through the
+evidence tables.
 
-### documents
+| View | Returns |
+| --- | --- |
+| `catalog_identity_eligibility` | Per variant, whether every identity snapshot of the variant and of its vehicle is sourced, permitted, and licensed. |
+| `catalog_current_facts` | The current decision of every fact, with its observation and source, and an `eligible` flag. |
+| `catalog_scalar_facts` | The eligible facts that have one value for the whole variant. An interval consumption is published at its upper value (ADR-018). |
+| `catalog_read_specs` | One row per variant with the column shape of `vehicle_specs`. Version 1 columns pass through. Version 2 columns come from `catalog_scalar_facts`. |
+| `catalog_read_provenance` | Per variant and metric, the source that supports the value, for both versions. |
+| `catalog_analysis_specs` | `catalog_read_specs` with each value hidden unless a permitted source supports it. |
+| `catalog_usable_listings` | The active Italian offers from permitted, licensed sources with a completed import. |
 
-Text chunks for future retrieval and ranking.
+A fact is `eligible` when its decision is `verified`, a human or a rule made it,
+the identity of the variant is eligible, and every observation behind it comes
+from a sourced snapshot of a permitted, licensed source.
 
-Key columns:
+## Record provenance and knowledge profile (version 1 only)
 
-- `source_id`
-- `vehicle_id`
-- `listing_id`
-- `document_type`
-- `title`
-- `content`
-- `embedding vector(1536)`
-- `embedding_model`
-- `metadata jsonb`
+`vehicle_provenance` and `vehicle_spec_provenance` link a version 1 record to the
+source that supports named metrics. `import_runs` records each v1 import by
+dataset hash, so that an identical import changes nothing.
 
-`embedding` is nullable because documents can exist before embedding generation. A partial HNSW cosine index is defined for rows where embeddings are present.
+Four tables hold profile details of a variant. Each row stores its own source,
+`source_url`, and `observed_at`. None of them uses the evidence chain, and the
+repositories read them for version 1 variants only.
 
-The current write path only supports deterministic local fake vectors through `python apps/api/scripts/embed_documents.py --provider fake --write`. Real external provider embeddings are not implemented.
+| Table | One row is | Unique on |
+| --- | --- | --- |
+| `vehicle_safety_ratings` | A safety assessment: `assessment_system`, `assessment_year`, `overall_stars`, and four percentage scores. | `spec_id`, `assessment_system`, `assessment_year` |
+| `vehicle_features` | An equipment item: `feature_key`, `category` (`adas`, `safety`, `technology`, `comfort`), and `availability` (`standard`, `optional`). | `spec_id`, `feature_key` |
+| `vehicle_maintenance_items` | A service operation with an interval in kilometres or months. | `spec_id`, `operation_code` |
+| `vehicle_media_assets` | A photo, a brochure, or a manual, by HTTPS `url`. | `spec_id`, `asset_key` |
 
-Local ingestion stores deduplication and parser metadata in `metadata`, including `content_hash`, `local_path`, `proposed_vehicle`, `proposed_listing`, and `unparsed_fields`.
+The Advisor safety module reads `vehicle_safety_ratings`. A version 2 variant has
+no row there, so the module returns `insufficient_data` for it.
 
-### recommendation_runs
+## Offers
 
-Stores deterministic advisor request metadata.
+### `listings`
 
-Key columns:
+One row is one offer of one variant from one source. `(source_id, listing_ref)` is
+unique.
 
-- `request_payload jsonb`
-- `scoring_version`
-- `assumptions jsonb`
-- `exclusion_counts jsonb`
-- `status`
-- `notes`
-- `created_at`
-- `completed_at`
+| Column | Meaning |
+| --- | --- |
+| `vehicle_id`, `spec_id` | The vehicle and the variant. A composite foreign key keeps the pair consistent. `spec_id` is empty only on unresolved legacy rows. |
+| `price_eur`, `mileage`, `condition` | `condition` is `new`, `used`, or `certified`. `mileage` is in kilometres. |
+| `source_url` | The HTTPS address of the offer. |
+| `first_seen_at`, `last_seen_at`, `valid_until`, `is_active` | Freshness. The Advisor excludes a stale, expired, or inactive offer. |
+| `content_hash`, `import_run_id`, `raw_payload` | Import bookkeeping. |
 
-`POST /advisor/recommendations` writes one row per Advisor v3 recommendation
-run. `request_payload` contains the normalized profile, defaulted fields,
-constraint modes, evaluation timestamp, and active module versions. The run's
-`scoring_version` is `advisor-v3.0`; assumptions and exclusion counts preserve
-the inputs needed to explain the result.
+A variant with no usable offer is evaluated at its list price (ADR-013).
 
-### guided_decisions and guided_decision_turns
+## Sessions and results
 
-`guided_decisions` stores the current versioned Decision Profile and the last
-complete frontend response. `guided_decision_turns` stores the user and
-assistant messages, changed field keys, the complete profile snapshot, and the
-complete response for every profile version. The `(decision_id,
-profile_version)` uniqueness constraint prevents duplicate versions, while the
-API's required `expectedProfileVersion` provides optimistic concurrency.
+### `guided_decisions` and `guided_decision_turns`
 
-Profile facts are JSONB because the contract is typed and validated at the API
-boundary while the field set is expected to evolve. Conversation snapshots are
-not treated as the only durable truth: the current profile is stored separately
-and every field retains value, confidence, source, confirmation, and update
-time.
+`guided_decisions` stores the current Decision Profile of a session, its
+`profile_version`, and the last response. `status` is `active`, `completed`, or
+`abandoned`.
 
-### recommendation_items
+`guided_decision_turns` stores one row per profile version: both messages, the
+changed fields, the full profile snapshot, and the full response.
+`(decision_id, profile_version)` is unique.
 
-Stores ranked deterministic Advisor v3 output items.
+A scheduled job deletes sessions that are older than 30 days.
 
-Key columns:
+### `recommendation_runs` and `recommendation_items`
 
-- `run_id`
-- `vehicle_id`
-- `listing_id`
-- `spec_id`
-- `condition_group`
-- `rank`
-- `score`
-- `rationale`
-- `scoring_version`
-- `score_breakdown jsonb`
+`recommendation_runs` stores one row per Advisor run: the normalized request,
+`scoring_version`, the assumptions, and the exclusion counts.
 
-The breakdown stores `decision_status`, `decision_score`, provisional legacy
-`score` behavior, confidence components, structural and preference fit, pillar
-scores, penalties, missing factors, module versions, assumptions, evidence,
-and provenance. `decision_score` is null for `insufficient_data`; the legacy
-`score` can retain provisional Structural Fit for existing clients. Exact
-vehicle, listing, and spec identities remain required, so a result cannot be
-detached from the offer and variant that produced it.
+`recommendation_items` stores the ranked results of a run. Each item names its
+vehicle and variant. `listing_id` is empty when the item was evaluated at its list
+price. `score_breakdown` holds the full explanation. Rank and vehicle are unique
+within a run and a `condition_group` (`new`, `used`, or `legacy`).
 
-Rank and vehicle uniqueness are enforced within each new/used condition group,
-so one family can appear once in each group without collisions. Legacy V1 rows
-use the `legacy` group. A composite foreign key through the selected listing
-ensures persisted `vehicle_id`, `listing_id`, and `spec_id` always describe the
-same exact offer/variant pair.
+## Text search
 
-## Seed Data
+`documents` stores text for search: `document_type`, `title`, `content`, an
+optional `embedding`, and links to a source, a vehicle, or a listing. Only a fake
+embedding provider exists. The routes that read it are internal. See
+[ingestion](ingestion.md), [embeddings](embeddings.md), and [search](search.md).
 
-The seed migration inserts 5 synthetic but realistic Italian/European market vehicle records:
+## Migrations
 
-- 2024 Fiat Panda
-- 2024 Toyota Yaris Hybrid
-- 2024 Volkswagen Golf
-- 2024 Dacia Sandero
-- 2024 Tesla Model 3
+Run the migrations with `python apps/api/scripts/migrate.py`. The script takes a
+lock, so two runs cannot apply the same file.
 
-Each seed vehicle has one spec row, one listing row, and one document row. Seed values are illustrative and not authoritative.
+| File | Adds |
+| --- | --- |
+| `0001` | The pgvector extension. |
+| `0002` | The first schema: vehicles, specs, sources, listings, documents, recommendations. |
+| `0003` | Five synthetic seed vehicles. |
+| `0004` | Stable keys, variant-linked offers, import runs, and record provenance. |
+| `0005` | The knowledge profile columns and the four profile tables. |
+| `0006` | Guided Decision sessions and turns. |
+| `0007` | HTTPS for every provenance URL. |
+| `0008` | Evidence storage: snapshots, observations, decisions, and the metric domain. |
+| `0009` | Catalogue versions, staged batches, the v2 identity index, and the read views. |
+| `0010` | Two-wheel metrics. |
+| `0011` | The list price metric and its terms (ADR-015). |
+| `0012` | List price in the read views, and the upper value of an interval (ADR-018). |
+| `0013` | Plug-in hybrid fuel names that the Advisor scores. |
+| `0014` | Provenance for a body style filled after publication. |
+| `0015` | A single pivot for version 2 values in the read views. |
+| `0016` | No truncation of evidence, HTTPS snapshots, valid context dates, human or rule sign-off, and lookup indexes. |
+
+## Limits of this model
+
+- A generation cannot be filled after publication.
+- A fact belongs to a variant, never to a vehicle.
+- A fact value is always a number.
+- Safety ratings and equipment exist for version 1 only, outside the evidence
+  chain.
+- The list of metrics is repeated in the SQL domain, the Python contract, and the
+  JSON schema.
+
+[The identity and facts design](catalog-identity-and-facts-design.md) defines a
+change for each limit. None is built yet.

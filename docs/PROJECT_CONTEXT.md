@@ -30,7 +30,7 @@ Decision Score and Decision Confidence are different concepts.
 - Data Quality uses source reliability, freshness, verification and per-domain confidence.
 
 ## Data
-The catalogue lives in PostgreSQL (Neon in production). Catalog v2 stores sourced evidence and reviewed decisions and publishes them to the read views Advisor v3 uses (migrations `0008`–`0016`). No database holds reviewed real cars yet: the seed rows of migrations `0003`–`0004` and the synthetic demo catalogue (`data/fixtures/catalog/catalog-v2.demo.synthetic.json`, shown with a demo notice when the site is built with `VITE_SYNTHETIC_DATA=true`) are development material. Under ADR-011 they must not be presented as production-grade automotive truth. The first real data is the 12-car curation of ADR-017 ([`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)).
+The catalogue lives in PostgreSQL (Neon in production). Catalog v2 stores sourced evidence and reviewed decisions and publishes them to the read views Advisor v3 uses (migrations `0008`–`0016`). No database holds reviewed real cars yet: the seed rows of migrations `0003`–`0004` and the synthetic demo catalogue (`data/fixtures/catalog/catalog-v2.demo.synthetic.json`, shown with a demo notice when the site is built with `VITE_SYNTHETIC_DATA=true`) are development material. Under ADR-011 they must not be presented as production-grade automotive truth. The first real data is the new-car dataset of ADR-019, curated with [`first-cars-curation.md`](first-cars-curation.md).
 
 ## Architecture direction
 The Decision Hub site (`apps/web`, TanStack Start, design imported from the Lovable exports) is the presentation layer. `apps/api/app/services/advisor/` is the source of truth for ranking. The integration is live:
@@ -71,7 +71,7 @@ Site and API deploy together as one Vercel project (`vercel.json`). Do not dupli
 - Vehicle detail and comparison: API data, with `?spec=` keeping the chosen variant; Garage Fit included.
 - Catalogue: seed and synthetic demo data only; no reviewed real cars yet.
 - Advisor v3: the only ranking runtime, in the API and the Guided Decision.
-- Next milestone: curate, review and publish the first 12 real cars (ADR-017, [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)), after the production ops gates in `CURRENT_STATUS.md`.
+- Next milestone: settle vehicle identity and the shape of facts ([`catalog-identity-and-facts-design.md`](catalog-identity-and-facts-design.md), ADR-020), then curate and publish the first real cars (ADR-019, [`first-cars-curation.md`](first-cars-curation.md)).
 
 ## Ownership split
 - Product/UX/Decision model: Andrea.
@@ -82,9 +82,9 @@ Read, in order:
 1. `docs/PROJECT_CONTEXT.md`
 2. `docs/CURRENT_STATUS.md`
 3. `docs/snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md` (open findings and roadmap)
-4. `docs/f1-twelve-cars-curation.md`
+4. `docs/catalog-identity-and-facts-design.md` and `docs/first-cars-curation.md`
 5. `docs/DECISIONS.md`
 6. `docs/advisor-v3.md`
 7. `docs/api-contract.md` and `docs/architecture.md`
 
-Then continue from the first item under **Remaining pre-go-live gates** in `CURRENT_STATUS.md`. `docs/TOMMASO_TASKS.md` and `docs/TOMMASO_BACKLOG.md` are historical.
+Then continue from the first item under **Remaining pre-go-live gates** in `CURRENT_STATUS.md`.

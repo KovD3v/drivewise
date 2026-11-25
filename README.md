@@ -296,4 +296,5 @@ explicitly started: local fixture ingestion, the open-data catalogue builder,
 the manufacturer collection agent, a dry-run Firecrawl planner and fake-only
 embeddings. Real embedding providers, production vector search, authentication
 and Redis are deferred. The current state and the next gates are in
-[`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md).
+[`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md). Past changes are in
+[`CHANGELOG.md`](CHANGELOG.md).
