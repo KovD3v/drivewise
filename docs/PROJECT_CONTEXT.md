@@ -30,7 +30,7 @@ Decision Score and Decision Confidence are different concepts.
 - Data Quality uses source reliability, freshness, verification and per-domain confidence.
 
 ## Data
-The catalogue lives in PostgreSQL (Neon in production). Catalog v2 stores sourced evidence and reviewed decisions and publishes them to the read views Advisor v3 uses (migrations `0008`–`0015`). No database holds reviewed real cars yet: the seed rows of migrations `0003`–`0004` and the synthetic demo catalogue (`data/fixtures/catalog/catalog-v2.demo.synthetic.json`, shown with a demo notice when the site is built with `VITE_SYNTHETIC_DATA=true`) are development material. Under ADR-011 they must not be presented as production-grade automotive truth. The first real data is the 12-car curation of ADR-017 ([`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)).
+The catalogue lives in PostgreSQL (Neon in production). Catalog v2 stores sourced evidence and reviewed decisions and publishes them to the read views Advisor v3 uses (migrations `0008`–`0016`). No database holds reviewed real cars yet: the seed rows of migrations `0003`–`0004` and the synthetic demo catalogue (`data/fixtures/catalog/catalog-v2.demo.synthetic.json`, shown with a demo notice when the site is built with `VITE_SYNTHETIC_DATA=true`) are development material. Under ADR-011 they must not be presented as production-grade automotive truth. The first real data is the 12-car curation of ADR-017 ([`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)).
 
 ## Architecture direction
 The Decision Hub site (`apps/web`, TanStack Start, design imported from the Lovable exports) is the presentation layer. `apps/api/app/services/advisor/` is the source of truth for ranking. The integration is live:

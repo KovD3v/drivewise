@@ -191,6 +191,18 @@ also publish length, body width, height, displacement and power, so Advisor v3
 `catalog_read_provenance` credits those facts under the read-column names
 (`width_mm`, `displacement_cc`, `power_kw`). The view columns keep their names,
 types and order.
+[`0016_security_and_integrity_hardening.sql`](../apps/api/migrations/0016_security_and_integrity_hardening.sql)
+is additive: it changes no stored row and stops with a clear error when it finds
+one that breaks a new rule. Statement triggers make `TRUNCATE` hit the same
+append-only rejection as update and delete on `source_snapshots`,
+`spec_observations` and `fact_decisions`. Snapshot `source_url` values must be
+`https://`. A decision's `valid_from` and `valid_to` context values must be real
+`YYYY-MM-DD` dates (`catalog_iso_date_valid`), so the `::date` casts in the read
+views cannot fail on a stored row. `catalog_current_facts` counts a fact as
+eligible only when its decision's `actor_kind` is `human` or `rule`, so an agent
+decision needs a human or rule sign-off before it can rank. It also adds lookup
+indexes for fact reads and for the retention purge of guided decisions and
+recommendation runs.
 
 | New table | Responsibility |
 | --- | --- |

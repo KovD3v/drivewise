@@ -290,7 +290,7 @@ catalogue with Catalog v2 facts and provenance; the persisted Guided Decision
 flow, whose report is recomputed against the current catalogue on every read;
 deterministic Advisor v3 ranking over reviewed exact-variant offers and list
 prices; and the deterministic model analysis. Catalog v2 evidence storage,
-publication and read views come from migrations `0008` to `0015` (see
+publication and read views come from migrations `0008` to `0016` (see
 [`docs/catalog-v2.md`](docs/catalog-v2.md)). The data tools are offline or
 explicitly started: local fixture ingestion, the open-data catalogue builder,
 the manufacturer collection agent, a dry-run Firecrawl planner and fake-only

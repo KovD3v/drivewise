@@ -114,7 +114,10 @@ storage (`0008`), reviewed publication into the read views (`0009`), two-wheel
 metrics (`0010`), the list-price metric and read view (`0011`, `0012`),
 plug-in hybrid fuel names (`0013`), body-style provenance (`0014`) and a single
 `LATERAL` pivot of the read views that projects v2 dimensions, power and
-provenance into Advisor v3 (`0015`). The migration runner holds an advisory
+provenance into Advisor v3 (`0015`). `0016` hardens it: `TRUNCATE` is rejected
+like any other change to the append-only evidence tables, snapshot URLs must be
+`https://`, decision validity dates must be ISO dates, and only a `human` or
+`rule` decision makes a fact eligible for ranking. The migration runner holds an advisory
 lock, so two concurrent runs cannot apply the same file twice.
 
 Seed data comes from SQL migrations. Local fixture ingestion reads synthetic `.md`, `.txt`, and `.json` files from `data/fixtures/ingestion` and writes normalized content into `documents` only.
