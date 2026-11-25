@@ -1360,9 +1360,17 @@ def continue_bundle(
                     "to": observation["raw_value"],
                 }
             )
-        if observation["id"] not in observations:
+        kept = observations.get(observation["id"])
+        if kept is None:
             observations[observation["id"]] = observation
             merged["observations"].append(observation)
+        elif kept != observation:
+            # Same ID, other content: the extraction changed under an unchanged
+            # VERSION. Reusing either one would misstate the value.
+            raise OpenDataError(
+                f"Observation {observation['id']} ({scope[0]}, {scope[1]}) differs "
+                "from the published one with the same ID; bump the builder VERSION."
+            )
         merged["decisions"].append(decision)
         heads[scope] = decision
     report["kept_without_fresh_value"] = len(set(heads) - refreshed)

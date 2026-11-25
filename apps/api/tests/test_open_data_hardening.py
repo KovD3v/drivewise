@@ -2,6 +2,7 @@
 
 Every test runs offline against the fake registries of test_open_data."""
 
+import copy
 import io
 import json
 import urllib.request
@@ -432,6 +433,20 @@ def test_a_value_may_return_to_an_earlier_observation(run, later):  # noqa: F811
     assert len(abab["decisions"]) == len(aba["decisions"]) + 1
 
 
+def test_a_changed_observation_under_a_published_id_is_refused(run):  # noqa: F811
+    a, _ = open_data.build_cars(run, NAMES)
+    changed = copy.deepcopy(a)
+    (observation,) = [
+        o
+        for o in changed["observations"]
+        if o["metric"] == "length_mm" and ".petrol-h." in o["variant_key"]
+    ]
+    observation.update(value_min="3700", value_max="3700", raw_value="370")
+
+    with pytest.raises(open_data.OpenDataError, match="bump the builder VERSION"):
+        open_data.continue_bundle(a, changed)
+
+
 # --- The build script: safe downloads and publication ------------------------------
 
 
@@ -456,6 +471,16 @@ def test_redirects_stay_on_https_and_approved_hosts():
         "opendata.rdw.nl",
         "motospecdb.com",
     }
+
+
+def test_the_opener_follows_redirects_only_through_the_approved_handler():
+    script = load_script()
+    redirects = [
+        h
+        for h in script._opener().handlers
+        if isinstance(h, urllib.request.HTTPRedirectHandler)
+    ]
+    assert [type(h) for h in redirects] == [script.ApprovedRedirects]
 
 
 class FakeResponse(io.BytesIO):
