@@ -152,6 +152,7 @@ to the backend and frontend checks.
   open findings closed first; see `CURRENT_STATUS.md`)
 - Real external embedding providers
 - Production hybrid/vector search
+- Non-deterministic advisor/model-analysis logic
 - Production LLM-backed guided-decision interpretation
 - Authentication and real accounts (the `/app/me` account is browser-local)
 - Retention limits for anonymous guided decisions and read-only share links

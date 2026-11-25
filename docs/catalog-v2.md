@@ -182,7 +182,7 @@ Advisor's names (see "Identity migration and ownership").
 replaces `catalog_read_provenance` so a filled body style is credited to the
 snapshot that states it (see "Identity migration and ownership").
 [`0015_catalog_v2_read_view_pivot.sql`](../apps/api/migrations/0015_catalog_v2_read_view_pivot.sql),
-the latest migration, rewrites the read path with the same eligibility rules as
+rewrites the read path with the same eligibility rules as
 `0012`. `catalog_scalar_facts` counts the current contexts of a metric in one
 window pass, and `catalog_read_specs` pivots a v2 spec's scalar facts in one
 `LATERAL` aggregate instead of one correlated subquery per column. v2 specs now

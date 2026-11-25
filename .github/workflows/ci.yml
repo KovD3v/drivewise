@@ -61,8 +61,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      # Vitest runs under Node. Node 25 breaks the jsdom tests through its
-      # built-in localStorage, so CI uses the version pinned in .nvmrc.
+      # Vitest runs under Node (its bin has a node shebang). Node 25 breaks the
+      # jsdom tests through its built-in localStorage (PR #21), so CI uses the
+      # version pinned in .nvmrc.
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

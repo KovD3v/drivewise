@@ -16,7 +16,7 @@ The initial product wedge and private-beta gates are defined in
 
 ## Prerequisites
 
-- Node.js 22 (pinned in `.nvmrc`; Vitest runs under Node, and Node 25 breaks the jsdom tests through its built-in `localStorage`)
+- Node.js 22 (pinned in `.nvmrc`; Vitest runs under Node, and Node 25 breaks the jsdom tests through its built-in `localStorage`, as found in PR #21)
 - Bun 1.3+
 - Python 3.12 (pinned in `apps/api/.python-version`)
 
@@ -45,7 +45,7 @@ API_INTERNAL_URL=http://127.0.0.1:8047/api PORT=3047 bun .output/server/index.mj
 
 ### Deployment (Vercel Services)
 
-Production is one Vercel project that builds both apps from the root
+The unified build deploys as one Vercel project that builds both apps from the root
 [`vercel.json`](vercel.json): the `web` service (`apps/web`, TanStack Start) and
 the `api` service (`apps/api`, FastAPI `app.main:app`), in region `fra1`.
 Requests to `/api/*` go to the API and everything else goes to the site, so the
@@ -66,7 +66,7 @@ served. It defaults to on when `APP_ENV` is `local` or `test` and to off
 everywhere else; set it to `true` or `false` to override. When it is off, these
 return `404`: `/docs`, `/redoc`, `/openapi.json`, `/listings*`, `/documents*`,
 `POST /search/documents`, `POST /vehicles/resolve` and
-`POST /advisor/recommendations`. The public routes the site uses stay on:
+`POST /advisor/recommendations`. The public routes stay on:
 `/health`, `/ready`, `/version`, `GET /vehicles`, `GET /vehicles/{id}`,
 `GET /vehicles/{id}/facts`, `POST /advisor/model-analysis` and the
 `/guided-decisions` routes.
@@ -74,8 +74,8 @@ return `404`: `/docs`, `/redoc`, `/openapi.json`, `/listings*`, `/documents*`,
 `GET /version` reports the build: `service`, `api_version`, `git_commit` (from
 `VERCEL_GIT_COMMIT_SHA`), `scoring_version` and `schema_version`.
 `schema_version` is the newest migration file shipped with the build, not a
-read of the database, so compare it with `python apps/api/scripts/migrate.py`
-output after a deploy.
+read of the database, so it does not show which migrations the database has
+applied.
 
 Install frontend dependencies:
 
