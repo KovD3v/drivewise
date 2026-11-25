@@ -65,9 +65,14 @@ context.method. Raw values may be decimal or Italian dot-grouped scalars/ranges;
 conversions include CV/PS to kW (0.73549875), km/l to l/100km (100/x), Wh to kWh,
 Wh/km to kWh/100km, cc/l to cm3, m/cm to mm and dm3 to litres. Do not round converted
 values beyond 1e-5 relative tolerance. A single dotted group in units other
-than cc/cm3, mm or kg is ambiguous; retain a gap. A single comma followed by
+than cc/cm3, mm, kg or EUR/€ is ambiguous; retain a gap. A single comma followed by
 exactly three digits after one to three leading digits is also ambiguous;
 retain a gap rather than choosing a decimal or thousands interpretation.
+Cite each raw value next to its unit (or, for seats and cylinders, its label),
+and cite a range in full. A list_price_eur observation needs list_price terms:
+printed_amount_eur equals the raw printed amount, printed_basis is incl_vat,
+excl_vat or turnkey, with the VAT rate or on-road charge the document states;
+value_min and value_max are the VAT-inclusive amount.
 Keep combustion/system/continuous power, gross/usable battery,
 width with/without mirrors, mass definitions, luggage seating/method, measurement
 procedures, cycles, configuration and intervals separate. Do not add motor powers.
