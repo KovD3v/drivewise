@@ -100,7 +100,7 @@ version requirements are met. See `docs/advisor-v3.md`.
 
 ## Data
 
-The intended database is Neon PostgreSQL. The MVP schema lives in `apps/api/migrations`, uses Italian/European market assumptions for vehicle prices and specs, and enables the `vector` extension for pgvector-compatible embeddings storage.
+The database is Neon PostgreSQL. [The data model page](data-model.md) describes every table and view. The schema lives in `apps/api/migrations`, uses Italian/European market assumptions for vehicle prices and specs, and enables the `vector` extension for pgvector-compatible embeddings storage.
 
 Initial cache storage is planned in PostgreSQL. Redis is represented only by environment placeholders so a future task can add it without changing configuration conventions.
 

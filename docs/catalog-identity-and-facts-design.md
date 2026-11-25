@@ -65,6 +65,17 @@ Euro NCAP e gli anni di produzione chiederebbero altri due casi speciali.
 Classe Euro, carrozzeria e dotazioni sono categorie. Oggi non si possono scrivere
 come fatti.
 
+### Sicurezza e dotazioni esistono solo per la versione 1
+
+La migrazione `0005` ha creato `vehicle_safety_ratings` e `vehicle_features`.
+La prima ha già la forma di un voto Euro NCAP: sistema, anno, stelle e quattro
+percentuali. La seconda ha già una disponibilità `standard` o `optional`.
+
+Le due tabelle sono legate alla variante e non usano la catena delle prove: ogni
+riga porta una fonte, senza snapshot, osservazione o decisione firmata. I
+repository le leggono solo per le varianti della versione 1. Per una variante
+della versione 2 il modulo sicurezza dell'Advisor risponde `insufficient_data`.
+
 ### L'elenco delle metriche è ripetuto
 
 La stessa lista compare in sei file: le migrazioni `0008`, `0010` e `0011`,
@@ -120,7 +131,8 @@ Ogni metrica dichiara il tipo del suo valore.
 - **Numero.** Un intervallo con unità, come oggi.
 - **Codice.** Un valore da una lista chiusa che la metrica dichiara. Esempi:
   `body_style`, `euro_emission_standard`, e in futuro una dotazione con i valori
-  `standard`, `available`, `not_available`.
+  `standard`, `optional`, `not_available`. I primi due sono quelli di
+  `vehicle_features`.
 
 Non serve un tipo sì/no. Un sì/no è un codice con due valori.
 
@@ -145,6 +157,11 @@ mai stato scritto.
 
 Il contesto di un fatto Euro NCAP porta l'anno del protocollo di prova. Cinque
 stelle del 2015 e cinque stelle del 2024 non sono lo stesso voto.
+
+I fatti Euro NCAP alimentano il modulo sicurezza dell'Advisor, che oggi legge
+`vehicle_safety_ratings`. Le metriche riprendono i campi di quella tabella, così
+il modulo non cambia formula. `vehicle_safety_ratings` e `vehicle_features`
+restano tabelle della versione 1.
 
 `euro_emission_standard` si definisce ora e si compila quando arriva l'usato. Tra
 le auto nuove non distingue nulla.
