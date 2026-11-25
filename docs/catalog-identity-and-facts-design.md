@@ -174,7 +174,8 @@ Ogni passo finisce con una verifica e si può rilasciare da solo.
    riga veicolo, poi una migrazione di prova sul bundle reale di 100 modelli.
 5. **Generazione nel file dei nomi.** Verifica: il bundle ricostruito non contiene
    veicoli senza generazione.
-6. **Euro NCAP.** Verifica: source review firmata e un'auto reale con il voto.
+6. **Euro NCAP.** Richiede il permesso scritto di Euro NCAP. Verifica: source review
+   firmata e un'auto reale con il voto.
 
 La cura delle auto reali (prezzo, bagagliaio, carrozzeria) parte dopo il passo 5.
 
@@ -185,13 +186,43 @@ La cura delle auto reali (prezzo, bagagliaio, carrozzeria) parte dopo il passo 5
 - Moto e scooter. Usano lo stesso modello e non richiedono scelte diverse.
 - Affidabilità, costi di assicurazione e di manutenzione. Nessuna fonte aperta.
 
-## Punti non verificati
+## Verifiche fatte e punti aperti
 
-- **Licenza Euro NCAP.** Nessuno ha letto i termini d'uso. Servono per il ranking.
-- **Generazione dagli open data.** Sedici varianti hanno più omologazioni sotto lo
-  stesso nome ([registro delle lacune](open-data-gaps.md)). Non è provato che i
-  numeri di omologazione bastino a separarle tutte.
-- **Dati in produzione.** Lo stato "nessuna auto reale" viene dalla sessione
-  precedente. Questo documento non ha interrogato Neon.
-- **Formula neopatentati.** La massa archiviata è "in ordine di marcia". La norma
-  va letta prima di scrivere il calcolo.
+### Euro NCAP richiede un permesso scritto
+
+I [termini del sito Euro NCAP](https://www.euroncap.com/terms-conditions/), letti il
+25 novembre 2026, dicono: "Reproduction is not authorised for commercial purposes.
+Prior permission from Euro NCAP must be obtained for the reproduction or use of
+textual and multimedia information". Il passo 6 parte quindi da una richiesta di
+permesso a Euro NCAP. Senza risposta, il voto non entra nel ranking.
+
+### I numeri di omologazione separano le generazioni, ma non da soli
+
+Sedici modelli hanno più omologazioni sotto lo stesso nome
+([registro delle lacune](open-data-gaps.md)). Un controllo su RDW, immatricolazioni
+2024, ne ha guardati cinque:
+
+| Modello | Omologazioni | Prima immatricolazione di ciascuna | Cosa separano |
+| --- | --- | --- | --- |
+| Fiat 500 | 2 | 2017 e 2020 | due generazioni |
+| Dacia Duster | 2 | 2017 e 2024 | due generazioni |
+| Peugeot 3008 | 2 | 2016 e 2023 | due generazioni |
+| Mini Cooper | 3 | tutte 2016 | tre carrozzerie della stessa generazione |
+| Lancia Ypsilon | 1 | 2024 | nulla: la vecchia generazione non è immatricolata nei Paesi Bassi |
+
+L'omologazione separa le generazioni nei tre casi in cui ce ne sono due. Separa
+però anche le carrozzerie, quindi una persona deve dare il nome a ogni omologazione
+nel file dei nomi. La data della prima immatricolazione di un'omologazione dà una
+stima dell'anno di inizio produzione. Gli altri undici modelli non sono stati
+controllati.
+
+### Il catalogo servito oggi è solo sintetico
+
+`https://drivewise-unified.vercel.app/api/vehicles` restituisce 16 veicoli, tutti
+del bundle demo: 10 auto, 3 moto, 3 scooter. Il database Neon `ep-proud-flower`
+non è stato interrogato direttamente.
+
+### Formula neopatentati
+
+La massa archiviata è "in ordine di marcia". La norma va letta prima di scrivere il
+calcolo.
