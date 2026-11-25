@@ -7,8 +7,10 @@ import hashlib
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.api.dependencies import get_connection
+from app.ingestion.catalog_v2 import CatalogV2
 from app.main import app
 from tests.test_catalog_storage_readiness import (
     WLTP,
@@ -56,7 +58,7 @@ def _with_http_mirror(data, tmp_path):
 
 @pytest.fixture
 def client(conn, tmp_path):  # noqa: F811
-    data = _with_http_mirror(readiness_bundle(tmp_path), tmp_path)
+    data = readiness_bundle(tmp_path)
     assert publish(conn, data, tmp_path) == "published"
     conn.execute("UPDATE sources SET ranking_permission = 'permitted'")
     app.dependency_overrides[get_connection] = lambda: conn
@@ -104,7 +106,7 @@ def test_vehicle_detail_carries_list_price_terms_basis_and_credits(client, conn)
 
     # A v2 spec is credited with every source behind the values it shows.
     credits = {entry["source_key"]: entry for entry in petrol["provenance"]}
-    assert set(credits) == {"lumen-registry", "plain-mirror", "coachwork-notes"}
+    assert set(credits) == {"lumen-registry", "coachwork-notes"}
     registry = credits["lumen-registry"]
     assert registry["source_license"] == LICENCE
     assert registry["source_url"] == "https://lumen-registry.example.com/export"
@@ -116,7 +118,6 @@ def test_vehicle_detail_carries_list_price_terms_basis_and_credits(client, conn)
     assert "fuel_type" in registry["supported_metrics"]
     assert "body_style" not in registry["supported_metrics"]
     assert credits["coachwork-notes"]["supported_metrics"] == ["body_style"]
-    assert credits["plain-mirror"]["source_url"].startswith("http://")
     # The vehicle's identity, body style included, credits both of its sources.
     vehicle_credits = {e["source_key"]: e for e in response.json()["provenance"]}
     assert set(vehicle_credits) == {"lumen-registry", "coachwork-notes"}
@@ -131,17 +132,15 @@ def test_facts_name_the_licence_of_their_source(client, conn):  # noqa: F811
         for fact in response.json()
     }
     assert licences[("tavo-petrol", "list_price_eur")] == LICENCE
-    assert licences[("tavo-petrol", "electric_range_km")] == "Synthetic mirror licence"
 
 
-def test_recommendations_carry_list_price_credits_and_skip_http_evidence(
+def test_recommendations_carry_list_price_credits_and_https_evidence(
     client, conn  # noqa: F811
 ):
     response = client.post(
         "/advisor/recommendations",
         json={"budget_max_eur": 35000, "primary_use": "family"},
     )
-    # The petrol variant's optional electric range cites an http:// page.
     assert response.status_code == 200, response.text
     items = [item for group in response.json()["groups"] for item in group["items"]]
     assert items
@@ -155,24 +154,10 @@ def test_recommendations_carry_list_price_credits_and_skip_http_evidence(
         assert "of offer price" not in " ".join(item["evidence"]["assessments"]["tco"]["assumptions"])
 
 
-def test_recommendations_omit_a_value_whose_only_source_is_http(client):
-    response = client.post(
-        "/advisor/recommendations",
-        json={"budget_max_eur": 25000, "primary_use": "family"},
-    )
-    assert response.status_code == 200, response.text
-    items = [item for group in response.json()["groups"] for item in group["items"]]
-    petrol = [i for i in items if i["selected_spec"]["variant_key"] == "tavo-petrol"]
-    assert len(petrol) == 1, [i["selected_spec"]["variant_key"] for i in items]
-    item = petrol[0]
-    # The 40 km range cites only an http:// page, so neither value nor credit is shown.
-    assert item["selected_spec"]["wltp_range_km"] is None
-    assert "wltp_range_km" not in item["evidence"]
-    assert "wltp_range_km" not in {p["metric"] for p in item["provenance"]}
-    # A value with an HTTPS source keeps both value and credit.
-    assert item["selected_spec"]["consumption_l_100km"] is not None
-    assert item["evidence"]["consumption_l_100km"] is not None
-    assert "consumption_l_100km" in {p["metric"] for p in item["provenance"]}
+def test_http_mirror_evidence_is_rejected_by_catalog_v2_contract(tmp_path):
+    data = _with_http_mirror(readiness_bundle(tmp_path), tmp_path)
+    with pytest.raises(ValidationError):
+        CatalogV2.model_validate(data)
 
 
 def test_model_analysis_credits_the_list_price_it_uses(client, conn):  # noqa: F811
@@ -233,7 +218,7 @@ def test_vehicle_detail_gives_no_credit_for_an_unknown_fuel(conn, tmp_path):  # 
     assert {m for e in spec["provenance"] for m in e["supported_metrics"]} == {"body_style"}
 
 
-def test_model_analysis_leaves_out_a_list_price_it_cannot_cite(conn, tmp_path):  # noqa: F811
+def test_http_list_price_snapshot_is_rejected_before_model_analysis(tmp_path):
     data = _with_http_mirror(readiness_bundle(tmp_path), tmp_path)
     for observation in data["observations"]:
         if (observation["variant_key"], observation["metric"]) == (
@@ -241,27 +226,8 @@ def test_model_analysis_leaves_out_a_list_price_it_cannot_cite(conn, tmp_path): 
             "list_price_eur",
         ):
             observation["snapshot_id"] = MIRROR
-    assert publish(conn, data, tmp_path) == "published"
-    conn.execute("UPDATE sources SET ranking_permission = 'permitted'")
-    spec_id = conn.execute(
-        "SELECT id FROM vehicle_specs WHERE variant_key = %s", ("tavo-electric",)
-    ).fetchone()["id"]
-    app.dependency_overrides[get_connection] = lambda: conn
-    try:
-        response = TestClient(app).post(
-            "/advisor/model-analysis",
-            json={
-                "vehicle_id": str(_car(conn)),
-                "spec_id": str(spec_id),
-                "analysis_scope": ["price"],
-            },
-        )
-    finally:
-        app.dependency_overrides.clear()
-    assert response.status_code == 200, response.text
-    costs = response.json()["estimated_costs"]
-    assert costs["market_reference_list_price"] is None
-    assert costs["market_reference_price_eur"] is None
+    with pytest.raises(ValidationError):
+        CatalogV2.model_validate(data)
 
 
 def test_guided_preview_carries_the_same_list_price_item(client):

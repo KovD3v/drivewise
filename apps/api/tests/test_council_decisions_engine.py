@@ -356,6 +356,23 @@ def test_plug_in_is_a_fuel_option():
     assert generic.preferred_fuel_type.value == "hybrid_petrol"
 
 
+def test_out_of_bounds_budget_and_annual_km_do_not_crash_guided_decisions(guided_api):
+    client, _decisions, _advisor = guided_api
+    over_budget = client.post(
+        "/guided-decisions",
+        json={"message": "Budget 50.000.000 euro, uso in citta"},
+    )
+    assert over_budget.status_code == 200, over_budget.text
+    assert over_budget.json()["decisionProfile"]["budgetEur"] is None
+
+    over_km = client.post(
+        "/guided-decisions",
+        json={"message": "Budget 25000 euro, uso in citta, 900.000 km all anno"},
+    )
+    assert over_km.status_code == 200, over_km.text
+    assert over_km.json()["decisionProfile"]["annualKm"] is None
+
+
 @pytest.mark.parametrize("literal", ["Infinity", "-Infinity", "NaN"])
 def test_infinity_and_nan_are_rejected_at_validation_time(literal):
     with pytest.raises(ValidationError):

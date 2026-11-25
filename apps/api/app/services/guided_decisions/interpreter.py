@@ -68,11 +68,13 @@ CONTEXTUAL_NUMBER_UNITS = {
     "annual_km": {None, "km", "chilometri"},
 }
 
-# Free-text counts outside these bounds are ignored instead of reaching the
-# Advisor request validation ("0 passeggeri" is not a usable answer).
+# Free-text counts and numeric answers outside these bounds are ignored instead
+# of reaching Advisor request validation ("0 passeggeri" or 50M EUR budget).
 MIN_PASSENGERS = 1
 MAX_PASSENGERS = 9
 MAX_CHILDREN = 10
+MAX_BUDGET_EUR = 10_000_000
+MAX_ANNUAL_KM = 500_000
 
 GARAGE_DIMENSION_FIELDS = {
     "garage.useful_length_mm": "useful_length_mm",
@@ -131,7 +133,7 @@ def extract_profile_updates(
         )
 
     budget = _extract_budget(normalized)
-    if budget is not None and budget > 0:
+    if budget is not None and 0 < budget <= MAX_BUDGET_EUR:
         _set_fact(
             updated_profile,
             "budget_eur",
@@ -142,7 +144,7 @@ def extract_profile_updates(
         )
 
     annual_km = _extract_annual_km(normalized)
-    if annual_km is not None and annual_km > 0:
+    if annual_km is not None and 0 < annual_km <= MAX_ANNUAL_KM:
         _set_fact(
             updated_profile,
             "annual_km",
@@ -371,6 +373,10 @@ def _extract_contextual_answer(
                 return
             if constraints.maximum is not None and value > constraints.maximum:
                 return
+        if expected_question_id == "budget_eur" and value is not None and value > MAX_BUDGET_EUR:
+            return
+        if expected_question_id == "annual_km" and value is not None and value > MAX_ANNUAL_KM:
+            return
     elif question.type == "boolean":
         value = _yes_no(normalized)
     elif constraints is not None and question.type == "single_select":

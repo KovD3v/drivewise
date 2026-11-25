@@ -28,10 +28,6 @@ _Last updated: 2026-11-25_
 
 ## Remaining pre-go-live gates (ADR-017)
 
-1. **Production DB & Vercel Ops:** apply migrations `0010`–`0015` on production Neon, verify Preview `DATABASE_URL` does not target production, configure Vercel WAF rate limiting on `POST /api/guided-decisions*` and `/api/advisor/*`, and self-host Google Fonts (`styles.css:1`, GDPR).
-2. **Real 12-Car Catalog v2 Bundle (F1):** complete source reviews (`docs/source-reviews/`), curate and publish the 12 target cars with `list_price_eur`, `cargo_volume_liters`, and `body_style`, and align with Andrea on the `width_with_mirrors_mm` vs `width_mirrors_folded_mm` interval rule.
-3. **Key Open Technical Follow-ups** (full list in the consolidated audit table):
-   - Before live open-data imports: fix RDW cross-manufacturer make filter (`open_data.py`), two-wheeler `slug` path validation, and `catalog_status.py` `offer=None` crash.
-   - Before live `scrape_catalog.py` runs: tighten excerpt value/unit co-occurrence and require human sign-off for `actor_kind="agent"` facts.
-   - Before authorized used offers: preserve separate `new`/`used` groups in `apps/web/src/lib/decision-engine.ts` and unify offer vs list-price snapshot consistency (`READ COMMITTED` race).
-   - Stage 1 / Phase 2: 30-day GDPR retention for anonymous decisions, read-only vs write token separation on shared URLs, CI `gitleaks`/`osv-scanner` + action SHA pinning, dead-code/docs cleanup, and private-buyer beta validation (`docs/product-beta.md`).
+1. **Production DB & Vercel Ops:** apply migrations `0010`–`0016` on production Neon, verify Preview `DATABASE_URL` does not target production, configure Vercel WAF rate limiting on `POST /api/guided-decisions*` and `/api/advisor/*`, and schedule `apps/api/scripts/purge_expired_sessions.py --days 30 --execute` for GDPR retention.
+2. **Real 12-Car Catalog v2 Bundle (F1):** follow [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md) — complete source reviews (`docs/source-reviews/`), curate and publish the 12 target cars with `list_price_eur`, `cargo_volume_liters`, and `body_style`, and align with Andrea on the `width_with_mirrors_mm` vs `width_mirrors_folded_mm` interval rule.
+3. **Post-go-live follow-ups:** upgrade `uv.lock` (`starlette`, `anyio`, `certifi`) and `bun.lock` so CI `dependency-audit` can become blocking; separate read-only vs write token on shared decision URLs (Stage 1, `F-27`); run private-buyer beta validation (`docs/product-beta.md`).

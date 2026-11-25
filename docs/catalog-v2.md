@@ -286,8 +286,9 @@ uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py 
   --artifact-root data/fixtures/catalog/artifacts
 
 # Replace BATCH_UUID with the UUID printed by --stage.
+# --allow-synthetic is required because the demo fixture uses .test hosts and a synthetic licence.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
+  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts --allow-synthetic
 ```
 
 The artifacts of `catalog-v2.synthetic.json` are explicitly synthetic and carry
@@ -337,8 +338,9 @@ uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py 
   --stage data/fixtures/catalog/catalog-v2.demo.synthetic.json \
   --artifact-root data/fixtures/catalog/artifacts
 # Replace BATCH_UUID with the UUID printed by --stage.
+# --allow-synthetic is required because the demo fixture uses .test hosts and a synthetic licence.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
-  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts
+  --publish BATCH_UUID --artifact-root data/fixtures/catalog/artifacts --allow-synthetic
 ```
 
 Build the site with `VITE_SYNTHETIC_DATA=true` so every page shows the demo notice.

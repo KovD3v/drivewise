@@ -169,7 +169,16 @@ def _build_preview_ranking(
             [],
         )
 
-    request = _advisor_request_from_profile(profile)
+    try:
+        request = _advisor_request_from_profile(profile)
+    except ValidationError:
+        return (
+            PreviewRanking(
+                status="blocked",
+                blocking_reasons=["invalid_profile_bounds"],
+            ),
+            [],
+        )
     candidates = advisor_repository.list_candidates(as_of=as_of)
     result = score_recommendations(
         request,
