@@ -119,13 +119,12 @@ score.
 
 ## ADR-015: Manufacturer documents supply list price and cargo volume
 
-**Status:** Accepted (2026-11-24)
+**Status:** Accepted (2026-11-24), amended by ADR-019 (2026-11-25)
 
 No open source publishes Italian list prices or cargo volumes. These values
 come from the manufacturers' public price lists and technical sheets. Each
 value keeps the link to its document, and the source passes the source review
-before it affects ranking. The first group is the twelve cars of the current
-public site.
+before it affects ranking. ADR-019 defines the first group of cars.
 
 The price shown is the public list price including VAT, not the turnkey price.
 When a document prints only the price without VAT, the value is computed from
@@ -146,10 +145,10 @@ source measures them. The car module already follows this rule.
 
 ## ADR-017: The public domain moves when the car module recommends cars
 
-**Status:** Accepted (2026-11-24)
+**Status:** Accepted (2026-11-24), amended by ADR-019 (2026-11-25)
 
 The public domain moves to this build when the car module recommends the
-first twelve cars in production. Until their modules exist, motorcycles and
+first real cars in production. Until their modules exist, motorcycles and
 scooters are shown without a score. The web app gets no local scoring bridge,
 because ADR-008 keeps ranking in the API.
 
@@ -162,3 +161,41 @@ catalogue publishes the upper value of that interval, and the product says the
 figure is the upper value. The rule lives in publication, not in a hand
 decision per bundle, so it applies whatever source supplies the interval. The
 upper value is chosen so that running costs are not understated.
+
+## ADR-019: The first real dataset is new cars by model and engine
+
+**Status:** Accepted (2026-11-25)
+
+The first real dataset holds new cars of the generation on sale. A catalogue
+entry is a model with its engine, not a trim. The list price shown is the price
+of the base trim, and the product says so. The number of cars and the list of
+models are not fixed. No document named the "twelve cars" of ADR-015 and
+ADR-017, so that count is withdrawn.
+
+Used cars are out of the first dataset. The data model must accept them later
+without a change to vehicle identity.
+
+Euro NCAP safety replaces "reliability" in the product promise, because no
+reviewed source measures reliability. Euro NCAP forbids commercial reuse without
+prior permission, so its rating enters ranking only after that permission.
+
+Values that follow from stored facts are computed, not stored. These are the
+new-driver power limit, the cost per kilometre, and the road tax. Equipment
+waits until after the first release.
+
+## ADR-020: A vehicle is one generation, and each fact has a scope and a type
+
+**Status:** Proposed (2026-11-25)
+
+A vehicle row is one generation of one model in one market. The generation is
+required before publication. Body style, phase, and model year leave the
+identity key. Each metric declares whether a fact belongs to the generation or
+to the variant, and whether its value is a number or a code from a closed list.
+One registry file defines every metric.
+
+The reason is that published identity is frozen. Today a generation cannot be
+filled after the first publication. The design, its evidence, and its six
+delivery steps are in
+[the identity and facts design](catalog-identity-and-facts-design.md). This
+record becomes Accepted when Tommaso has reviewed that document.
+

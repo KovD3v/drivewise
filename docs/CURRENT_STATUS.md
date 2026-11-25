@@ -5,11 +5,13 @@ _Last updated: 2026-11-25_
 > Full PR history, 5-agent code review & security audit consolidated table, 3-model Architectural Council (A–F) verdict, and operational roadmap:
 > [`snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md`](snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md)
 >
-> 12-car curation playbook (ADR-017): [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)
+> Vehicle identity and fact design (ADR-020): [`catalog-identity-and-facts-design.md`](catalog-identity-and-facts-design.md)
+>
+> First real cars curation playbook (ADR-019): [`first-cars-curation.md`](first-cars-curation.md)
 
 ## Overall phase
 
-**Unified API-first build landed on `main` (PR #22) and hardened via Architectural Council decisions A–F on `docs/pr-review-security-roadmap`; next gate is production ops verification and real Catalog v2 publication for the first 12 cars (ADR-017).**
+**Unified API-first build landed on `main` (PR #22) and hardened via Architectural Council decisions A–F on `docs/pr-review-security-roadmap`; next gates are production ops verification, the vehicle identity design (ADR-020), and real Catalog v2 publication for the first cars (ADR-019).**
 
 ### Completed in the November 2026 wave (PRs #5, #11–#22)
 - **Unified Advisor runtime (`advisor-v3.0`, PR #5):** deterministic scoring (65% Structural Fit + 35% Preference Fit), Guided Decision persistence (`0005`–`0007`), and retirement of standalone `decision_engine/`.
@@ -24,10 +26,11 @@ _Last updated: 2026-11-25_
 - **Council D (Italian Advisor Copy):** user-facing Advisor messages centralized in `apps/api/app/services/advisor/messages_it.py` with identical scores/rankings.
 - **Council E (Public API Surface Gating):** `ENABLE_INTERNAL_ROUTES` (default `False` outside `local`/`test`) disables `/docs`, `/redoc`, `/openapi.json`, `/listings*`, `/documents*`, `/search/documents` (`vector_fake`), `POST /vehicles/resolve`, and `POST /advisor/recommendations`.
 - **Security & Correctness Fixes:** fixed High ReDoS in `interpreter.py` (4.6s → <5 ms), `allow_inf_nan=False` + 422 sanitization handler in `main.py`, `ILIKE` wildcard escaping + query `max_length`, migration runner advisory lock, `vehicle_exists()` fast check, garage hard-constraint/negative-margin fixes, `safeHttpsUrl()`, and CI `permissions: contents: read` + rule-scoped `.gitleaks.toml`.
-- **Council F (12-Car Curation Playbook):** documented in [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md).
+- **Council F (Curation Playbook):** documented in [`first-cars-curation.md`](first-cars-curation.md). ADR-019 removed its fixed count of twelve cars.
 
 ## Remaining pre-go-live gates (ADR-017)
 
 1. **Production DB & Vercel Ops:** apply migrations `0010`–`0016` on production Neon, verify Preview `DATABASE_URL` does not target production, configure Vercel WAF rate limiting on `POST /api/guided-decisions*` and `/api/advisor/*`, and schedule `apps/api/scripts/purge_expired_sessions.py --days 30 --execute` for GDPR retention.
-2. **Real 12-Car Catalog v2 Bundle (F1):** follow [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md) — complete source reviews (`docs/source-reviews/`), curate and publish the 12 target cars with `list_price_eur`, `cargo_volume_liters`, and `body_style`, and align with Andrea on the `width_with_mirrors_mm` vs `width_mirrors_folded_mm` interval rule.
-3. **Post-go-live follow-ups:** upgrade `uv.lock` (`starlette`, `anyio`, `certifi`) and `bun.lock` so CI `dependency-audit` can become blocking; separate read-only vs write token on shared decision URLs (Stage 1, `F-27`); run private-buyer beta validation (`docs/product-beta.md`).
+2. **Vehicle identity and facts (ADR-020):** review [`catalog-identity-and-facts-design.md`](catalog-identity-and-facts-design.md) and deliver its steps 1 to 5 before any real car is published. A generation cannot be filled after publication.
+3. **First real Catalog v2 bundle (ADR-019):** follow [`first-cars-curation.md`](first-cars-curation.md) — sign the source reviews (`docs/source-reviews/`), choose the models, then curate and publish them with `list_price_eur`, `cargo_volume_liters`, and `body_style`. Align with Andrea on the `width_with_mirrors_mm` vs `width_mirrors_folded_mm` interval rule.
+4. **Post-go-live follow-ups:** upgrade `uv.lock` (`starlette`, `anyio`, `certifi`) and `bun.lock` so CI `dependency-audit` can become blocking; separate read-only vs write token on shared decision URLs (Stage 1, `F-27`); run private-buyer beta validation (`docs/product-beta.md`).

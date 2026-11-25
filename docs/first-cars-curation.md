@@ -1,33 +1,28 @@
-# F1 — Curare le prime 12 auto in produzione
+# Curare le prime auto reali in produzione
 
-Questo è il percorso operativo che sblocca ADR-017. Il dominio pubblico passa alla
-build unificata quando il modulo auto raccomanda le prime 12 auto in produzione.
-Ogni passo dice chi lo fa, cosa produce e come si verifica.
+Questo è il percorso operativo che porta le prime auto reali nel catalogo di
+produzione. Il dominio pubblico passa alla build unificata quando il modulo auto
+le raccomanda (ADR-017). Ogni passo dice chi lo fa, cosa produce e come si verifica.
+
+> **Prima di iniziare.** Il [design di identità e fatti](catalog-identity-and-facts-design.md)
+> (ADR-020) viene prima di questa curazione. Una generazione non si può compilare
+> dopo la pubblicazione. Quel design cambia anche come si archivia la carrozzeria:
+> le parti di questa pagina che parlano di `body_style` e di identità del veicolo
+> vanno riscritte quando i suoi passi 1-5 sono consegnati.
 
 Fonti delle regole: [DECISIONS.md](DECISIONS.md) (ADR-013, ADR-015, ADR-017,
-ADR-018), [catalog-v2.md](catalog-v2.md), [open-data-import.md](open-data-import.md),
+ADR-018, ADR-019), [catalog-v2.md](catalog-v2.md), [open-data-import.md](open-data-import.md),
 [source-review.md](source-review.md).
 
-## 0. Le 12 auto
+## 0. La lista delle auto
 
-ADR-015 dice "le dodici auto dell'attuale sito pubblico". Il repository non le
-elenca da nessuna parte, quindi la lista va scritta qui prima di iniziare.
-Andrea e Tommaso la copiano dal sito pubblico attuale e la firmano.
+Il numero e l'elenco dei modelli non sono ancora decisi (ADR-019). Il primo dataset
+copre solo auto nuove, a livello di modello e motore. Tommaso e Andrea scrivono la
+lista qui e la firmano prima di iniziare.
 
-| # | Marca | Modello | `canonical_key` nel catalogo | Varianti curate |
-| --- | --- | --- | --- | --- |
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
-| 4 | | | | |
-| 5 | | | | |
-| 6 | | | | |
-| 7 | | | | |
-| 8 | | | | |
-| 9 | | | | |
-| 10 | | | | |
-| 11 | | | | |
-| 12 | | | | |
+| # | Marca | Modello | Generazione | `canonical_key` nel catalogo | Varianti curate |
+| --- | --- | --- | --- | --- | --- |
+| 1 | | | | | |
 
 Ogni auto deve già esistere nel bundle open data (`cars.catalog-v2.json`). Se
 manca, si aggiunge prima a `data/open-data/car-names.it.json` e si ricostruisce il
@@ -92,7 +87,7 @@ EEA e RDW non servono solo per i loro valori. L'identità di ogni veicolo open d
 (marca, modello, variante) poggia sui loro snapshot, e un fatto è idoneo solo se
 tutta l'identità viene da fonti `permitted` (`catalog_identity_eligibility`,
 migrazione `0009`). Finché EEA e RDW restano `manual_validation_only`, anche un
-listino firmato non porta nessuna delle 12 auto nel ranking.
+listino firmato non porta nessuna auto della lista nel ranking.
 
 Per ognuna di [eea-co2-cars.md](source-reviews/eea-co2-cars.md),
 [rdw-open-data.md](source-reviews/rdw-open-data.md) e
@@ -107,7 +102,7 @@ Per ognuna di [eea-co2-cars.md](source-reviews/eea-co2-cars.md),
 6. Scrivere decisione, nome del revisore, data e prossimo trigger di review.
 
 MotoSpecDB riguarda le due ruote, che restano senza punteggio (ADR-017). La sua
-firma non blocca F1.
+firma non blocca questa curazione.
 
 Per i listini e le schede tecniche dei costruttori serve una review nuova:
 
@@ -141,12 +136,12 @@ Il publish inserisce una fonte solo se la sua `source_key` non esiste ancora
 
 ## 3. Sequenza CLI
 
-### Chi produce il bundle F1
+### Chi produce il bundle
 
 Il bundle aggiunge prezzi, bagagliaio e carrozzeria alle varianti già pubblicate
 dal bundle open data. Ci sono due strade:
 
-1. **A mano (costo zero, consigliata per 12 auto).** Si scrive il JSON v2 seguendo
+1. **A mano (costo zero, consigliata per poche auto).** Si scrive il JSON v2 seguendo
    [catalog-v2.md](catalog-v2.md): uno snapshot per documento, un'osservazione e
    una decisione `verified` per valore, con estratto e posizione nel documento.
 2. **Agente di raccolta** (`apps/api/scripts/scrape_catalog.py`,
@@ -156,7 +151,7 @@ dal bundle open data. Ci sono due strade:
 
 In entrambi i casi il bundle deve riusare le identità già pubblicate. Il publish
 sul database di prova (che ha già il bundle open data) lo verifica: il numero di
-veicoli non deve cambiare, e le 12 auto devono avere i nuovi valori.
+veicoli non deve cambiare, e le auto della lista devono avere i nuovi valori.
 
 ### Comandi
 
@@ -166,7 +161,7 @@ pubblica prima su un database di prova, poi su Neon di produzione.
 
 ```sh
 ROOT=data/private/catalog
-BUNDLE=$ROOT/f1-twelve-cars/cars.catalog-v2.json
+BUNDLE=$ROOT/first-cars/cars.catalog-v2.json
 
 # 1. Controllo offline del contratto e degli hash di ogni artefatto.
 uv run --frozen --project apps/api python apps/api/scripts/import_catalog_v2.py \
@@ -196,7 +191,7 @@ Ogni verifica gira su produzione e il suo risultato va annotato qui, con la data
 1. **Versione dello schema.** `GET /api/version` deve riportare
    `schema_version = "0015_catalog_v2_read_view_pivot.sql"` (o una migrazione più
    recente) e lo `scoring_version` atteso.
-2. **Campi bloccanti.** Questa query deve restituire 12 righe, tutte con
+2. **Campi bloccanti.** Questa query deve restituire una riga per ogni auto della lista, tutte con
    `ready = true`:
 
    ```sql
@@ -204,12 +199,12 @@ Ogni verifica gira su produzione e il suo risultato va annotato qui, con la data
           bool_or(s.list_price_eur IS NOT NULL AND s.cargo_volume_liters IS NOT NULL) AS ready
    FROM vehicles v
    JOIN catalog_read_specs s ON s.vehicle_id = v.id
-   WHERE v.canonical_key = ANY(ARRAY['...'])  -- le 12 chiavi della tabella al punto 0
+   WHERE v.canonical_key = ANY(ARRAY['...'])  -- le chiavi della tabella al punto 0
    GROUP BY v.canonical_key
    ORDER BY v.canonical_key;
    ```
 
-3. **Piano di lettura.** Prendere l'`id` di una delle 12 auto ed eseguire:
+3. **Piano di lettura.** Prendere l'`id` di una delle auto della lista ed eseguire:
 
    ```sql
    EXPLAIN (ANALYZE, BUFFERS)
@@ -220,11 +215,11 @@ Ogni verifica gira su produzione e il suo risultato va annotato qui, con la data
    `One-Time Filter: (s.catalog_version = 2)`. Un `Seq Scan` su `fact_decisions`
    senza quella condizione vuol dire che il filtro per variante non scende nella
    vista: fermarsi e aprire un issue.
-4. **Raccomandazione 12 su 12.** Questo controllo è in sola lettura. Passare le 12
+4. **Raccomandazione di tutte le auto della lista.** Questo controllo è in sola lettura. Passare le
    chiavi della tabella al punto 0:
 
    ```sh
-   uv run --frozen --project apps/api python - KEY1 KEY2 ... KEY12 <<'EOF'
+   uv run --frozen --project apps/api python - KEY1 KEY2 ... KEYN <<'EOF'
    import os, sys
    from collections import defaultdict
    import psycopg
@@ -246,21 +241,21 @@ Ogni verifica gira su produzione e il suo risultato va annotato qui, con la data
    EOF
    ```
 
-   Deve stampare `rankable: 12/12`. Senza offerte, ogni auto compare con
+   Deve stampare `rankable: N/N`, con N il numero di auto della lista. Senza offerte, ogni auto compare con
    `list_price`. Un motivo `source_not_permitted` o `missing_list_price` indica una
    review non firmata o un prezzo senza termini. Non usare
    `scripts/catalog_status.py` per questo controllo: oggi conta solo le offerte e
    si interrompe sulle alternative a prezzo di listino.
 5. **Flusso pubblico.** Su `drivewise-italia.com` percorrere `/app/start` →
    `/app/report` → `/app/vehicle/$id` → `/app/compare` con budget e usi diversi,
-   finché tutte le 12 auto sono comparse almeno una volta. Ogni fonte deve aprirsi
+   finché tutte le auto della lista sono comparse almeno una volta. Ogni fonte deve aprirsi
    su un URL reale `https://`, mai `example.test`.
 
 ## 5. Quando passare a un feed commerciale
 
 Motornet e Infocar vendono listini e schede italiane con licenza. Costano, quindi
 la scelta spetta ad Andrea e Tommaso insieme. Dopo la validazione della fase 1
-(le 12 auto in produzione), proporre il passaggio quando vale almeno una di
+(le prime auto in produzione), proporre il passaggio quando vale almeno una di
 queste condizioni, misurata e scritta qui. Le soglie sono una proposta, da
 confermare con Andrea e Tommaso:
 
@@ -277,5 +272,5 @@ confermare con Andrea e Tommaso:
    di listino.
 
 Prima di firmare un contratto: chiedere una licenza di prova, importare le stesse
-12 auto e confrontare valore per valore con la curazione manuale. Il feed entra
+auto e confrontare valore per valore con la curazione manuale. Il feed entra
 come nuova fonte, con la sua source review, accanto alle fonti esistenti.
