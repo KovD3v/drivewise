@@ -364,14 +364,6 @@ def test_infinity_and_nan_are_rejected_at_validation_time(literal):
         )
 
 
-@pytest.mark.xfail(
-    raises=ValueError,
-    strict=False,
-    reason=(
-        "FastAPI's default 422 handler echoes the rejected inf input and "
-        "json.dumps refuses it; the fix is a validation handler in app/main.py."
-    ),
-)
 def test_infinity_over_http_returns_422(guided_api):
     client, _decisions, _advisor = guided_api
     response = client.post(

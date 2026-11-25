@@ -1,280 +1,37 @@
 # DriveWise current status
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-11-25_
 
-## Catalog collection update — 2026-09-17
-
-The `feat/manufacturer-extraction` branch adds an on-demand OpenRouter collector
-with Tinyfish Search/Fetch by default, optional Firecrawl acquisition, and
-separately enabled Tinyfish Agent navigation, on top of the catalog v2 evidence
-and publication branches. It targets
-operator-configured Italian car families/periods, preserves evidence, investigates
-conflicts separately, and emits bundles for explicit publication. See
-[run instructions and limits](scraping.md).
-
-This is infrastructure with offline provider-simulation tests. Credentials and the
-model will be configured later; broad scraping and 80% fleet coverage have not
-been started or claimed. The existing recommendation logic is unchanged. The
-remaining product-status sections below retain their 6 September snapshot.
+> Full PR history, 5-agent code review & security audit consolidated table, 3-model Architectural Council (A–F) verdict, and operational roadmap:
+> [`snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md`](snapshots/2026-11-24_PR_PROCESS_REVIEW_SECURITY_ROADMAP.md)
+>
+> 12-car curation playbook (ADR-017): [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md)
 
 ## Overall phase
-**MVP implementation — frontend stabilization completed, backend/Decision Engine integration now the main priority.**
 
-DriveWise has moved beyond the initial prototype stage. The product now has a mature public-facing identity, a multi-vehicle decision flow concept, a frozen Decision Engine contract for the MVP, and a functional coverage dataset designed to test Auto, Moto and Scooter scenarios.
+**Unified API-first build landed on `main` (PR #22) and hardened via Architectural Council decisions A–F on `docs/pr-review-security-roadmap`; next gate is production ops verification and real Catalog v2 publication for the first 12 cars (ADR-017).**
 
-## Product / Brand
-- Product name: **DriveWise**.
-- Public domain purchased: **drivewise-italia.com**.
-- Positioning: **Decision Intelligence platform for Auto, Moto and Scooter**, not a traditional vehicle comparator.
-- Landing Page redesigned with stronger premium / startup positioning.
-- Brand identity consolidated around the current mint/teal visual language.
-- Messaging evolved around:
-  - Decision Intelligence;
-  - proprietary Decision Engine;
-  - explainable recommendations;
-  - Vehicle Knowledge Base;
-  - personalized Decision Score.
-- Avoid claims such as “patented” until a patent/application actually exists. Current correct wording: **proprietary Decision Engine / proprietary decision methodology**.
+### Completed in the November 2026 wave (PRs #5, #11–#22)
+- **Unified Advisor runtime (`advisor-v3.0`, PR #5):** deterministic scoring (65% Structural Fit + 35% Preference Fit), Guided Decision persistence (`0005`–`0007`), and retirement of standalone `decision_engine/`.
+- **Catalog v2 evidence & publication (PR #12, #13, #19, #22):** append-only snapshots, observations, and reviewed decisions (`0008`–`0014`), `GET /vehicles/{id}/facts`, two-wheel metrics (`0010`), list-price ranking fallback (ADR-013, `0011`–`0012`), plug-in hybrid fuel alignment (`0013`), and body-style provenance (`0014`).
+- **Data acquisition pipelines (PR #14, #22):** on-demand OpenRouter manufacturer collector (`scrape_catalog.py`) and zero-cost open-data builder (`build_open_data_catalog.py`: EEA + RDW + MotoSpecDB, fail-closed as `manual_validation_only`).
+- **Deployment & redesigned API-only web app (PR #11, #15–#18, #21, #22):** patched TanStack Start XSS (`CVE-2026-102989`), Vercel Services unified routing (`vercel.json`), OpenAPI-generated web types in CI, `GET /version`, removal of local mock vehicle datasets/scoring and legacy MVP routes.
 
-## Current frontend
-Lovable prototype/app:
-`https://drivewise-decision-hub.lovable.app/`
+### Applied from the Multi-Model Review, Security Audit & Council A–F (`docs/pr-review-security-roadmap`)
+- **Council A (Catalog Views & v1 Freeze):** `_upsert_sources` in v1 switched to `DO NOTHING` (prevents restoring revoked `ranking_permission`), `import_catalog.py --write` blocked outside `local`/`test`, and migration `0015_catalog_v2_read_view_pivot.sql` rewrote `catalog_scalar_facts` + `catalog_read_specs` with a single `LATERAL` pivot projecting v2 dimensions, power, and provenance into Advisor.
+- **Council B (Runtime Hardening):** `ConnectionDep = Depends(get_connection, scope="function")` ensures DB commit completes before HTTP 2xx; `DatabaseConnectionPool` rewritten with `threading.Condition`, `acquire_timeout=5s`, `SET LOCAL` timeouts compatible with Neon `-pooler`, and `conn.broken` handling; production web builds default to `/api` (never `127.0.0.1:8000`) with 8s SSR timeout; HTTP security headers added to `vercel.json` (`web` + `api`); CORS fails closed outside `local`.
+- **Council C (URL-Driven Guided Decision & Live Revocation):** `GET /guided-decisions/{id}` recomputes live against current catalog/source permissions; `/app/report?s=` loads directly from the API without requiring `localStorage`; both report CTA buttons re-enabled; `?spec=` propagated across Vehicle, Compare, and Ask; 40-turn cap enforced (`409 max_turns_reached`).
+- **Council D (Italian Advisor Copy):** user-facing Advisor messages centralized in `apps/api/app/services/advisor/messages_it.py` with identical scores/rankings.
+- **Council E (Public API Surface Gating):** `ENABLE_INTERNAL_ROUTES` (default `False` outside `local`/`test`) disables `/docs`, `/redoc`, `/openapi.json`, `/listings*`, `/documents*`, `/search/documents` (`vector_fake`), `POST /vehicles/resolve`, and `POST /advisor/recommendations`.
+- **Security & Correctness Fixes:** fixed High ReDoS in `interpreter.py` (4.6s → <5 ms), `allow_inf_nan=False` + 422 sanitization handler in `main.py`, `ILIKE` wildcard escaping + query `max_length`, migration runner advisory lock, `vehicle_exists()` fast check, garage hard-constraint/negative-margin fixes, `safeHttpsUrl()`, and CI `permissions: contents: read` + rule-scoped `.gitleaks.toml`.
+- **Council F (12-Car Curation Playbook):** documented in [`f1-twelve-cars-curation.md`](f1-twelve-cars-curation.md).
 
-Public domain:
-`https://drivewise-italia.com`
+## Remaining pre-go-live gates (ADR-017)
 
-### Implemented / designed
-- Landing Page.
-- `/app/start` guided decision journey.
-- Auto / Moto / Scooter selection concept.
-- Personal area (`/app/me`) with future modules / Coming Soon sections.
-- Decision Report UI concept.
-- Vehicle detail page concept.
-- Garage Fit UX.
-- Dynamic report concept by vehicle type.
-- Premium / animated UX direction aligned to DriveWise brand identity.
-
-### Frontend rules frozen for MVP
-- A new analysis must create a **new Decision Session**.
-- `/app/start` must not automatically restore the previous demo/simulation.
-- No previous ranking, score, confidence, vehicle or garage state should leak into a new analysis.
-- `profile_completion` starts from `0`.
-- `decision_confidence` starts from `0` and is conceptually different from profile completeness.
-- Vehicle flows must be different for:
-  - `car`
-  - `motorcycle`
-  - `scooter`
-- Garage must use exactly three states:
-  - `known`
-  - `unknown_dimensions`
-  - `none`
-- Garage Fit appears in the final report **only** when `garage_status == known`.
-- The final report must not render empty / irrelevant cards.
-
-## Area personale / My DriveWise
-The personal area has been designed as the future retention layer of the product.
-
-Planned modules include:
-- My Garage
-- Decision History
-- Wishlist
-- Compare Later
-- Cost Tracker
-- Smart Maintenance
-- Vehicle Health
-- Document Wallet
-- AI Advisor
-- Family Garage
-- Finance
-- Insurance Center
-- Community
-- Value Prediction
-- Upgrade Advisor
-- Insights
-- Achievement
-- Smart Garage
-
-The information architecture has been reorganized into macro-sections rather than a flat catalog of cards. The long-term objective is to accompany the user across the whole vehicle lifecycle, not only during purchase.
-
-## Advisor v3 implementation in PR #5
-
-The API and Guided Decision previews now use the unified `advisor-v3.0`
-runtime in `apps/api/app/services/advisor/`. It owns deterministic eligibility,
-scoring, assessments, confidence, penalties, and ranking. The standalone
-`decision_engine/` runtime is retired; its calibration reports remain in
-`docs/snapshots/`.
-
-Recommendation persistence includes v3 request metadata and item breakdowns.
-TCO uses the documented `tco-v1` estimates. Reliability, known issues, recalls,
-Vehicle DNA, and valuation still require specialist inputs and return
-`insufficient_data` when those inputs are absent. See
-[`advisor-v3.md`](advisor-v3.md) for the implemented contract and limits.
-
-This integration does not complete the multi-vehicle frontend vertical slice,
-production deployment, or real-data validation described below. The backend
-audit should assess this unified runtime against those remaining requirements.
-
-## Decision Engine
-### Status
-- Python Decision Engine iterations v0.1 → v1.0 completed.
-- **Decision Engine v1.0 frozen for MVP contract.**
-- Deterministic scoring remains a core architectural decision: the LLM does not calculate ranking.
-
-### v1.0 scoring model
-- `Decision Score = 65% Structural Fit + 35% Preference Fit`
-- Preference priority weighting:
-  - 1st priority: 50%
-  - 2nd priority: 30%
-  - 3rd priority: 20%
-- Initial calibration benchmark:
-  - 12 synthetic scenarios
-  - Top-2 acceptance: 100%
-  - MRR: 0.958
-  - 11 automated tests passing at freeze time
-
-These are development/calibration results, not real-world automotive validation.
-
-### Important next evolution
-The original v1 calibration was primarily car-oriented. The engine must now be extended cleanly to vehicle-type-aware scoring:
-
-- `car` → Car Decision Model
-- `motorcycle` → Motorcycle Decision Model
-- `scooter` → Scooter Decision Model
-
-Common pillars can be shared, but specialist metrics must differ.
-
-Examples:
-- Moto: seat height, wet weight, rider experience, passenger comfort, wind protection.
-- Scooter: underseat storage, urban agility, parking ease, ring-road suitability.
-- Auto: family fit, luggage, garage compatibility, TCO, highway/city fit.
-
-## Dataset / Vehicle Knowledge Base
-The dataset strategy has evolved from a simple mock JSON into a **functional coverage / Vehicle Knowledge Base** approach.
-
-### Functional Coverage Dataset v1
-A dedicated test dataset has been created to cover the main product branches:
-- **30 vehicles total**
-- **12 cars**
-- **8 motorcycles**
-- **10 scooters**
-
-It includes scenarios for:
-- Auto / Moto / Scooter
-- Garage known / unknown dimensions / none
-- Session reset
-- Family use
-- High mileage / usage fit
-- Motorcycle beginner / touring / sport scenarios
-- Scooter urban / storage / ring-road scenarios
-- Security / theft-aware scenarios
-
-The dataset is for functional development. Most technical / qualitative values are synthetic test data unless explicitly linked to a real external reference.
-
-## Security & Risk / Theft Risk
-A new information domain has been added to DriveWise: **Security & Risk**.
-
-### Current model
-Where public data is available, the Vehicle Knowledge Base can store:
-- observed theft volume by model;
-- data year;
-- recovery rate where available;
-- territorial context;
-- source;
-- data confidence.
-
-### Methodological rule
-**Absolute theft volume must not be presented as individual probability of theft.**
-
-A widely circulated model may have more theft events simply because more examples are on the road.
-
-Therefore:
-- `observed_thefts` can be shown as an evidence-backed insight;
-- a normalized `theft_risk_index` remains unset until a reliable exposure denominator is available by model / territory / period;
-- Theft Risk should initially be an insight / optional preference metric, not a default hard constraint.
-
-Future normalized concept:
-`theft_rate = theft_events / exposed_vehicle_population`
-
-Security & Risk is expected eventually to combine:
-- theft risk;
-- recalls;
-- known issues;
-- reliability;
-- safety;
-- insurance impact;
-- maintenance / ownership risk.
-
-## Backend
-The repository already contains backend/data work and an API contract with vehicle and deterministic advisor capabilities.
-
-Current verified architectural direction:
-
-`Lovable → FastAPI REST API → Python Decision Engine → Vehicle Knowledge Base → ranked JSON → Decision Report`
-
-The Decision Engine must **not** be reimplemented inside Lovable / JavaScript.
-
-Before frontend integration is considered complete, backend status must be audited and the final Decision API contract frozen.
-
-## NEXT — highest priority
-### 1. Backend audit
-Verify exactly what is currently implemented by Tommaso:
-- available FastAPI endpoints;
-- Swagger/OpenAPI;
-- deployed/local URL;
-- database state;
-- current advisor/recommendation logic;
-- whether the frozen Decision Engine v1.0 is actually imported or an independent scoring implementation exists.
-
-### 2. Freeze final Decision API contract
-Target conceptual endpoint:
-`POST /api/v1/decision/analyze`
-
-Request must support:
-- decision session ID;
-- vehicle type;
-- budget;
-- annual km;
-- usage;
-- priorities;
-- garage status / dimensions when known;
-- type-specific fields for car / motorcycle / scooter.
-
-Response should include at minimum:
-- decision ID;
-- profile completeness;
-- decision confidence;
-- ranked vehicles;
-- Decision Score;
-- pillar scores;
-- strengths;
-- trade-offs;
-- explainability;
-- excluded vehicles / reasons;
-- conditional report data.
-
-### 3. First real vertical slice
-`Lovable /app/start → POST decision API → Python Decision Engine → ranked response → Decision Report UI`
-
-Success criteria:
-- no hardcoded ranking;
-- no mock Decision Score / Confidence;
-- new analysis creates a clean session;
-- three consecutive analyses (Auto, Moto, Scooter) produce independent profiles, rankings and reports;
-- Garage Fit is rendered only when dimensions are known.
-
-## After first vertical slice
-1. Vehicle detail APIs / remove hardcoded vehicle page data.
-2. Session persistence and Decision History.
-3. Real user authentication.
-4. Vehicle Knowledge Base ingestion / validation pipeline.
-5. Replace synthetic values with validated / sourced production data.
-6. Expand catalog beyond functional test set.
-7. Human calibration exercise (30–50+ profiles).
-8. Security & Risk enrichment.
-9. Beta telemetry and feedback.
-10. Activate selected personal-area modules.
-
-## Near-term working principle
-**Do not spend the next sprint redesigning the UI.**
-
-The design and brand are sufficiently mature for the MVP. The priority is now to make the existing experience genuinely data-driven and connected to the deterministic Decision Engine.
+1. **Production DB & Vercel Ops:** apply migrations `0010`–`0015` on production Neon, verify Preview `DATABASE_URL` does not target production, configure Vercel WAF rate limiting on `POST /api/guided-decisions*` and `/api/advisor/*`, and self-host Google Fonts (`styles.css:1`, GDPR).
+2. **Real 12-Car Catalog v2 Bundle (F1):** complete source reviews (`docs/source-reviews/`), curate and publish the 12 target cars with `list_price_eur`, `cargo_volume_liters`, and `body_style`, and align with Andrea on the `width_with_mirrors_mm` vs `width_mirrors_folded_mm` interval rule.
+3. **Key Open Technical Follow-ups** (full list in the consolidated audit table):
+   - Before live open-data imports: fix RDW cross-manufacturer make filter (`open_data.py`), two-wheeler `slug` path validation, and `catalog_status.py` `offer=None` crash.
+   - Before live `scrape_catalog.py` runs: tighten excerpt value/unit co-occurrence and require human sign-off for `actor_kind="agent"` facts.
+   - Before authorized used offers: preserve separate `new`/`used` groups in `apps/web/src/lib/decision-engine.ts` and unify offer vs list-price snapshot consistency (`READ COMMITTED` race).
+   - Stage 1 / Phase 2: 30-day GDPR retention for anonymous decisions, read-only vs write token separation on shared URLs, CI `gitleaks`/`osv-scanner` + action SHA pinning, dead-code/docs cleanup, and private-buyer beta validation (`docs/product-beta.md`).

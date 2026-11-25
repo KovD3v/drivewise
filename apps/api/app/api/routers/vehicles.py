@@ -78,6 +78,8 @@ def get_vehicle_facts(
     vehicle_id: UUID,
     repository: Annotated[VehiclesRepository, Depends(get_vehicles_repository)],
 ) -> list[dict]:
-    if repository.get_vehicle(vehicle_id) is None:
+    exists = getattr(repository, "vehicle_exists", None)
+    found = exists(vehicle_id) if callable(exists) else repository.get_vehicle(vehicle_id) is not None
+    if not found:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return repository.list_facts(vehicle_id)

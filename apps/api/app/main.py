@@ -1,9 +1,14 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import math
+from typing import Any
 
 import psycopg
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.api.dependencies import ConnectionDep, create_database_pool
@@ -95,6 +100,16 @@ class CacheControlMiddleware:
         await self.app(scope, receive, send_with_cache_control)
 
 
+def _sanitize_json_value(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _sanitize_json_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_json_value(item) for item in value]
+    return value
+
+
 def create_app(settings: Settings) -> FastAPI:
     internal = settings.enable_internal_routes
     application = FastAPI(
@@ -107,6 +122,14 @@ def create_app(settings: Settings) -> FastAPI:
         openapi_url="/openapi.json" if internal else None,
     )
     application.state.settings = settings
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        _request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        # FastAPI's default 422 handler fails to serialize non-finite floats (inf/nan).
+        detail = jsonable_encoder(_sanitize_json_value(exc.errors()))
+        return JSONResponse(status_code=422, content={"detail": detail})
 
     application.add_middleware(
         CacheControlMiddleware, root_path=settings.api_root_path
