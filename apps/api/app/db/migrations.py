@@ -1,3 +1,4 @@
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,11 @@ class Migration:
     version: str
     name: str
     sql: str
+
+    @property
+    def checksum(self) -> str:
+        """SHA-256 of the SQL text, recorded when the migration is applied."""
+        return hashlib.sha256(self.sql.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -73,6 +79,11 @@ def run_migrations(database_url: str | None = None) -> MigrationRun:
             )
             """
         )
+        # Rows applied before checksums existed keep NULL and are not verified.
+        conn.execute(
+            "ALTER TABLE drivewise_schema_migrations "
+            "ADD COLUMN IF NOT EXISTS checksum text"
+        )
 
         # These unreleased migrations only changed names, not SQL. Preserve data.
         for old, new in RENAMED_MIGRATIONS.items():
@@ -81,16 +92,30 @@ def run_migrations(database_url: str | None = None) -> MigrationRun:
                    WHERE version = %s AND name = %s""",
                 (new.split("_", 1)[0], new, old.split("_", 1)[0], old),
             )
-        applied_versions = dict(conn.execute(
-            "SELECT version, name FROM drivewise_schema_migrations"
-        ).fetchall())
+        applied_versions = {
+            version: (name, checksum)
+            for version, name, checksum in conn.execute(
+                "SELECT version, name, checksum FROM drivewise_schema_migrations"
+            ).fetchall()
+        }
 
         for migration in migrations:
             if migration.version in applied_versions:
-                if applied_versions[migration.version] != migration.name:
+                applied_name, applied_checksum = applied_versions[migration.version]
+                if applied_name != migration.name:
                     raise ValueError(
                         f"Migration version {migration.version} already belongs to "
-                        f"{applied_versions[migration.version]}, not {migration.name}"
+                        f"{applied_name}, not {migration.name}"
+                    )
+                if (
+                    applied_checksum is not None
+                    and applied_checksum != migration.checksum
+                ):
+                    raise ValueError(
+                        f"Migration {migration.name} changed after it was applied "
+                        f"(checksum {applied_checksum[:12]}, file "
+                        f"{migration.checksum[:12]}); add a new migration instead "
+                        "of editing an applied one"
                     )
                 already_applied.append(migration.name)
                 continue
@@ -100,10 +125,11 @@ def run_migrations(database_url: str | None = None) -> MigrationRun:
                     conn.execute(migration.sql)
                     conn.execute(
                         """
-                        INSERT INTO drivewise_schema_migrations (version, name)
-                        VALUES (%s, %s)
+                        INSERT INTO drivewise_schema_migrations
+                          (version, name, checksum)
+                        VALUES (%s, %s, %s)
                         """,
-                        (migration.version, migration.name),
+                        (migration.version, migration.name, migration.checksum),
                     )
             except psycopg.Error as error:
                 error.migration_name = migration.name

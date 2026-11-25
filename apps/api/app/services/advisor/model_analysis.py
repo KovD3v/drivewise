@@ -71,7 +71,10 @@ def build_model_analysis(
 
         first_match = resolve_response.matches[0]
         vehicle_id = first_match.vehicle.id
-        if first_match.spec is not None:
+        # An explicit spec_id wins over the resolver's guess. It is then checked
+        # against the resolved vehicle below: a spec of another vehicle is
+        # reported as requested_spec_not_found, never silently replaced.
+        if spec_id is None and first_match.spec is not None:
             spec_id = first_match.spec.id
         resolution_confidence = first_match.confidence
 
@@ -249,12 +252,25 @@ REFERENCE_PRICE_ASSUMPTIONS = {
 }
 
 
+def is_rankable_offer(listing: dict[str, Any]) -> bool:
+    """The Advisor offer rule: a known condition, and a used or certified offer
+    only with its mileage. The repository applies the same rule in SQL."""
+    condition = listing.get("condition")
+    if condition == "new":
+        return True
+    return condition in {"used", "certified"} and listing.get("mileage") is not None
+
+
 def _market_reference_price(
     candidate: dict[str, Any],
     vehicle: VehicleSummary,
     spec: VehicleSpec | None,
 ) -> tuple[float | None, str]:
-    listings = candidate.get("listings", [])
+    listings = [
+        listing
+        for listing in candidate.get("listings", [])
+        if is_rankable_offer(listing)
+    ]
     exact_spec_listings = (
         [
             listing

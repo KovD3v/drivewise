@@ -467,7 +467,7 @@ def test_model_analysis_uses_exact_selected_variant_for_price_energy_and_checks(
 @pytest.mark.parametrize(
     ("listings", "list_price", "base_price", "expected_price", "says"),
     [
-        ([{"price_eur": 21_000}], 20_000, 19_000, 21_000, "fresh offers"),
+        ([{"price_eur": 21_000, "condition": "new"}], 20_000, 19_000, 21_000, "fresh offers"),
         ([], 20_000, 19_000, 20_000, "list price of the selected variant"),
         ([], None, 19_000, 19_000, "model's base price"),
         ([], None, None, None, "No reference price is available"),
